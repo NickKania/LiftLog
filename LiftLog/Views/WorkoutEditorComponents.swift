@@ -49,6 +49,8 @@ struct SetInputRow: View {
     let unit: WeightUnit
     let weight: Double
     let reps: Int
+    var repsTitle = "Reps"
+    var targetReps: Int? = nil
     var completed: Bool? = nil
     let onChange: (Double, Int) -> Void
     var onCompletion: (() -> Void)? = nil
@@ -78,11 +80,18 @@ struct SetInputRow: View {
                     .accessibilityLabel("Weight for set \(number), \(unit.rawValue)")
                     .accessibilityIdentifier("setWeight-\(number)")
                     .frame(maxWidth: .infinity)
-                TextField("Reps", text: $repsText)
-                    .keyboardType(.numberPad)
-                    .accessibilityLabel("Repetitions for set \(number)")
-                    .accessibilityIdentifier("setReps-\(number)")
-                    .frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 3) {
+                    TextField(repsTitle, text: $repsText)
+                        .keyboardType(.numberPad)
+                        .accessibilityLabel("\(repsTitle) for set \(number)")
+                        .accessibilityIdentifier("setReps-\(number)")
+                    if let targetReps {
+                        Text("Target: \(targetReps)")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("setTargetReps-\(number)")
+                    }
+                }
+                .frame(maxWidth: .infinity)
                 if let completed {
                     Button {
                         if completed || valid { onCompletion?() }
@@ -139,11 +148,12 @@ struct SetInputRow: View {
 struct SetColumnHeader: View {
     let unit: WeightUnit
     var completion = false
+    var repsTitle = "REPS"
     var body: some View {
         HStack(spacing: 12) {
             Text("SET").frame(width: 26)
             Text(unit.rawValue.uppercased()).frame(maxWidth: .infinity, alignment: .leading)
-            Text("REPS").frame(maxWidth: .infinity, alignment: .leading)
+            Text(repsTitle).frame(maxWidth: .infinity, alignment: .leading)
             if completion { Image(systemName: "checkmark").frame(width: 44) }
         }
         .font(.caption2.bold()).foregroundStyle(.secondary)

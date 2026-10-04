@@ -6,9 +6,12 @@ Run the core tests from the repository root:
 
 ```sh
 swift test
+python3 scripts/generate_exercise_catalog.py --check
 ```
 
 These tests exercise workout behavior and persistence through the `LiftLogCore` package. They do not validate SwiftUI layout, keyboards, navigation, signing, or device installation.
+
+Catalog coverage verifies all 876 bundled entries load, original starter identities and order remain stable, matched exercises reuse existing IDs, and retired exercise snapshots survive in templates, active workouts, and history. The generator check verifies the resource matches the pinned upstream dataset and reviewed compatibility mappings without accessing the network.
 
 The initial core verification passed 16 XCTest cases with no failures. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, active workout protection, unit conversion, atomic save failure rollback, and invalid saved-file protection.
 

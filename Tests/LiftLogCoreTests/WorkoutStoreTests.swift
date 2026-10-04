@@ -6,11 +6,11 @@ final class WorkoutStoreTests: XCTestCase {
     private func template(name: String = "Upper Body") -> WorkoutTemplate {
         WorkoutTemplate(name: name, exercises: [
             TemplateExercise(exercise: Exercise(name: "Bench Press", category: "Chest"), sets: [
-                TemplateSet(weight: 135, reps: 8),
-                TemplateSet(weight: 135, reps: 6)
+                TemplateSet(weight: 135, targetReps: 8),
+                TemplateSet(weight: 135, targetReps: 6)
             ]),
             TemplateExercise(exercise: Exercise(name: "Row", category: "Back"), sets: [
-                TemplateSet(weight: 95, reps: 10)
+                TemplateSet(weight: 95, targetReps: 10)
             ])
         ])
     }
@@ -29,6 +29,9 @@ final class WorkoutStoreTests: XCTestCase {
         let originalNames = ["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row",
                              "Pull Up", "Dumbbell Curl", "Triceps Pushdown", "Romanian Deadlift", "Leg Press"]
         XCTAssertEqual(Array(store.exercises.prefix(10)).map(\.name), originalNames)
+        XCTAssertEqual(store.exercises.count, 876)
+        XCTAssertEqual(store.exercises.first { $0.name == "Incline Dumbbell Press" }?.id,
+                       UUID(uuidString: "00000000-0000-0000-0000-000000000011"))
         for (index, exercise) in store.exercises.prefix(10).enumerated() {
             XCTAssertEqual(exercise.id.uuidString, String(format: "00000000-0000-0000-0000-%012d", index + 1))
         }
@@ -54,7 +57,7 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertEqual(store.templates, savedTemplates)
         XCTAssertEqual(store.exercises, originalStore.exercises)
 
-        let exercise = try XCTUnwrap(store.exercises.first { $0.name == "Dumbbell Goblet Squat" })
+        let exercise = try XCTUnwrap(store.exercises.first { $0.name == "Goblet Squat" })
         XCTAssertEqual(exercise.category, "Legs")
         let addedTemplate = WorkoutTemplate(name: "Expanded Catalog", exercises: [TemplateExercise(exercise: exercise)])
         XCTAssertTrue(store.saveTemplate(addedTemplate))
@@ -68,6 +71,31 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.templates.first { $0.id == addedTemplate.id }, addedTemplate)
         XCTAssertEqual(reloaded.history.first?.exercises.first?.exercise, exercise)
         XCTAssertEqual(reloaded.exercises.first { $0.id == exercise.id }, exercise)
+    }
+
+    @MainActor
+    func testFormerCatalogSnapshotsSurviveReplacementWithoutRewritingSavedData() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        let former = Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000104")!,
+                              name: "Dumbbell Goblet Squat", category: "Legs")
+        XCTAssertFalse(store.exercises.contains { $0.id == former.id })
+        let legacyTemplate = WorkoutTemplate(name: "Existing Workout", exercises: [TemplateExercise(exercise: former)])
+        XCTAssertTrue(store.saveTemplate(legacyTemplate))
+        XCTAssertTrue(store.startWorkout(template: legacyTemplate))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.finishWorkout())
+        XCTAssertTrue(store.startWorkout(template: legacyTemplate))
+        let savedData = try Data(contentsOf: file)
+
+        let reloaded = WorkoutStore(fileURL: file)
+        XCTAssertNil(reloaded.errorMessage)
+        XCTAssertEqual(try Data(contentsOf: file), savedData)
+        XCTAssertEqual(reloaded.templates.first { $0.id == legacyTemplate.id }, legacyTemplate)
+        XCTAssertEqual(reloaded.activeWorkout?.exercises.first?.exercise, former)
+        XCTAssertEqual(reloaded.history.first?.exercises.first?.exercise, former)
     }
 
     @MainActor
@@ -110,7 +138,7 @@ final class WorkoutStoreTests: XCTestCase {
         invalid.exercises[0].sets[0].weight = -1
         XCTAssertFalse(store.saveTemplate(invalid))
         invalid = original
-        invalid.exercises[0].sets[0].reps = 0
+        invalid.exercises[0].sets[0].targetReps = 0
         XCTAssertFalse(store.saveTemplate(invalid))
         invalid = original
         invalid.exercises[0].sets[0].weight = .infinity
@@ -153,11 +181,11 @@ final class WorkoutStoreTests: XCTestCase {
         let original = template()
         var editedTemplate = original
         let plannedIDs = original.exercises[0].sets.map(\.id)
-        editedTemplate.exercises[0].updateSetValues(weight: 142.5, reps: 7)
+        editedTemplate.exercises[0].updateSetValues(weight: 142.5, targetReps: 7)
         XCTAssertTrue(store.saveTemplate(editedTemplate))
         let reloadedTemplate = try XCTUnwrap(WorkoutStore(fileURL: file).templates.first { $0.id == original.id })
         XCTAssertEqual(reloadedTemplate.exercises[0].sets.map(\.weight), [142.5, 142.5])
-        XCTAssertEqual(reloadedTemplate.exercises[0].sets.map(\.reps), [7, 7])
+        XCTAssertEqual(reloadedTemplate.exercises[0].sets.map(\.targetReps), [7, 7])
         XCTAssertEqual(reloadedTemplate.exercises[0].sets.map(\.id), plannedIDs)
         XCTAssertEqual(reloadedTemplate.exercises[1], original.exercises[1])
 
@@ -305,7 +333,7 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertEqual(store.unit, .kg)
         let converted = try XCTUnwrap(store.templates.first { $0.id == original.id })
         XCTAssertEqual(converted.exercises[0].sets[0].weight, 135 * 0.45359237, accuracy: 0.000001)
-        XCTAssertEqual(converted.exercises[0].sets[0].reps, 8)
+        XCTAssertEqual(converted.exercises[0].sets[0].targetReps, 8)
         XCTAssertTrue(store.setUnit(.kg))
         XCTAssertEqual(store.templates.first { $0.id == original.id }, converted)
         XCTAssertEqual(store.activeWorkout, active)

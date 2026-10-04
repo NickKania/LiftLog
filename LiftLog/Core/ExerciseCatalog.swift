@@ -1,170 +1,21 @@
 import Foundation
 
-/// Exercise names and categories from Simply Fitness, reviewed 2026-10-03.
-/// See docs/EXERCISE_CATALOG.md for source links and existing-name mappings.
-/// IDs are permanent: append new entries with unused IDs; never renumber them.
+/// Bundled public-domain catalog generated from free-exercise-db.
+/// Source revision, license, and compatibility policy: docs/EXERCISE_CATALOG.md.
 enum ExerciseCatalog {
-    static let all: [Exercise] = [
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, name: "Bench Press", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!, name: "Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!, name: "Deadlift", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!, name: "Overhead Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000005")!, name: "Barbell Row", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000006")!, name: "Pull Up", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000007")!, name: "Dumbbell Curl", category: "Arms"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000008")!, name: "Triceps Pushdown", category: "Arms"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000009")!, name: "Romanian Deadlift", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000010")!, name: "Leg Press", category: "Legs"),
-
-        // Chest
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!, name: "Incline Dumbbell Bench Press", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000012")!, name: "Pec Deck", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000013")!, name: "Cable Crossover", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000014")!, name: "Incline Barbell Bench Press", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000015")!, name: "Dumbbell Bench Press", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000016")!, name: "Dumbbell Fly", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000017")!, name: "Incline Dumbbell Fly", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000018")!, name: "Chest Press Machine", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000019")!, name: "Barbell Declined Bench Press", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000020")!, name: "Dumbbell Declined Bench Press", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000021")!, name: "Push Ups", category: "Chest"),
-
-        // Back
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000022")!, name: "Dumbbell Bent-Over Row (Single Arm)", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000023")!, name: "Wide-Grip Pulldown", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000024")!, name: "Seated Cable Row", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000025")!, name: "Close-Grip Pulldown", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000026")!, name: "Behind-Neck Pulldown", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000027")!, name: "Reverse-Grip Pulldown", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000028")!, name: "Rope Pulldown", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000029")!, name: "T-Bar Rows", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000030")!, name: "Barbell Bent Over Rows Supinated Grip", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000031")!, name: "Behind the Neck Pull Up", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000032")!, name: "Pull Up with a Supinated Grip", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000033")!, name: "Straight Arm Lat Pulldown", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000034")!, name: "Dumbbell Bent Over Rows", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000035")!, name: "Dumbbell Pullover", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000036")!, name: "Barbell Pullover", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000037")!, name: "Barbell Sumo Deadlift", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000038")!, name: "Trap Bar Deadlift", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000039")!, name: "Dumbbell Deadlift", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000040")!, name: "Barbell Shrug", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000041")!, name: "Dumbbell Shrugs", category: "Back"),
-
-        // Shoulders
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000042")!, name: "Dumbbell Shoulder Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000043")!, name: "Dumbbell Lateral Raise", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000044")!, name: "Dumbbell Front Raise", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000045")!, name: "High Cable Rear Delt Fly", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000046")!, name: "Smith Machine Shoulder Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000047")!, name: "Barbell Upright Row", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000048")!, name: "Bent-Over Lateral Raise", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000049")!, name: "Cable One-Arm Lateral Raise", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000050")!, name: "Dumbbell Push Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000051")!, name: "Barbell Push Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000052")!, name: "Single-Arm Cable Front Raise", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000053")!, name: "Barbell Front Raise", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000054")!, name: "Seated Barbell Shoulder Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000055")!, name: "Seated Behind the Neck Barbell Shoulder Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000056")!, name: "Standing Behind the Neck Barbell Shoulder Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000057")!, name: "Alternate Dumbbell Front Raise Neutral Grip", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000058")!, name: "One-Arm Low-Pulley Front Raise Neutral Grip", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000059")!, name: "Two-Handed Dumbbell Front Raise", category: "Shoulders"),
-
-        // Biceps
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000060")!, name: "Barbell Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000061")!, name: "Alternating Dumbbell Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000062")!, name: "Rope Cable Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000063")!, name: "EZ Barbell Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000064")!, name: "EZ Barbell Preacher Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000065")!, name: "Hammer Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000066")!, name: "Incline Dumbbell Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000067")!, name: "Dumbbell Concentration Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000068")!, name: "Single-Arm Low Pulley Cable Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000069")!, name: "Straight Bar Low Pulley Cable Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000070")!, name: "Standing High Pulley Cable Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000071")!, name: "Seated Barbell Wrist Curl", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000072")!, name: "Seated Barbell Wrist Extension", category: "Biceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000073")!, name: "Reverse Barbell Curl", category: "Biceps"),
-
-        // Triceps
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000074")!, name: "Lying Triceps Extension", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000075")!, name: "Cable Rope Pushdown", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000076")!, name: "Dumbbell Overhead Triceps Extension", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000077")!, name: "Close Grip Bench Press", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000078")!, name: "Kickback", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000079")!, name: "Reverse Grip Cable Triceps Extension with Barbell", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000080")!, name: "Single-Arm Cable Triceps Extension", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000081")!, name: "Single-Arm Cable Triceps Extension with Supinated Grip", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000082")!, name: "Lying Dumbbell Triceps Extension", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000083")!, name: "Seated Barbell French Press", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000084")!, name: "Bench Dips", category: "Triceps"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000085")!, name: "Parallel Dip Bar", category: "Triceps"),
-
-        // Abdominals
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000086")!, name: "Crunch", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000087")!, name: "Oblique Crunch", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000088")!, name: "Crunch Machine", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000089")!, name: "Rope Ab Pulldown", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000090")!, name: "Plank", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000091")!, name: "Hanging Leg Raise", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000092")!, name: "Bent Knee Reverse Crunch", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000093")!, name: "Long Arm Crunch", category: "Abdominals"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000094")!, name: "Plank Get Ups", category: "Abdominals"),
-
-        // Legs
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000095")!, name: "Leg Extension", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000096")!, name: "Lunge", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000097")!, name: "Lying Leg Curl", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000098")!, name: "Hack Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000099")!, name: "Seated Leg Curl", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000100")!, name: "Single Leg Extension", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!, name: "Front Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000102")!, name: "Dumbbell Stiff-Leg Deadlift", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000103")!, name: "Barbell Stiff-Leg Deadlift", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000104")!, name: "Dumbbell Goblet Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000105")!, name: "Knee Tuck Jumps", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000106")!, name: "Burpees", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000107")!, name: "Bodyweight Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000108")!, name: "1.5 Rep Bodyweight Squats", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000109")!, name: "Medicine Ball Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000110")!, name: "Barbell Bulgarian Split Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000111")!, name: "Bodyweight Bulgarian Split Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000112")!, name: "Mini-Band Air Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000113")!, name: "Jump Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000114")!, name: "Wall Sit", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000115")!, name: "Medicine Ball Deadlift", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000116")!, name: "Single Leg Bodyweight Deadlift", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000117")!, name: "Kettlebell Sumo Deadlift", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000118")!, name: "Good Morning", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000119")!, name: "Bodyweight Glute Bridge", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000120")!, name: "Single Leg Glute Bridge", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000121")!, name: "Banded Glute Bridge", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000122")!, name: "Duck Walk", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000123")!, name: "Bird Dog", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000124")!, name: "Groiners", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000125")!, name: "Fire Hydrants", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000126")!, name: "Smith Machine Hip Thrust", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000127")!, name: "Barbell Hip Thrust", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000128")!, name: "Band Seated Hip Abduction", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000129")!, name: "Seated Hip Abduction Machine", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000130")!, name: "Standing Cable Abduction", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000131")!, name: "Bodyweight Frog Pump", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000132")!, name: "Smith Machine Frog Pump", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000133")!, name: "Banded Clams", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000134")!, name: "Side Lying Leg Raise", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000135")!, name: "Glute Ham Raise", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000136")!, name: "Dumbbell Step Up", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000137")!, name: "Lateral Mini-Band Walk", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000138")!, name: "Standing Knee Raise", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000139")!, name: "Kettlebell Swings", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000140")!, name: "Standing Cable Kickback", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000141")!, name: "Donkey Kicks", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000142")!, name: "Side Lying Hip Raise", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000143")!, name: "Squat Sit to Reach", category: "Legs"),
-
-        // Calves
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000144")!, name: "Seated Calf Raise", category: "Calves"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000145")!, name: "Standing Calf Raise", category: "Calves")
-    ]
+    static let all: [Exercise] = {
+        #if SWIFT_PACKAGE
+        let bundle = Bundle.module
+        #else
+        let bundle = Bundle.main
+        #endif
+        guard let url = bundle.url(forResource: "exercise-catalog", withExtension: "json") else {
+            preconditionFailure("The bundled exercise catalog is missing.")
+        }
+        do {
+            return try JSONDecoder().decode([Exercise].self, from: Data(contentsOf: url))
+        } catch {
+            preconditionFailure("The bundled exercise catalog is invalid: \(error)")
+        }
+    }()
 }

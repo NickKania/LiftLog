@@ -23,11 +23,11 @@ struct TemplateExercise: Codable, Equatable, Identifiable {
         self.sets = sets
     }
 
-    /// Applies the same weight and reps to every set, preserving set IDs.
-    mutating func updateSetValues(weight: Double, reps: Int) {
+    /// Applies the same weight and target reps to every set, preserving set IDs.
+    mutating func updateSetValues(weight: Double, targetReps: Int) {
         for index in sets.indices {
             sets[index].weight = weight
-            sets[index].reps = reps
+            sets[index].targetReps = targetReps
         }
     }
 }
@@ -35,11 +35,30 @@ struct TemplateExercise: Codable, Equatable, Identifiable {
 struct TemplateSet: Codable, Equatable, Identifiable {
     var id: UUID
     var weight: Double
-    var reps: Int
+    var targetReps: Int
 
-    init(id: UUID = UUID(), weight: Double = 0, reps: Int = 8) {
+    init(id: UUID = UUID(), weight: Double = 0, targetReps: Int = 8) {
         self.id = id
         self.weight = weight
-        self.reps = reps
+        self.targetReps = targetReps
+    }
+    // Older saved templates called the planned count "reps".
+    private enum CodingKeys: String, CodingKey {
+        case id, weight, targetReps, reps
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        weight = try values.decode(Double.self, forKey: .weight)
+        targetReps = try values.decodeIfPresent(Int.self, forKey: .targetReps)
+            ?? values.decode(Int.self, forKey: .reps)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(weight, forKey: .weight)
+        try values.encode(targetReps, forKey: .targetReps)
     }
 }

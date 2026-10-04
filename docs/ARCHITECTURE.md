@@ -22,7 +22,7 @@ The iOS target compiles the core sources alongside the app sources. The Swift pa
 
 An exercise has an identifier, name, and category. A template contains an ordered list of exercise entries, each with planned sets. A planned set specifies a weight and repetition count.
 
-`ExerciseCatalog` bundles 145 exercises, including additions from Simply Fitness's eight muscle groups. It is available on every launch, independently of saved workout data. Original exercise identities and starter template ordering are retained. See [Exercise catalog](EXERCISE_CATALOG.md) for source links and name mappings.
+`ExerciseCatalog` loads 876 exercises from a bundled JSON resource generated from the public-domain free-exercise-db dataset. It is available offline on every launch, independently of saved workout data. Original starter identities and ordering are retained, and reviewed equivalent exercises reuse existing IDs. See [Exercise catalog](EXERCISE_CATALOG.md) for provenance, generation, and compatibility details.
 
 A workout session is a separate snapshot with its own exercise entries and sets. Session sets carry a completion flag, while the session records its starting time, optional finishing time, and weight unit. Starting a workout does not mutate the source template. A later template edit does not rewrite past workouts.
 

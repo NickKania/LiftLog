@@ -82,7 +82,7 @@ final class WorkoutStore {
                 unit: unit,
                 exercises: template?.exercises.map { item in
                     WorkoutExercise(exercise: item.exercise, sets: item.sets.map {
-                        WorkoutSet(weight: $0.weight, reps: $0.reps)
+                        WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps)
                     })
                 } ?? []
             )
@@ -223,7 +223,7 @@ final class WorkoutStore {
                 throw StoreError.invalid("Each template exercise needs at least one set.")
             }
             try validateIDs(item.sets.map(\.id))
-            for set in item.sets { try validateSet(weight: set.weight, reps: set.reps) }
+            for set in item.sets { try validateSet(weight: set.weight, reps: set.targetReps) }
         }
     }
 
@@ -233,7 +233,12 @@ final class WorkoutStore {
         for item in workout.exercises {
             try validateName(item.exercise.name)
             try validateIDs(item.sets.map(\.id))
-            for set in item.sets { try validateSet(weight: set.weight, reps: set.reps) }
+            for set in item.sets {
+                try validateSet(weight: set.weight, reps: set.reps)
+                if let targetReps = set.targetReps, targetReps <= 0 {
+                    throw StoreError.invalid("Target reps must be greater than zero.")
+                }
+            }
         }
     }
 
@@ -270,7 +275,7 @@ final class WorkoutStore {
 
     private static func starterTemplates(catalog: [Exercise]) -> [WorkoutTemplate] {
         func item(_ index: Int, reps: Int = 8) -> TemplateExercise {
-            TemplateExercise(exercise: catalog[index], sets: (0..<3).map { _ in TemplateSet(reps: reps) })
+            TemplateExercise(exercise: catalog[index], sets: (0..<3).map { _ in TemplateSet(targetReps: reps) })
         }
         return [
             WorkoutTemplate(name: "Upper Body", exercises: [item(0), item(4), item(3), item(6, reps: 12)]),

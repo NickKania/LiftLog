@@ -1,0 +1,5258 @@
+[
+  {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "name": "Bench Press",
+    "category": "Chest",
+    "sourceID": "Barbell_Bench_Press_-_Medium_Grip"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000002",
+    "name": "Squat",
+    "category": "Legs",
+    "sourceID": "Barbell_Squat"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000003",
+    "name": "Deadlift",
+    "category": "Back",
+    "sourceID": "Barbell_Deadlift"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000004",
+    "name": "Overhead Press",
+    "category": "Shoulders",
+    "sourceID": "Standing_Military_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000005",
+    "name": "Barbell Row",
+    "category": "Back",
+    "sourceID": "Bent_Over_Barbell_Row"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000006",
+    "name": "Pull Up",
+    "category": "Back",
+    "sourceID": "Pullups"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000007",
+    "name": "Dumbbell Curl",
+    "category": "Biceps",
+    "sourceID": "Dumbbell_Bicep_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000008",
+    "name": "Triceps Pushdown",
+    "category": "Triceps",
+    "sourceID": "Triceps_Pushdown"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000009",
+    "name": "Romanian Deadlift",
+    "category": "Legs",
+    "sourceID": "Romanian_Deadlift"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000010",
+    "name": "Leg Press",
+    "category": "Legs",
+    "sourceID": "Leg_Press"
+  },
+  {
+    "id": "986250f7-7f6f-5df7-9fde-7ab99884ae0f",
+    "name": "3/4 Sit-Up",
+    "category": "Abdominals",
+    "sourceID": "3_4_Sit-Up"
+  },
+  {
+    "id": "e2721e6f-7d1d-5cf4-830b-8cfbbd4d1c87",
+    "name": "90/90 Hamstring",
+    "category": "Legs",
+    "sourceID": "90_90_Hamstring"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000088",
+    "name": "Ab Crunch Machine",
+    "category": "Abdominals",
+    "sourceID": "Ab_Crunch_Machine"
+  },
+  {
+    "id": "8fd6f672-f5de-5133-afc4-7ad2c1f3dd3e",
+    "name": "Ab Roller",
+    "category": "Abdominals",
+    "sourceID": "Ab_Roller"
+  },
+  {
+    "id": "524fff0e-258b-5e11-910f-d5e6b195add9",
+    "name": "Adductor",
+    "category": "Legs",
+    "sourceID": "Adductor"
+  },
+  {
+    "id": "06fde5a6-c48b-5814-84dc-7e4ce7d5a90d",
+    "name": "Adductor/Groin",
+    "category": "Legs",
+    "sourceID": "Adductor_Groin"
+  },
+  {
+    "id": "d8083a7f-c15a-5258-9a8d-ad61211dff15",
+    "name": "Advanced Kettlebell Windmill",
+    "category": "Abdominals",
+    "sourceID": "Advanced_Kettlebell_Windmill"
+  },
+  {
+    "id": "80fd827f-8c33-5bc1-9580-5e83d5c5ee5b",
+    "name": "Air Bike",
+    "category": "Abdominals",
+    "sourceID": "Air_Bike"
+  },
+  {
+    "id": "32f469cd-94b6-5e9e-b74e-68c4b589f594",
+    "name": "All Fours Quad Stretch",
+    "category": "Legs",
+    "sourceID": "All_Fours_Quad_Stretch"
+  },
+  {
+    "id": "5e86023d-4ae8-5bbd-82ac-1cab7c74e0c9",
+    "name": "Alternate Hammer Curl",
+    "category": "Biceps",
+    "sourceID": "Alternate_Hammer_Curl"
+  },
+  {
+    "id": "ff52e500-08c8-59fc-838c-798e103f8fa1",
+    "name": "Alternate Heel Touchers",
+    "category": "Abdominals",
+    "sourceID": "Alternate_Heel_Touchers"
+  },
+  {
+    "id": "eefa1d3d-2300-5692-a53c-206fb5f1bd4d",
+    "name": "Alternate Incline Dumbbell Curl",
+    "category": "Biceps",
+    "sourceID": "Alternate_Incline_Dumbbell_Curl"
+  },
+  {
+    "id": "bf5fa813-01f6-51e4-8461-d6f3028df231",
+    "name": "Alternate Leg Diagonal Bound",
+    "category": "Legs",
+    "sourceID": "Alternate_Leg_Diagonal_Bound"
+  },
+  {
+    "id": "2bceb80d-0ada-539e-ad81-716d53bc9018",
+    "name": "Alternating Cable Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Alternating_Cable_Shoulder_Press"
+  },
+  {
+    "id": "9324c771-e35a-5e83-8ff1-c181f69daa30",
+    "name": "Alternating Deltoid Raise",
+    "category": "Shoulders",
+    "sourceID": "Alternating_Deltoid_Raise"
+  },
+  {
+    "id": "890115bb-5928-5e5e-aa34-c14668a6ba3d",
+    "name": "Alternating Floor Press",
+    "category": "Chest",
+    "sourceID": "Alternating_Floor_Press"
+  },
+  {
+    "id": "3038b601-a76c-5d17-a4b2-6a8088bc5e84",
+    "name": "Alternating Hang Clean",
+    "category": "Legs",
+    "sourceID": "Alternating_Hang_Clean"
+  },
+  {
+    "id": "4b0e6fa4-0654-5e52-bb71-91627731e734",
+    "name": "Alternating Kettlebell Press",
+    "category": "Shoulders",
+    "sourceID": "Alternating_Kettlebell_Press"
+  },
+  {
+    "id": "f5dc5023-a326-5aed-bfe1-170aa698da26",
+    "name": "Alternating Kettlebell Row",
+    "category": "Back",
+    "sourceID": "Alternating_Kettlebell_Row"
+  },
+  {
+    "id": "4b6591ca-393e-54e0-8789-94f995b04656",
+    "name": "Alternating Renegade Row",
+    "category": "Back",
+    "sourceID": "Alternating_Renegade_Row"
+  },
+  {
+    "id": "3b89a52c-9fd0-5407-b874-51af38286199",
+    "name": "Ankle Circles",
+    "category": "Calves",
+    "sourceID": "Ankle_Circles"
+  },
+  {
+    "id": "5c06484e-185a-5731-ac95-c1ffd0292679",
+    "name": "Ankle On The Knee",
+    "category": "Legs",
+    "sourceID": "Ankle_On_The_Knee"
+  },
+  {
+    "id": "5c7141c4-d2c2-535c-95bd-9c81571a684c",
+    "name": "Anterior Tibialis-SMR",
+    "category": "Calves",
+    "sourceID": "Anterior_Tibialis-SMR"
+  },
+  {
+    "id": "14ebb5dd-8933-5c7e-973b-09659bd67fcc",
+    "name": "Anti-Gravity Press",
+    "category": "Shoulders",
+    "sourceID": "Anti-Gravity_Press"
+  },
+  {
+    "id": "0b4ab8d0-736a-58d0-943e-e34d1da74252",
+    "name": "Arm Circles",
+    "category": "Shoulders",
+    "sourceID": "Arm_Circles"
+  },
+  {
+    "id": "619316a1-8acc-5040-8dc4-1978296b49f2",
+    "name": "Arnold Dumbbell Press",
+    "category": "Shoulders",
+    "sourceID": "Arnold_Dumbbell_Press"
+  },
+  {
+    "id": "d2430979-dee9-513c-a89b-0a37593b76b0",
+    "name": "Around The Worlds",
+    "category": "Chest",
+    "sourceID": "Around_The_Worlds"
+  },
+  {
+    "id": "a018594d-b26b-53c9-b16b-5e6385a9da90",
+    "name": "Atlas Stone Trainer",
+    "category": "Back",
+    "sourceID": "Atlas_Stone_Trainer"
+  },
+  {
+    "id": "07fb9519-1904-5453-8d75-209e55d7ed9a",
+    "name": "Atlas Stones",
+    "category": "Back",
+    "sourceID": "Atlas_Stones"
+  },
+  {
+    "id": "0377f0e6-9a45-5eb4-8374-11bbf029874f",
+    "name": "Axle Deadlift",
+    "category": "Back",
+    "sourceID": "Axle_Deadlift"
+  },
+  {
+    "id": "770841b9-ca5f-5113-aed5-c0a38378d26c",
+    "name": "Back Flyes - With Bands",
+    "category": "Shoulders",
+    "sourceID": "Back_Flyes_-_With_Bands"
+  },
+  {
+    "id": "e005699d-e4aa-5d98-aa87-dce809ca679b",
+    "name": "Backward Drag",
+    "category": "Legs",
+    "sourceID": "Backward_Drag"
+  },
+  {
+    "id": "d52a6252-0ff9-53b4-bc45-0f514b2f5612",
+    "name": "Backward Medicine Ball Throw",
+    "category": "Shoulders",
+    "sourceID": "Backward_Medicine_Ball_Throw"
+  },
+  {
+    "id": "e25cd607-e422-5a4e-ba3a-55b983871746",
+    "name": "Balance Board",
+    "category": "Calves",
+    "sourceID": "Balance_Board"
+  },
+  {
+    "id": "20ab0bd8-aa4a-5afe-b40a-75fe46a01205",
+    "name": "Ball Leg Curl",
+    "category": "Legs",
+    "sourceID": "Ball_Leg_Curl"
+  },
+  {
+    "id": "3ed036ac-8b21-5fd9-8898-ed2a5ed78cf5",
+    "name": "Band Assisted Pull-Up",
+    "category": "Back",
+    "sourceID": "Band_Assisted_Pull-Up"
+  },
+  {
+    "id": "87303824-0964-5c38-b687-9df8598ad177",
+    "name": "Band Good Morning",
+    "category": "Legs",
+    "sourceID": "Band_Good_Morning"
+  },
+  {
+    "id": "5f8768a4-517e-5fd2-944f-53ae7471c567",
+    "name": "Band Good Morning (Pull Through)",
+    "category": "Legs",
+    "sourceID": "Band_Good_Morning_Pull_Through"
+  },
+  {
+    "id": "ad09f760-24dd-5747-9b10-081a693bc428",
+    "name": "Band Hip Adductions",
+    "category": "Legs",
+    "sourceID": "Band_Hip_Adductions"
+  },
+  {
+    "id": "96cc6fd0-f7e7-5dc0-9133-6df147a2d008",
+    "name": "Band Pull Apart",
+    "category": "Shoulders",
+    "sourceID": "Band_Pull_Apart"
+  },
+  {
+    "id": "06127aa5-4208-5eab-84c9-aa436542d0db",
+    "name": "Band Skull Crusher",
+    "category": "Triceps",
+    "sourceID": "Band_Skull_Crusher"
+  },
+  {
+    "id": "cf2855d9-224f-572c-91dd-3816627dc754",
+    "name": "Barbell Ab Rollout",
+    "category": "Abdominals",
+    "sourceID": "Barbell_Ab_Rollout"
+  },
+  {
+    "id": "2a089d8a-9d4b-5676-8fc1-e3a6106996d8",
+    "name": "Barbell Ab Rollout - On Knees",
+    "category": "Abdominals",
+    "sourceID": "Barbell_Ab_Rollout_-_On_Knees"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000060",
+    "name": "Barbell Curl",
+    "category": "Biceps",
+    "sourceID": "Barbell_Curl"
+  },
+  {
+    "id": "b97f03b4-a3f5-5cf1-b37f-76fe3ddb84e4",
+    "name": "Barbell Curls Lying Against An Incline",
+    "category": "Biceps",
+    "sourceID": "Barbell_Curls_Lying_Against_An_Incline"
+  },
+  {
+    "id": "47ecb177-dc20-5889-a2be-5d07580fab7e",
+    "name": "Barbell Full Squat",
+    "category": "Legs",
+    "sourceID": "Barbell_Full_Squat"
+  },
+  {
+    "id": "e365c605-f55c-5eb7-b4af-7ed50f2086e6",
+    "name": "Barbell Glute Bridge",
+    "category": "Legs",
+    "sourceID": "Barbell_Glute_Bridge"
+  },
+  {
+    "id": "89e900d2-c327-5a19-b091-471cd60eb307",
+    "name": "Barbell Guillotine Bench Press",
+    "category": "Chest",
+    "sourceID": "Barbell_Guillotine_Bench_Press"
+  },
+  {
+    "id": "0cded9d0-cc7b-52ac-a5d4-a06d34fbb7ab",
+    "name": "Barbell Hack Squat",
+    "category": "Legs",
+    "sourceID": "Barbell_Hack_Squat"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000127",
+    "name": "Barbell Hip Thrust",
+    "category": "Legs",
+    "sourceID": "Barbell_Hip_Thrust"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000014",
+    "name": "Barbell Incline Bench Press - Medium Grip",
+    "category": "Chest",
+    "sourceID": "Barbell_Incline_Bench_Press_-_Medium_Grip"
+  },
+  {
+    "id": "1a0819f8-9dfd-5ea5-a7cf-bcba0147496e",
+    "name": "Barbell Incline Shoulder Raise",
+    "category": "Shoulders",
+    "sourceID": "Barbell_Incline_Shoulder_Raise"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000096",
+    "name": "Barbell Lunge",
+    "category": "Legs",
+    "sourceID": "Barbell_Lunge"
+  },
+  {
+    "id": "3c827a74-74c5-58eb-986d-0c32a0a1dee9",
+    "name": "Barbell Rear Delt Row",
+    "category": "Shoulders",
+    "sourceID": "Barbell_Rear_Delt_Row"
+  },
+  {
+    "id": "04e8b996-340e-58c1-aa1d-c59c7f8259a9",
+    "name": "Barbell Rollout from Bench",
+    "category": "Abdominals",
+    "sourceID": "Barbell_Rollout_from_Bench"
+  },
+  {
+    "id": "7170de6d-6064-5adb-b246-97ee64c750b9",
+    "name": "Barbell Seated Calf Raise",
+    "category": "Calves",
+    "sourceID": "Barbell_Seated_Calf_Raise"
+  },
+  {
+    "id": "a2977852-1a2b-50a4-acfd-6c4ad3025477",
+    "name": "Barbell Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Barbell_Shoulder_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000040",
+    "name": "Barbell Shrug",
+    "category": "Back",
+    "sourceID": "Barbell_Shrug"
+  },
+  {
+    "id": "39fd4789-d194-5f0a-9af1-d625ebdf4924",
+    "name": "Barbell Shrug Behind The Back",
+    "category": "Back",
+    "sourceID": "Barbell_Shrug_Behind_The_Back"
+  },
+  {
+    "id": "af149747-bdef-52e4-8b1e-c04b73530015",
+    "name": "Barbell Side Bend",
+    "category": "Abdominals",
+    "sourceID": "Barbell_Side_Bend"
+  },
+  {
+    "id": "763cd6be-e886-523f-862b-7337db4e9cf4",
+    "name": "Barbell Side Split Squat",
+    "category": "Legs",
+    "sourceID": "Barbell_Side_Split_Squat"
+  },
+  {
+    "id": "b8f5483e-4241-5c48-9cfc-333e2a5f7687",
+    "name": "Barbell Squat To A Bench",
+    "category": "Legs",
+    "sourceID": "Barbell_Squat_To_A_Bench"
+  },
+  {
+    "id": "5de0e4c6-72f3-5572-a1f6-e4a50d98a508",
+    "name": "Barbell Step Ups",
+    "category": "Legs",
+    "sourceID": "Barbell_Step_Ups"
+  },
+  {
+    "id": "1696ecb3-521c-5c31-9d42-e4d44a633b8d",
+    "name": "Barbell Walking Lunge",
+    "category": "Legs",
+    "sourceID": "Barbell_Walking_Lunge"
+  },
+  {
+    "id": "562b5d84-3bf7-58af-9dbf-3bf6b97e59c1",
+    "name": "Battling Ropes",
+    "category": "Shoulders",
+    "sourceID": "Battling_Ropes"
+  },
+  {
+    "id": "a865e3f4-c98a-55e9-8bbb-b3b61d141057",
+    "name": "Bear Crawl Sled Drags",
+    "category": "Legs",
+    "sourceID": "Bear_Crawl_Sled_Drags"
+  },
+  {
+    "id": "14b20087-b0f0-57f7-860c-859875679250",
+    "name": "Behind Head Chest Stretch",
+    "category": "Chest",
+    "sourceID": "Behind_Head_Chest_Stretch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000084",
+    "name": "Bench Dips",
+    "category": "Triceps",
+    "sourceID": "Bench_Dips"
+  },
+  {
+    "id": "5a0a0037-628d-5ecb-a997-080842873745",
+    "name": "Bench Jump",
+    "category": "Legs",
+    "sourceID": "Bench_Jump"
+  },
+  {
+    "id": "f7ad5983-0725-57a2-9745-2f7956ebd096",
+    "name": "Bench Press - Powerlifting",
+    "category": "Triceps",
+    "sourceID": "Bench_Press_-_Powerlifting"
+  },
+  {
+    "id": "5895a494-307d-5ace-9113-db9bc3f48e7b",
+    "name": "Bench Press - With Bands",
+    "category": "Chest",
+    "sourceID": "Bench_Press_-_With_Bands"
+  },
+  {
+    "id": "dfa07b03-d81b-51ff-87c0-336166cf7a82",
+    "name": "Bench Press with Chains",
+    "category": "Triceps",
+    "sourceID": "Bench_Press_with_Chains"
+  },
+  {
+    "id": "5df3e095-a62a-58d4-8b99-ea44f32d9030",
+    "name": "Bench Sprint",
+    "category": "Legs",
+    "sourceID": "Bench_Sprint"
+  },
+  {
+    "id": "709b5189-104c-537c-92ae-a28c94918340",
+    "name": "Bent Over Dumbbell Rear Delt Raise With Head On Bench",
+    "category": "Shoulders",
+    "sourceID": "Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench"
+  },
+  {
+    "id": "9fabe28e-2d51-550a-a614-4c203b340363",
+    "name": "Bent Over Low-Pulley Side Lateral",
+    "category": "Shoulders",
+    "sourceID": "Bent_Over_Low-Pulley_Side_Lateral"
+  },
+  {
+    "id": "7a1ba17b-2962-5f22-98da-1206b78dde01",
+    "name": "Bent Over One-Arm Long Bar Row",
+    "category": "Back",
+    "sourceID": "Bent_Over_One-Arm_Long_Bar_Row"
+  },
+  {
+    "id": "345fd158-10c3-55c8-9bc3-a1252ad612b7",
+    "name": "Bent Over Two-Arm Long Bar Row",
+    "category": "Back",
+    "sourceID": "Bent_Over_Two-Arm_Long_Bar_Row"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000034",
+    "name": "Bent Over Two-Dumbbell Row",
+    "category": "Back",
+    "sourceID": "Bent_Over_Two-Dumbbell_Row"
+  },
+  {
+    "id": "c9049791-acb0-55e7-9a13-94189892b01b",
+    "name": "Bent Over Two-Dumbbell Row With Palms In",
+    "category": "Back",
+    "sourceID": "Bent_Over_Two-Dumbbell_Row_With_Palms_In"
+  },
+  {
+    "id": "8410c4e2-6948-534a-8fa6-5a97fedb712c",
+    "name": "Bent Press",
+    "category": "Abdominals",
+    "sourceID": "Bent_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000036",
+    "name": "Bent-Arm Barbell Pullover",
+    "category": "Back",
+    "sourceID": "Bent-Arm_Barbell_Pullover"
+  },
+  {
+    "id": "12fc63a2-545f-5b3d-ad66-c038e36f87e1",
+    "name": "Bent-Arm Dumbbell Pullover",
+    "category": "Chest",
+    "sourceID": "Bent-Arm_Dumbbell_Pullover"
+  },
+  {
+    "id": "49b860f7-9058-57ff-b8d6-85e5b42036ff",
+    "name": "Bent-Knee Hip Raise",
+    "category": "Abdominals",
+    "sourceID": "Bent-Knee_Hip_Raise"
+  },
+  {
+    "id": "76ea6282-26b2-5b7c-aebd-0326337dda80",
+    "name": "Bicycling",
+    "category": "Legs",
+    "sourceID": "Bicycling"
+  },
+  {
+    "id": "1f284553-a827-5a13-b2ab-7c112103b336",
+    "name": "Bicycling, Stationary",
+    "category": "Legs",
+    "sourceID": "Bicycling_Stationary"
+  },
+  {
+    "id": "8bdb8ff1-fd42-5a10-acc9-476b68249a75",
+    "name": "Board Press",
+    "category": "Triceps",
+    "sourceID": "Board_Press"
+  },
+  {
+    "id": "14ac20b0-2690-5cc0-8758-127ad8696057",
+    "name": "Body Tricep Press",
+    "category": "Triceps",
+    "sourceID": "Body_Tricep_Press"
+  },
+  {
+    "id": "2f1e7e9a-a710-5df5-9b16-588a8ed1c5a2",
+    "name": "Body-Up",
+    "category": "Triceps",
+    "sourceID": "Body-Up"
+  },
+  {
+    "id": "d40d0154-fdbb-5b7a-bf4f-4a55f3721286",
+    "name": "Bodyweight Flyes",
+    "category": "Chest",
+    "sourceID": "Bodyweight_Flyes"
+  },
+  {
+    "id": "6a6e303f-b4ae-5fae-b482-8263bf9226dd",
+    "name": "Bodyweight Mid Row",
+    "category": "Back",
+    "sourceID": "Bodyweight_Mid_Row"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000107",
+    "name": "Bodyweight Squat",
+    "category": "Legs",
+    "sourceID": "Bodyweight_Squat"
+  },
+  {
+    "id": "75805098-39ce-543c-b9b3-a8983b951920",
+    "name": "Bodyweight Walking Lunge",
+    "category": "Legs",
+    "sourceID": "Bodyweight_Walking_Lunge"
+  },
+  {
+    "id": "9a94f207-3a17-5635-9a4b-a26869f32903",
+    "name": "Bosu Ball Cable Crunch With Side Bends",
+    "category": "Abdominals",
+    "sourceID": "Bosu_Ball_Cable_Crunch_With_Side_Bends"
+  },
+  {
+    "id": "f0cb3c78-702e-5315-85cb-0d2b62a353d4",
+    "name": "Bottoms Up",
+    "category": "Abdominals",
+    "sourceID": "Bottoms_Up"
+  },
+  {
+    "id": "2c575dfd-8935-5905-9cb9-aa0ba3ce9556",
+    "name": "Bottoms-Up Clean From The Hang Position",
+    "category": "Forearms",
+    "sourceID": "Bottoms-Up_Clean_From_The_Hang_Position"
+  },
+  {
+    "id": "e315b54f-8533-5624-8f66-ad7b90dceb8b",
+    "name": "Box Jump (Multiple Response)",
+    "category": "Legs",
+    "sourceID": "Box_Jump_Multiple_Response"
+  },
+  {
+    "id": "5c7c7340-a466-5fd2-a42d-e1b98da30fb8",
+    "name": "Box Skip",
+    "category": "Legs",
+    "sourceID": "Box_Skip"
+  },
+  {
+    "id": "d19ba1ba-5273-5196-a9ee-3dcc135e5a71",
+    "name": "Box Squat",
+    "category": "Legs",
+    "sourceID": "Box_Squat"
+  },
+  {
+    "id": "b8f79bdc-e991-5dd9-b7b7-b8f4d95c2cc4",
+    "name": "Box Squat with Bands",
+    "category": "Legs",
+    "sourceID": "Box_Squat_with_Bands"
+  },
+  {
+    "id": "b143bc93-8adc-589f-a27b-b70b7e8bf06a",
+    "name": "Box Squat with Chains",
+    "category": "Legs",
+    "sourceID": "Box_Squat_with_Chains"
+  },
+  {
+    "id": "f436ba2e-c410-5ca4-9f7b-46802feb9d8a",
+    "name": "Brachialis-SMR",
+    "category": "Biceps",
+    "sourceID": "Brachialis-SMR"
+  },
+  {
+    "id": "f1ef124c-22ab-591e-87f1-aca43c77f3ec",
+    "name": "Bradford/Rocky Presses",
+    "category": "Shoulders",
+    "sourceID": "Bradford_Rocky_Presses"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000119",
+    "name": "Butt Lift (Bridge)",
+    "category": "Legs",
+    "sourceID": "Butt_Lift_Bridge"
+  },
+  {
+    "id": "eed4bf64-f8c4-595a-8884-7140c05a120f",
+    "name": "Butt-Ups",
+    "category": "Abdominals",
+    "sourceID": "Butt-Ups"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000012",
+    "name": "Butterfly",
+    "category": "Chest",
+    "sourceID": "Butterfly"
+  },
+  {
+    "id": "06e4163a-01cd-5d5a-bf38-3d9f39b8739b",
+    "name": "Cable Chest Press",
+    "category": "Chest",
+    "sourceID": "Cable_Chest_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000013",
+    "name": "Cable Crossover",
+    "category": "Chest",
+    "sourceID": "Cable_Crossover"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000089",
+    "name": "Cable Crunch",
+    "category": "Abdominals",
+    "sourceID": "Cable_Crunch"
+  },
+  {
+    "id": "7c72cb99-9a38-5aef-a31d-5023b1b3321d",
+    "name": "Cable Deadlifts",
+    "category": "Legs",
+    "sourceID": "Cable_Deadlifts"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000062",
+    "name": "Cable Hammer Curls - Rope Attachment",
+    "category": "Biceps",
+    "sourceID": "Cable_Hammer_Curls_-_Rope_Attachment"
+  },
+  {
+    "id": "38219814-dcf4-588d-80e3-212f9ec930f4",
+    "name": "Cable Hip Adduction",
+    "category": "Legs",
+    "sourceID": "Cable_Hip_Adduction"
+  },
+  {
+    "id": "6bc8bc01-fbd3-5d8b-90b6-32f6908d5f07",
+    "name": "Cable Incline Pushdown",
+    "category": "Back",
+    "sourceID": "Cable_Incline_Pushdown"
+  },
+  {
+    "id": "c4f47e4b-5d46-5332-bbcc-a8f228dc32c5",
+    "name": "Cable Incline Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Cable_Incline_Triceps_Extension"
+  },
+  {
+    "id": "f16feb90-6897-5006-9bdb-61c155dcd965",
+    "name": "Cable Internal Rotation",
+    "category": "Shoulders",
+    "sourceID": "Cable_Internal_Rotation"
+  },
+  {
+    "id": "d0798418-539b-5e2c-9dfa-42c26cb55ac9",
+    "name": "Cable Iron Cross",
+    "category": "Chest",
+    "sourceID": "Cable_Iron_Cross"
+  },
+  {
+    "id": "cb1e2638-d8c3-59b5-9e0c-18caae105192",
+    "name": "Cable Judo Flip",
+    "category": "Abdominals",
+    "sourceID": "Cable_Judo_Flip"
+  },
+  {
+    "id": "2ecf5c14-44bd-54b1-991e-28f163f31d66",
+    "name": "Cable Lying Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Cable_Lying_Triceps_Extension"
+  },
+  {
+    "id": "a707a5bf-f66f-571f-8901-5371014181bb",
+    "name": "Cable One Arm Tricep Extension",
+    "category": "Triceps",
+    "sourceID": "Cable_One_Arm_Tricep_Extension"
+  },
+  {
+    "id": "30764d0d-b083-5687-9eb6-3f3b88610938",
+    "name": "Cable Preacher Curl",
+    "category": "Biceps",
+    "sourceID": "Cable_Preacher_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000045",
+    "name": "Cable Rear Delt Fly",
+    "category": "Shoulders",
+    "sourceID": "Cable_Rear_Delt_Fly"
+  },
+  {
+    "id": "808fa975-5fbd-5ef1-86ea-13640ea5da38",
+    "name": "Cable Reverse Crunch",
+    "category": "Abdominals",
+    "sourceID": "Cable_Reverse_Crunch"
+  },
+  {
+    "id": "c494745c-0a50-5be0-b3e7-0b6940780c8f",
+    "name": "Cable Rope Overhead Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Cable_Rope_Overhead_Triceps_Extension"
+  },
+  {
+    "id": "2aba9b2c-de71-5be7-bb91-93f1b84a9419",
+    "name": "Cable Rope Rear-Delt Rows",
+    "category": "Shoulders",
+    "sourceID": "Cable_Rope_Rear-Delt_Rows"
+  },
+  {
+    "id": "cab11143-ef88-5167-891a-dc00715b702e",
+    "name": "Cable Russian Twists",
+    "category": "Abdominals",
+    "sourceID": "Cable_Russian_Twists"
+  },
+  {
+    "id": "d8f2fd77-3b6a-5661-a1ad-704a15359f23",
+    "name": "Cable Seated Crunch",
+    "category": "Abdominals",
+    "sourceID": "Cable_Seated_Crunch"
+  },
+  {
+    "id": "567ff6d6-8d33-5e17-98b7-3cece51dcc4e",
+    "name": "Cable Seated Lateral Raise",
+    "category": "Shoulders",
+    "sourceID": "Cable_Seated_Lateral_Raise"
+  },
+  {
+    "id": "ac7faa6f-1545-5ec9-b711-9844eaa6d57d",
+    "name": "Cable Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Cable_Shoulder_Press"
+  },
+  {
+    "id": "13927f03-5852-5c80-9f78-d7db1ccffd0d",
+    "name": "Cable Shrugs",
+    "category": "Back",
+    "sourceID": "Cable_Shrugs"
+  },
+  {
+    "id": "837ed70e-7aaa-5c52-8c60-57ae94259f95",
+    "name": "Cable Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Cable_Wrist_Curl"
+  },
+  {
+    "id": "5f3fc20f-4ff2-531d-9a10-04a258f4cd5f",
+    "name": "Calf Press",
+    "category": "Calves",
+    "sourceID": "Calf_Press"
+  },
+  {
+    "id": "b971bb8e-168d-54ec-9394-7f5091ec9aa7",
+    "name": "Calf Press On The Leg Press Machine",
+    "category": "Calves",
+    "sourceID": "Calf_Press_On_The_Leg_Press_Machine"
+  },
+  {
+    "id": "bba798c3-64ff-55ec-b5ce-c5469142d77e",
+    "name": "Calf Raise On A Dumbbell",
+    "category": "Calves",
+    "sourceID": "Calf_Raise_On_A_Dumbbell"
+  },
+  {
+    "id": "87e38b2b-80b8-565c-8059-b252dd40ec11",
+    "name": "Calf Raises - With Bands",
+    "category": "Calves",
+    "sourceID": "Calf_Raises_-_With_Bands"
+  },
+  {
+    "id": "112be1fa-a8fb-551d-9f1c-e6818bec804b",
+    "name": "Calf Stretch Elbows Against Wall",
+    "category": "Calves",
+    "sourceID": "Calf_Stretch_Elbows_Against_Wall"
+  },
+  {
+    "id": "350873b0-1aa6-5a47-b213-e013955517b6",
+    "name": "Calf Stretch Hands Against Wall",
+    "category": "Calves",
+    "sourceID": "Calf_Stretch_Hands_Against_Wall"
+  },
+  {
+    "id": "5b441f4c-b94e-50d9-97f4-e14f2cc97c37",
+    "name": "Calf-Machine Shoulder Shrug",
+    "category": "Back",
+    "sourceID": "Calf-Machine_Shoulder_Shrug"
+  },
+  {
+    "id": "f7f740b0-20d8-50be-8e03-0ab2fd8115d6",
+    "name": "Calves-SMR",
+    "category": "Calves",
+    "sourceID": "Calves-SMR"
+  },
+  {
+    "id": "042cffcc-d433-565d-83c3-229c9d56d094",
+    "name": "Car Deadlift",
+    "category": "Legs",
+    "sourceID": "Car_Deadlift"
+  },
+  {
+    "id": "b9589c99-ee11-5499-b2cf-63bbbc878af9",
+    "name": "Car Drivers",
+    "category": "Shoulders",
+    "sourceID": "Car_Drivers"
+  },
+  {
+    "id": "addef6d3-3725-5800-b234-48898d289484",
+    "name": "Carioca Quick Step",
+    "category": "Legs",
+    "sourceID": "Carioca_Quick_Step"
+  },
+  {
+    "id": "1a9f350d-f0ea-5d1f-9438-678939f19046",
+    "name": "Cat Stretch",
+    "category": "Back",
+    "sourceID": "Cat_Stretch"
+  },
+  {
+    "id": "58666181-8b37-5f2b-9dd7-567adbb8a6a6",
+    "name": "Catch and Overhead Throw",
+    "category": "Back",
+    "sourceID": "Catch_and_Overhead_Throw"
+  },
+  {
+    "id": "06159cad-dd96-5c9a-ad4a-7a90351e0f9a",
+    "name": "Chain Handle Extension",
+    "category": "Triceps",
+    "sourceID": "Chain_Handle_Extension"
+  },
+  {
+    "id": "da51ca06-af90-579e-93e7-578bbfde13ab",
+    "name": "Chain Press",
+    "category": "Chest",
+    "sourceID": "Chain_Press"
+  },
+  {
+    "id": "ac6d0c3f-4329-5e54-9c2a-234b85c0a7c0",
+    "name": "Chair Leg Extended Stretch",
+    "category": "Legs",
+    "sourceID": "Chair_Leg_Extended_Stretch"
+  },
+  {
+    "id": "878497cd-9e1e-5767-ad09-147c6504679e",
+    "name": "Chair Lower Back Stretch",
+    "category": "Back",
+    "sourceID": "Chair_Lower_Back_Stretch"
+  },
+  {
+    "id": "cd5ce297-476a-5db0-a22d-ae99afefcfa0",
+    "name": "Chair Squat",
+    "category": "Legs",
+    "sourceID": "Chair_Squat"
+  },
+  {
+    "id": "b97d24aa-647a-5fae-92ed-181bc8c5cd5d",
+    "name": "Chair Upper Body Stretch",
+    "category": "Shoulders",
+    "sourceID": "Chair_Upper_Body_Stretch"
+  },
+  {
+    "id": "5d5505e8-3e42-5d46-b4bc-343b514c508c",
+    "name": "Chest And Front Of Shoulder Stretch",
+    "category": "Chest",
+    "sourceID": "Chest_And_Front_Of_Shoulder_Stretch"
+  },
+  {
+    "id": "88c8977a-9710-5feb-9881-0242848376a5",
+    "name": "Chest Push (multiple response)",
+    "category": "Chest",
+    "sourceID": "Chest_Push_multiple_response"
+  },
+  {
+    "id": "d492fd8c-96c7-5fb2-92d4-488e5ebad880",
+    "name": "Chest Push (single response)",
+    "category": "Chest",
+    "sourceID": "Chest_Push_single_response"
+  },
+  {
+    "id": "7fc8a2c4-5998-569c-beb0-b8e9395aabfc",
+    "name": "Chest Push from 3 point stance",
+    "category": "Chest",
+    "sourceID": "Chest_Push_from_3_point_stance"
+  },
+  {
+    "id": "4bf8f544-3ea4-5ea1-8801-6522cbc72c3f",
+    "name": "Chest Push with Run Release",
+    "category": "Chest",
+    "sourceID": "Chest_Push_with_Run_Release"
+  },
+  {
+    "id": "f0d15edf-6f20-5d95-a920-fb04219d997e",
+    "name": "Chest Stretch on Stability Ball",
+    "category": "Chest",
+    "sourceID": "Chest_Stretch_on_Stability_Ball"
+  },
+  {
+    "id": "e68b41ec-dfca-5945-948c-563f731f00d5",
+    "name": "Child's Pose",
+    "category": "Back",
+    "sourceID": "Childs_Pose"
+  },
+  {
+    "id": "fc446148-8ccc-5639-9ad9-bb17e519ee55",
+    "name": "Chin To Chest Stretch",
+    "category": "Neck",
+    "sourceID": "Chin_To_Chest_Stretch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000032",
+    "name": "Chin-Up",
+    "category": "Back",
+    "sourceID": "Chin-Up"
+  },
+  {
+    "id": "fce3bcc1-c9ef-567a-9d23-ed45b93e9ae3",
+    "name": "Circus Bell",
+    "category": "Shoulders",
+    "sourceID": "Circus_Bell"
+  },
+  {
+    "id": "1281e3e8-d614-5a7b-ab01-8fba8e709201",
+    "name": "Clean",
+    "category": "Legs",
+    "sourceID": "Clean"
+  },
+  {
+    "id": "b0de3ec1-980a-5db1-b307-72b14e0f464b",
+    "name": "Clean and Jerk",
+    "category": "Shoulders",
+    "sourceID": "Clean_and_Jerk"
+  },
+  {
+    "id": "a4d40e4d-8027-52e4-ac37-81673fcae61d",
+    "name": "Clean and Press",
+    "category": "Shoulders",
+    "sourceID": "Clean_and_Press"
+  },
+  {
+    "id": "93d6ca6c-b922-57a3-80fc-cdf092d74f6a",
+    "name": "Clean Deadlift",
+    "category": "Legs",
+    "sourceID": "Clean_Deadlift"
+  },
+  {
+    "id": "b08c5883-6b0d-5dd6-b460-b7b0b4230b6b",
+    "name": "Clean from Blocks",
+    "category": "Legs",
+    "sourceID": "Clean_from_Blocks"
+  },
+  {
+    "id": "85e4225e-ec64-5d55-8d97-089ca74a56a3",
+    "name": "Clean Pull",
+    "category": "Legs",
+    "sourceID": "Clean_Pull"
+  },
+  {
+    "id": "e8193808-6738-5e8d-9df7-48546ea071c0",
+    "name": "Clean Shrug",
+    "category": "Back",
+    "sourceID": "Clean_Shrug"
+  },
+  {
+    "id": "86904fc5-832e-575c-9c54-3a4119764208",
+    "name": "Clock Push-Up",
+    "category": "Chest",
+    "sourceID": "Clock_Push-Up"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000077",
+    "name": "Close-Grip Barbell Bench Press",
+    "category": "Triceps",
+    "sourceID": "Close-Grip_Barbell_Bench_Press"
+  },
+  {
+    "id": "ed444ade-a6b0-5d0c-b387-c302d8b0e1db",
+    "name": "Close-Grip Dumbbell Press",
+    "category": "Triceps",
+    "sourceID": "Close-Grip_Dumbbell_Press"
+  },
+  {
+    "id": "ea644897-1ef2-5579-900e-a813f4380535",
+    "name": "Close-Grip EZ Bar Curl",
+    "category": "Biceps",
+    "sourceID": "Close-Grip_EZ_Bar_Curl"
+  },
+  {
+    "id": "9c939fa7-f00d-501e-956f-f4f328a89f3e",
+    "name": "Close-Grip EZ-Bar Curl with Band",
+    "category": "Biceps",
+    "sourceID": "Close-Grip_EZ-Bar_Curl_with_Band"
+  },
+  {
+    "id": "fce78772-4ae9-5c0d-8986-7009e1418d90",
+    "name": "Close-Grip EZ-Bar Press",
+    "category": "Triceps",
+    "sourceID": "Close-Grip_EZ-Bar_Press"
+  },
+  {
+    "id": "5a3de55d-2a47-528c-8c36-c0f7a2e86521",
+    "name": "Close-Grip Front Lat Pulldown",
+    "category": "Back",
+    "sourceID": "Close-Grip_Front_Lat_Pulldown"
+  },
+  {
+    "id": "eb1005b3-3b7b-5e97-89ed-fe7a39471ae4",
+    "name": "Close-Grip Push-Up off of a Dumbbell",
+    "category": "Triceps",
+    "sourceID": "Close-Grip_Push-Up_off_of_a_Dumbbell"
+  },
+  {
+    "id": "15b7d885-1a4c-5cd1-bd92-73ff295de293",
+    "name": "Close-Grip Standing Barbell Curl",
+    "category": "Biceps",
+    "sourceID": "Close-Grip_Standing_Barbell_Curl"
+  },
+  {
+    "id": "3dda77b2-9d64-58f6-b27c-97d9d2c8b517",
+    "name": "Cocoons",
+    "category": "Abdominals",
+    "sourceID": "Cocoons"
+  },
+  {
+    "id": "a8806a21-3417-5a89-b5fe-877deb8f72a0",
+    "name": "Conan's Wheel",
+    "category": "Legs",
+    "sourceID": "Conans_Wheel"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000067",
+    "name": "Concentration Curls",
+    "category": "Biceps",
+    "sourceID": "Concentration_Curls"
+  },
+  {
+    "id": "af2c51f3-879d-5061-aa04-49e345fec9a7",
+    "name": "Cross Body Hammer Curl",
+    "category": "Biceps",
+    "sourceID": "Cross_Body_Hammer_Curl"
+  },
+  {
+    "id": "b877a84f-69c3-5996-b83b-1ddff5dc8f7a",
+    "name": "Cross Over - With Bands",
+    "category": "Chest",
+    "sourceID": "Cross_Over_-_With_Bands"
+  },
+  {
+    "id": "5af4821b-dd7c-5143-950e-1e3778560e96",
+    "name": "Cross-Body Crunch",
+    "category": "Abdominals",
+    "sourceID": "Cross-Body_Crunch"
+  },
+  {
+    "id": "0e821ab7-d0d3-5237-8674-864cbba2c1d7",
+    "name": "Crossover Reverse Lunge",
+    "category": "Back",
+    "sourceID": "Crossover_Reverse_Lunge"
+  },
+  {
+    "id": "412e7417-fac9-529e-8e17-c95d386ba63e",
+    "name": "Crucifix",
+    "category": "Shoulders",
+    "sourceID": "Crucifix"
+  },
+  {
+    "id": "34a0fdc9-e674-5e38-8e34-2a7259f9aeb2",
+    "name": "Crunch - Hands Overhead",
+    "category": "Abdominals",
+    "sourceID": "Crunch_-_Hands_Overhead"
+  },
+  {
+    "id": "45b7df0a-1e05-58f5-a019-090dd5f213cf",
+    "name": "Crunch - Legs On Exercise Ball",
+    "category": "Abdominals",
+    "sourceID": "Crunch_-_Legs_On_Exercise_Ball"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000086",
+    "name": "Crunches",
+    "category": "Abdominals",
+    "sourceID": "Crunches"
+  },
+  {
+    "id": "6b9f69ec-99f9-5eac-8e9e-65c9209971bc",
+    "name": "Cuban Press",
+    "category": "Shoulders",
+    "sourceID": "Cuban_Press"
+  },
+  {
+    "id": "27d0902b-ef61-5be7-adad-2cc104c8358d",
+    "name": "Dancer's Stretch",
+    "category": "Back",
+    "sourceID": "Dancers_Stretch"
+  },
+  {
+    "id": "9bbe00b2-6cf7-5d8a-a1e4-d7cc288dfe35",
+    "name": "Dead Bug",
+    "category": "Abdominals",
+    "sourceID": "Dead_Bug"
+  },
+  {
+    "id": "62deb7b1-5038-5045-9f05-7dc6d11bcb00",
+    "name": "Deadlift with Bands",
+    "category": "Back",
+    "sourceID": "Deadlift_with_Bands"
+  },
+  {
+    "id": "76e4b11b-7a60-5399-a684-330a653f7439",
+    "name": "Deadlift with Chains",
+    "category": "Back",
+    "sourceID": "Deadlift_with_Chains"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000019",
+    "name": "Decline Barbell Bench Press",
+    "category": "Chest",
+    "sourceID": "Decline_Barbell_Bench_Press"
+  },
+  {
+    "id": "f3b4d5f1-2e11-54ad-846d-ba22cd990fc4",
+    "name": "Decline Close-Grip Bench To Skull Crusher",
+    "category": "Triceps",
+    "sourceID": "Decline_Close-Grip_Bench_To_Skull_Crusher"
+  },
+  {
+    "id": "52421374-38ce-5d66-b124-f599a655b257",
+    "name": "Decline Crunch",
+    "category": "Abdominals",
+    "sourceID": "Decline_Crunch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000020",
+    "name": "Decline Dumbbell Bench Press",
+    "category": "Chest",
+    "sourceID": "Decline_Dumbbell_Bench_Press"
+  },
+  {
+    "id": "c25b3533-9fc9-5434-974c-d705a05eb68c",
+    "name": "Decline Dumbbell Flyes",
+    "category": "Chest",
+    "sourceID": "Decline_Dumbbell_Flyes"
+  },
+  {
+    "id": "b180e76b-b137-5237-91b0-5736aab1ac2c",
+    "name": "Decline Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Decline_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "98411b03-3d08-5b01-9664-c209652918d5",
+    "name": "Decline EZ Bar Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Decline_EZ_Bar_Triceps_Extension"
+  },
+  {
+    "id": "422fd6fd-41eb-56f3-a3c8-2ed9e6d8732a",
+    "name": "Decline Oblique Crunch",
+    "category": "Abdominals",
+    "sourceID": "Decline_Oblique_Crunch"
+  },
+  {
+    "id": "964778cf-9e7d-55e7-a8d4-98e31c0eb3bd",
+    "name": "Decline Push-Up",
+    "category": "Chest",
+    "sourceID": "Decline_Push-Up"
+  },
+  {
+    "id": "6fa0f818-9b4e-572e-a456-f51076d64d98",
+    "name": "Decline Reverse Crunch",
+    "category": "Abdominals",
+    "sourceID": "Decline_Reverse_Crunch"
+  },
+  {
+    "id": "db8615d9-ce34-51e3-b708-230b07308fed",
+    "name": "Decline Smith Press",
+    "category": "Chest",
+    "sourceID": "Decline_Smith_Press"
+  },
+  {
+    "id": "ed20ad4c-8864-5f2a-9848-7e99cdc7c886",
+    "name": "Deficit Deadlift",
+    "category": "Back",
+    "sourceID": "Deficit_Deadlift"
+  },
+  {
+    "id": "c79c455b-9f98-589e-9723-1f02e97aaced",
+    "name": "Depth Jump Leap",
+    "category": "Legs",
+    "sourceID": "Depth_Jump_Leap"
+  },
+  {
+    "id": "d8af9b1e-96fb-542e-8666-3faf0bc9b758",
+    "name": "Dip Machine",
+    "category": "Triceps",
+    "sourceID": "Dip_Machine"
+  },
+  {
+    "id": "96c65f33-84fe-5330-9ac6-6b59bd1ba64b",
+    "name": "Dips - Chest Version",
+    "category": "Chest",
+    "sourceID": "Dips_-_Chest_Version"
+  },
+  {
+    "id": "01e1b798-3de6-58d9-9fee-f189b2453535",
+    "name": "Dips - Triceps Version",
+    "category": "Triceps",
+    "sourceID": "Dips_-_Triceps_Version"
+  },
+  {
+    "id": "fd8a49b1-b51a-52c3-b20b-17b41c728d2c",
+    "name": "Donkey Calf Raises",
+    "category": "Calves",
+    "sourceID": "Donkey_Calf_Raises"
+  },
+  {
+    "id": "a193d916-1563-5a4e-89b8-5240bbb964f1",
+    "name": "Double Kettlebell Alternating Hang Clean",
+    "category": "Legs",
+    "sourceID": "Double_Kettlebell_Alternating_Hang_Clean"
+  },
+  {
+    "id": "d9234999-8148-5c83-ab45-8ca925f18f0c",
+    "name": "Double Kettlebell Jerk",
+    "category": "Shoulders",
+    "sourceID": "Double_Kettlebell_Jerk"
+  },
+  {
+    "id": "6d35caa6-b115-532a-ade8-34a11127d454",
+    "name": "Double Kettlebell Push Press",
+    "category": "Shoulders",
+    "sourceID": "Double_Kettlebell_Push_Press"
+  },
+  {
+    "id": "d0cd2fc9-209e-5d99-b2f2-6104e9a1e117",
+    "name": "Double Kettlebell Snatch",
+    "category": "Shoulders",
+    "sourceID": "Double_Kettlebell_Snatch"
+  },
+  {
+    "id": "0fb02273-ee8d-54b0-81af-5054aee8ad6e",
+    "name": "Double Kettlebell Windmill",
+    "category": "Abdominals",
+    "sourceID": "Double_Kettlebell_Windmill"
+  },
+  {
+    "id": "32732f84-11a5-5026-8318-ada0c07c8f7a",
+    "name": "Double Leg Butt Kick",
+    "category": "Legs",
+    "sourceID": "Double_Leg_Butt_Kick"
+  },
+  {
+    "id": "ffcd78f5-ba2c-5836-a08c-bc8cf55179d7",
+    "name": "Downward Facing Balance",
+    "category": "Legs",
+    "sourceID": "Downward_Facing_Balance"
+  },
+  {
+    "id": "f7c9f80f-2e17-5fa3-a1b3-c4e0cd00e0f0",
+    "name": "Drag Curl",
+    "category": "Biceps",
+    "sourceID": "Drag_Curl"
+  },
+  {
+    "id": "848ebfae-3924-5e9f-8348-d586f7b3dd5f",
+    "name": "Drop Push",
+    "category": "Chest",
+    "sourceID": "Drop_Push"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000061",
+    "name": "Dumbbell Alternate Bicep Curl",
+    "category": "Biceps",
+    "sourceID": "Dumbbell_Alternate_Bicep_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000015",
+    "name": "Dumbbell Bench Press",
+    "category": "Chest",
+    "sourceID": "Dumbbell_Bench_Press"
+  },
+  {
+    "id": "6704f63e-0350-5439-9478-53aad35b50a4",
+    "name": "Dumbbell Bench Press with Neutral Grip",
+    "category": "Chest",
+    "sourceID": "Dumbbell_Bench_Press_with_Neutral_Grip"
+  },
+  {
+    "id": "e42a857f-e2f8-5de4-a116-97430a6dcf2e",
+    "name": "Dumbbell Clean",
+    "category": "Legs",
+    "sourceID": "Dumbbell_Clean"
+  },
+  {
+    "id": "55b62571-85b9-5d19-8ba8-070159be2186",
+    "name": "Dumbbell Floor Press",
+    "category": "Triceps",
+    "sourceID": "Dumbbell_Floor_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000016",
+    "name": "Dumbbell Flyes",
+    "category": "Chest",
+    "sourceID": "Dumbbell_Flyes"
+  },
+  {
+    "id": "5806c74a-a83c-5653-a445-16c80115bb9d",
+    "name": "Dumbbell Incline Row",
+    "category": "Back",
+    "sourceID": "Dumbbell_Incline_Row"
+  },
+  {
+    "id": "4724b7d0-2cc9-5bdf-b0d3-b0ff96ac969c",
+    "name": "Dumbbell Incline Shoulder Raise",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_Incline_Shoulder_Raise"
+  },
+  {
+    "id": "42ae6233-1992-51ac-802c-c7f0e16fe935",
+    "name": "Dumbbell Lunges",
+    "category": "Legs",
+    "sourceID": "Dumbbell_Lunges"
+  },
+  {
+    "id": "ba0e622b-70ea-5c89-b518-aca853bba882",
+    "name": "Dumbbell Lying One-Arm Rear Lateral Raise",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_Lying_One-Arm_Rear_Lateral_Raise"
+  },
+  {
+    "id": "808c893b-4885-5a5b-91de-3dcab788a1a8",
+    "name": "Dumbbell Lying Pronation",
+    "category": "Forearms",
+    "sourceID": "Dumbbell_Lying_Pronation"
+  },
+  {
+    "id": "2ca6b8af-3350-5610-afff-abc07caba4e8",
+    "name": "Dumbbell Lying Rear Lateral Raise",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_Lying_Rear_Lateral_Raise"
+  },
+  {
+    "id": "35a7376b-ffcf-5e3c-b858-1992065a7134",
+    "name": "Dumbbell Lying Supination",
+    "category": "Forearms",
+    "sourceID": "Dumbbell_Lying_Supination"
+  },
+  {
+    "id": "4512e30f-16a8-5f3b-aa7a-9ee726526bef",
+    "name": "Dumbbell One-Arm Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_One-Arm_Shoulder_Press"
+  },
+  {
+    "id": "42909331-0192-5dab-b7d6-b71ba3ca9df5",
+    "name": "Dumbbell One-Arm Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Dumbbell_One-Arm_Triceps_Extension"
+  },
+  {
+    "id": "2a720020-4298-5329-a356-4c06d7e21229",
+    "name": "Dumbbell One-Arm Upright Row",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_One-Arm_Upright_Row"
+  },
+  {
+    "id": "83e040c3-5ebf-574b-a745-c57b22776f61",
+    "name": "Dumbbell Prone Incline Curl",
+    "category": "Biceps",
+    "sourceID": "Dumbbell_Prone_Incline_Curl"
+  },
+  {
+    "id": "d6871d95-5edd-5b9d-933e-71d8b89251ff",
+    "name": "Dumbbell Raise",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_Raise"
+  },
+  {
+    "id": "842614c0-54c5-5c23-a38a-17b311c3c34b",
+    "name": "Dumbbell Rear Lunge",
+    "category": "Legs",
+    "sourceID": "Dumbbell_Rear_Lunge"
+  },
+  {
+    "id": "838eab3f-343f-543d-be82-7f582f77ac6d",
+    "name": "Dumbbell Scaption",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_Scaption"
+  },
+  {
+    "id": "dec64b9a-5026-5870-a504-eb9143ba1063",
+    "name": "Dumbbell Seated Box Jump",
+    "category": "Legs",
+    "sourceID": "Dumbbell_Seated_Box_Jump"
+  },
+  {
+    "id": "786261b8-7401-546a-b9da-d1882d6448ec",
+    "name": "Dumbbell Seated One-Leg Calf Raise",
+    "category": "Calves",
+    "sourceID": "Dumbbell_Seated_One-Leg_Calf_Raise"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000042",
+    "name": "Dumbbell Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Dumbbell_Shoulder_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000041",
+    "name": "Dumbbell Shrug",
+    "category": "Back",
+    "sourceID": "Dumbbell_Shrug"
+  },
+  {
+    "id": "49ce6ae4-719b-5499-9fe4-35fb363cc987",
+    "name": "Dumbbell Side Bend",
+    "category": "Abdominals",
+    "sourceID": "Dumbbell_Side_Bend"
+  },
+  {
+    "id": "a7c54a10-b00e-5007-a16f-09bdcb65871d",
+    "name": "Dumbbell Squat",
+    "category": "Legs",
+    "sourceID": "Dumbbell_Squat"
+  },
+  {
+    "id": "ece4073f-eace-51f6-b1d9-f0fe9567a508",
+    "name": "Dumbbell Squat To A Bench",
+    "category": "Legs",
+    "sourceID": "Dumbbell_Squat_To_A_Bench"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000136",
+    "name": "Dumbbell Step Ups",
+    "category": "Legs",
+    "sourceID": "Dumbbell_Step_Ups"
+  },
+  {
+    "id": "831b358e-45c0-572c-98bb-91ca991d22e6",
+    "name": "Dumbbell Tricep Extension -Pronated Grip",
+    "category": "Triceps",
+    "sourceID": "Dumbbell_Tricep_Extension_-Pronated_Grip"
+  },
+  {
+    "id": "00fe498b-8ffb-5821-bb72-17a8853a3c22",
+    "name": "Dynamic Back Stretch",
+    "category": "Back",
+    "sourceID": "Dynamic_Back_Stretch"
+  },
+  {
+    "id": "2d56e907-788d-5ff6-858f-f9edf627c6dc",
+    "name": "Dynamic Chest Stretch",
+    "category": "Chest",
+    "sourceID": "Dynamic_Chest_Stretch"
+  },
+  {
+    "id": "67efad1c-8238-51b0-8c6f-476897c3249e",
+    "name": "Elbow Circles",
+    "category": "Shoulders",
+    "sourceID": "Elbow_Circles"
+  },
+  {
+    "id": "e10474f0-a6a6-5a76-bf34-8a93a3d2d1d8",
+    "name": "Elbow to Knee",
+    "category": "Abdominals",
+    "sourceID": "Elbow_to_Knee"
+  },
+  {
+    "id": "f3edd3c1-38ca-51b9-ad33-1d23915549eb",
+    "name": "Elbows Back",
+    "category": "Chest",
+    "sourceID": "Elbows_Back"
+  },
+  {
+    "id": "9a7f70f7-e7f0-5455-986a-4dd6c1acdbd3",
+    "name": "Elevated Back Lunge",
+    "category": "Legs",
+    "sourceID": "Elevated_Back_Lunge"
+  },
+  {
+    "id": "60eefa54-af1f-5570-80d3-1874004b97e0",
+    "name": "Elevated Cable Rows",
+    "category": "Back",
+    "sourceID": "Elevated_Cable_Rows"
+  },
+  {
+    "id": "9d80df6d-b9ef-55dd-8d27-c5faf01bbb2a",
+    "name": "Elliptical Trainer",
+    "category": "Legs",
+    "sourceID": "Elliptical_Trainer"
+  },
+  {
+    "id": "0756bdc4-48b7-5d4f-beaf-86f9a1f2cf43",
+    "name": "Exercise Ball Crunch",
+    "category": "Abdominals",
+    "sourceID": "Exercise_Ball_Crunch"
+  },
+  {
+    "id": "e40f0811-27cd-5d32-9e79-6ace4a85895e",
+    "name": "Exercise Ball Pull-In",
+    "category": "Abdominals",
+    "sourceID": "Exercise_Ball_Pull-In"
+  },
+  {
+    "id": "dac18a2d-e177-5f7a-a9d5-8a1d335148d5",
+    "name": "Extended Range One-Arm Kettlebell Floor Press",
+    "category": "Chest",
+    "sourceID": "Extended_Range_One-Arm_Kettlebell_Floor_Press"
+  },
+  {
+    "id": "ef584894-7bb2-5f9f-8975-9c50e37f2a22",
+    "name": "External Rotation",
+    "category": "Shoulders",
+    "sourceID": "External_Rotation"
+  },
+  {
+    "id": "5885786b-322c-5d6e-8eaa-b414b271bbce",
+    "name": "External Rotation with Band",
+    "category": "Shoulders",
+    "sourceID": "External_Rotation_with_Band"
+  },
+  {
+    "id": "1700a8d4-c39d-56f1-b24f-a741d1143657",
+    "name": "External Rotation with Cable",
+    "category": "Shoulders",
+    "sourceID": "External_Rotation_with_Cable"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000063",
+    "name": "EZ-Bar Curl",
+    "category": "Biceps",
+    "sourceID": "EZ-Bar_Curl"
+  },
+  {
+    "id": "abccacd4-e3d6-597a-b99d-068bf9352d09",
+    "name": "EZ-Bar Skullcrusher",
+    "category": "Triceps",
+    "sourceID": "EZ-Bar_Skullcrusher"
+  },
+  {
+    "id": "8e093a75-2271-5fbf-a160-458bcfa35484",
+    "name": "Face Pull",
+    "category": "Shoulders",
+    "sourceID": "Face_Pull"
+  },
+  {
+    "id": "fab1e68f-6ace-5451-bb9a-2155b3542120",
+    "name": "Farmer's Walk",
+    "category": "Forearms",
+    "sourceID": "Farmers_Walk"
+  },
+  {
+    "id": "37ea0a2a-f6b0-5b71-a712-4d428b260fbb",
+    "name": "Fast Skipping",
+    "category": "Legs",
+    "sourceID": "Fast_Skipping"
+  },
+  {
+    "id": "7651ad1d-9801-5d6c-9574-c8b870dcfc07",
+    "name": "Finger Curls",
+    "category": "Forearms",
+    "sourceID": "Finger_Curls"
+  },
+  {
+    "id": "9edea24f-ef9c-58ef-a338-292addfe5d73",
+    "name": "Flat Bench Cable Flyes",
+    "category": "Chest",
+    "sourceID": "Flat_Bench_Cable_Flyes"
+  },
+  {
+    "id": "410f3bba-e4f8-5a97-82e9-c96e725b38fb",
+    "name": "Flat Bench Leg Pull-In",
+    "category": "Abdominals",
+    "sourceID": "Flat_Bench_Leg_Pull-In"
+  },
+  {
+    "id": "47c4cd93-98ba-5fdb-b84f-f25ad69356f0",
+    "name": "Flat Bench Lying Leg Raise",
+    "category": "Abdominals",
+    "sourceID": "Flat_Bench_Lying_Leg_Raise"
+  },
+  {
+    "id": "22722719-2072-5128-9df8-8964a98dc845",
+    "name": "Flexor Incline Dumbbell Curls",
+    "category": "Biceps",
+    "sourceID": "Flexor_Incline_Dumbbell_Curls"
+  },
+  {
+    "id": "d15e061c-035e-5e51-ba0a-70b99a95f015",
+    "name": "Floor Glute-Ham Raise",
+    "category": "Legs",
+    "sourceID": "Floor_Glute-Ham_Raise"
+  },
+  {
+    "id": "a4d84140-6597-54dc-9494-bef4333c8bcf",
+    "name": "Floor Press",
+    "category": "Triceps",
+    "sourceID": "Floor_Press"
+  },
+  {
+    "id": "382c84d3-1336-5416-9916-632db002add4",
+    "name": "Floor Press with Chains",
+    "category": "Triceps",
+    "sourceID": "Floor_Press_with_Chains"
+  },
+  {
+    "id": "0294bf00-c910-567b-bef1-de374e206231",
+    "name": "Flutter Kicks",
+    "category": "Legs",
+    "sourceID": "Flutter_Kicks"
+  },
+  {
+    "id": "34f20a30-61e3-59d4-be45-6e1348217713",
+    "name": "Foot-SMR",
+    "category": "Calves",
+    "sourceID": "Foot-SMR"
+  },
+  {
+    "id": "9dc40a53-91d6-53d6-86d0-67175a761780",
+    "name": "Forward Drag with Press",
+    "category": "Chest",
+    "sourceID": "Forward_Drag_with_Press"
+  },
+  {
+    "id": "42774524-b4dd-5ab3-9c49-c990a9345ba4",
+    "name": "Frankenstein Squat",
+    "category": "Legs",
+    "sourceID": "Frankenstein_Squat"
+  },
+  {
+    "id": "10aa1c30-2152-5bfe-bda5-43efd5658275",
+    "name": "Freehand Jump Squat",
+    "category": "Legs",
+    "sourceID": "Freehand_Jump_Squat"
+  },
+  {
+    "id": "0d8f2f35-7ca5-52cc-9cd8-21705e19c7f3",
+    "name": "Frog Hops",
+    "category": "Legs",
+    "sourceID": "Frog_Hops"
+  },
+  {
+    "id": "63cb0d65-3ab4-590a-a9dd-9be3406a2ec7",
+    "name": "Frog Sit-Ups",
+    "category": "Abdominals",
+    "sourceID": "Frog_Sit-Ups"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000101",
+    "name": "Front Barbell Squat",
+    "category": "Legs",
+    "sourceID": "Front_Barbell_Squat"
+  },
+  {
+    "id": "50c10010-c0e7-517a-a0c1-15ece56f0530",
+    "name": "Front Barbell Squat To A Bench",
+    "category": "Legs",
+    "sourceID": "Front_Barbell_Squat_To_A_Bench"
+  },
+  {
+    "id": "2d84931f-6a11-5040-80a6-407f81f65d0d",
+    "name": "Front Box Jump",
+    "category": "Legs",
+    "sourceID": "Front_Box_Jump"
+  },
+  {
+    "id": "28dcfc49-1369-5180-9867-9ef6e7c2d890",
+    "name": "Front Cable Raise",
+    "category": "Shoulders",
+    "sourceID": "Front_Cable_Raise"
+  },
+  {
+    "id": "b72eb252-5ed1-5378-ba68-16ecba50c87f",
+    "name": "Front Cone Hops (or hurdle hops)",
+    "category": "Legs",
+    "sourceID": "Front_Cone_Hops_or_hurdle_hops"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000044",
+    "name": "Front Dumbbell Raise",
+    "category": "Shoulders",
+    "sourceID": "Front_Dumbbell_Raise"
+  },
+  {
+    "id": "44a2f34b-cc72-5001-9a4e-a78891bba965",
+    "name": "Front Incline Dumbbell Raise",
+    "category": "Shoulders",
+    "sourceID": "Front_Incline_Dumbbell_Raise"
+  },
+  {
+    "id": "f1e66ae7-0509-5278-a7c0-79259fa5ccc9",
+    "name": "Front Leg Raises",
+    "category": "Legs",
+    "sourceID": "Front_Leg_Raises"
+  },
+  {
+    "id": "3a2aa908-7fb7-5b48-80e1-0984f65a1c05",
+    "name": "Front Plate Raise",
+    "category": "Shoulders",
+    "sourceID": "Front_Plate_Raise"
+  },
+  {
+    "id": "fb356218-98c6-5691-b5dd-3ff7fdc48de3",
+    "name": "Front Raise And Pullover",
+    "category": "Chest",
+    "sourceID": "Front_Raise_And_Pullover"
+  },
+  {
+    "id": "0c7ff2e3-8582-5f5e-ab2d-25b586889022",
+    "name": "Front Squat (Clean Grip)",
+    "category": "Legs",
+    "sourceID": "Front_Squat_Clean_Grip"
+  },
+  {
+    "id": "a8e701bd-cbcf-5195-8c88-25c6dbcc77dc",
+    "name": "Front Squats With Two Kettlebells",
+    "category": "Legs",
+    "sourceID": "Front_Squats_With_Two_Kettlebells"
+  },
+  {
+    "id": "c2ea65ef-5dac-597c-8a8a-2c4d35ac3793",
+    "name": "Front Two-Dumbbell Raise",
+    "category": "Shoulders",
+    "sourceID": "Front_Two-Dumbbell_Raise"
+  },
+  {
+    "id": "2b8a0676-b724-5041-8dec-14fc2464307b",
+    "name": "Full Range-Of-Motion Lat Pulldown",
+    "category": "Back",
+    "sourceID": "Full_Range-Of-Motion_Lat_Pulldown"
+  },
+  {
+    "id": "55299e6e-d45e-5324-a2ac-440189b402af",
+    "name": "Gironda Sternum Chins",
+    "category": "Back",
+    "sourceID": "Gironda_Sternum_Chins"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000135",
+    "name": "Glute Ham Raise",
+    "category": "Legs",
+    "sourceID": "Glute_Ham_Raise"
+  },
+  {
+    "id": "f97ecc0e-23dc-5bff-ad9e-7dfc91c3b74e",
+    "name": "Glute Kickback",
+    "category": "Legs",
+    "sourceID": "Glute_Kickback"
+  },
+  {
+    "id": "980f9757-fbad-5eec-ac5b-a6b0b59b90eb",
+    "name": "Goblet Squat",
+    "category": "Legs",
+    "sourceID": "Goblet_Squat"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000118",
+    "name": "Good Morning",
+    "category": "Legs",
+    "sourceID": "Good_Morning"
+  },
+  {
+    "id": "6ac20744-abd0-57d6-9ad1-860836be77ac",
+    "name": "Good Morning off Pins",
+    "category": "Legs",
+    "sourceID": "Good_Morning_off_Pins"
+  },
+  {
+    "id": "2d669cd2-0ab3-5f30-a557-d9728976c727",
+    "name": "Gorilla Chin/Crunch",
+    "category": "Abdominals",
+    "sourceID": "Gorilla_Chin_Crunch"
+  },
+  {
+    "id": "f2ca31b1-ecc6-538c-9e1a-cf5f64bf3c21",
+    "name": "Groin and Back Stretch",
+    "category": "Legs",
+    "sourceID": "Groin_and_Back_Stretch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000124",
+    "name": "Groiners",
+    "category": "Legs",
+    "sourceID": "Groiners"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000098",
+    "name": "Hack Squat",
+    "category": "Legs",
+    "sourceID": "Hack_Squat"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000065",
+    "name": "Hammer Curls",
+    "category": "Biceps",
+    "sourceID": "Hammer_Curls"
+  },
+  {
+    "id": "72ed8770-a8c4-5fd0-b474-a3a9c28f64e1",
+    "name": "Hammer Grip Incline DB Bench Press",
+    "category": "Chest",
+    "sourceID": "Hammer_Grip_Incline_DB_Bench_Press"
+  },
+  {
+    "id": "159e378b-794d-55b8-aea2-e082b24aaa36",
+    "name": "Hamstring Stretch",
+    "category": "Legs",
+    "sourceID": "Hamstring_Stretch"
+  },
+  {
+    "id": "514f9cdf-a6ff-5788-b90a-f6d0c34a37a4",
+    "name": "Hamstring-SMR",
+    "category": "Legs",
+    "sourceID": "Hamstring-SMR"
+  },
+  {
+    "id": "72366037-6998-5335-aac2-503167174761",
+    "name": "Handstand Push-Ups",
+    "category": "Shoulders",
+    "sourceID": "Handstand_Push-Ups"
+  },
+  {
+    "id": "bf3ed3e6-59b6-5ab9-8b24-e683c9b1bf6d",
+    "name": "Hang Clean",
+    "category": "Legs",
+    "sourceID": "Hang_Clean"
+  },
+  {
+    "id": "51153909-31b1-5d8a-8515-546d523270d3",
+    "name": "Hang Clean - Below the Knees",
+    "category": "Legs",
+    "sourceID": "Hang_Clean_-_Below_the_Knees"
+  },
+  {
+    "id": "f07664e5-cf67-5982-8f38-f1f3627c2e2b",
+    "name": "Hang Snatch",
+    "category": "Legs",
+    "sourceID": "Hang_Snatch"
+  },
+  {
+    "id": "d1928da9-a38e-576a-8c4d-a01739dbe5cd",
+    "name": "Hang Snatch - Below Knees",
+    "category": "Legs",
+    "sourceID": "Hang_Snatch_-_Below_Knees"
+  },
+  {
+    "id": "69bf7e33-12d9-5208-8032-9e2a0390402d",
+    "name": "Hanging Bar Good Morning",
+    "category": "Legs",
+    "sourceID": "Hanging_Bar_Good_Morning"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000091",
+    "name": "Hanging Leg Raise",
+    "category": "Abdominals",
+    "sourceID": "Hanging_Leg_Raise"
+  },
+  {
+    "id": "7fe561b1-04f3-5686-bd39-8cece20bf30f",
+    "name": "Hanging Pike",
+    "category": "Abdominals",
+    "sourceID": "Hanging_Pike"
+  },
+  {
+    "id": "2ecb1f6a-da91-5c43-8227-c8aee3322964",
+    "name": "Heaving Snatch Balance",
+    "category": "Legs",
+    "sourceID": "Heaving_Snatch_Balance"
+  },
+  {
+    "id": "bb95d76d-2a7a-582b-b0b5-1b4b26655ff1",
+    "name": "Heavy Bag Thrust",
+    "category": "Chest",
+    "sourceID": "Heavy_Bag_Thrust"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000070",
+    "name": "High Cable Curls",
+    "category": "Biceps",
+    "sourceID": "High_Cable_Curls"
+  },
+  {
+    "id": "f0fa4794-0170-5261-ad7a-8694bac710b7",
+    "name": "Hip Circles (prone)",
+    "category": "Legs",
+    "sourceID": "Hip_Circles_prone"
+  },
+  {
+    "id": "4c01a8df-129e-55e7-aa75-b9b44a36cf6c",
+    "name": "Hip Extension with Bands",
+    "category": "Legs",
+    "sourceID": "Hip_Extension_with_Bands"
+  },
+  {
+    "id": "4ca01de0-d996-5073-b353-b42826a3890a",
+    "name": "Hip Flexion with Band",
+    "category": "Legs",
+    "sourceID": "Hip_Flexion_with_Band"
+  },
+  {
+    "id": "f20f43e9-c1cb-57d3-9b48-67a43994999b",
+    "name": "Hip Lift with Band",
+    "category": "Legs",
+    "sourceID": "Hip_Lift_with_Band"
+  },
+  {
+    "id": "298c2dcb-7796-51bb-87c2-0b93a5f23cf5",
+    "name": "Hug A Ball",
+    "category": "Back",
+    "sourceID": "Hug_A_Ball"
+  },
+  {
+    "id": "fb33596d-db8d-58fe-83dd-b808ce744076",
+    "name": "Hug Knees To Chest",
+    "category": "Back",
+    "sourceID": "Hug_Knees_To_Chest"
+  },
+  {
+    "id": "30ff0534-1f3f-5591-8f9b-03009a057f94",
+    "name": "Hurdle Hops",
+    "category": "Legs",
+    "sourceID": "Hurdle_Hops"
+  },
+  {
+    "id": "4e1ef7a4-98b9-5779-af63-850661a7b293",
+    "name": "Hyperextensions (Back Extensions)",
+    "category": "Back",
+    "sourceID": "Hyperextensions_Back_Extensions"
+  },
+  {
+    "id": "18f1c483-3cac-5cba-9fb5-6d0e339784d6",
+    "name": "Hyperextensions With No Hyperextension Bench",
+    "category": "Back",
+    "sourceID": "Hyperextensions_With_No_Hyperextension_Bench"
+  },
+  {
+    "id": "2b3553b1-f0a7-52ef-93aa-263043493dc4",
+    "name": "Iliotibial Tract-SMR",
+    "category": "Legs",
+    "sourceID": "Iliotibial_Tract-SMR"
+  },
+  {
+    "id": "3add10ed-d26c-53b9-ac7f-a430fff40dda",
+    "name": "Inchworm",
+    "category": "Legs",
+    "sourceID": "Inchworm"
+  },
+  {
+    "id": "31f0c8ef-4d31-5eaf-955a-c5b23233230b",
+    "name": "Incline Barbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Incline_Barbell_Triceps_Extension"
+  },
+  {
+    "id": "2a2edcdf-6be1-55dc-b9af-e1f17b132d68",
+    "name": "Incline Bench Pull",
+    "category": "Back",
+    "sourceID": "Incline_Bench_Pull"
+  },
+  {
+    "id": "ec8c8c6b-6092-5f5b-8a6f-1d223f948487",
+    "name": "Incline Cable Chest Press",
+    "category": "Chest",
+    "sourceID": "Incline_Cable_Chest_Press"
+  },
+  {
+    "id": "a2aa07b5-c79a-5a21-bead-4160cceb2cb2",
+    "name": "Incline Cable Flye",
+    "category": "Chest",
+    "sourceID": "Incline_Cable_Flye"
+  },
+  {
+    "id": "86898f80-fc4e-542d-919b-df2bc51d7992",
+    "name": "Incline Dumbbell Bench With Palms Facing In",
+    "category": "Chest",
+    "sourceID": "Incline_Dumbbell_Bench_With_Palms_Facing_In"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000066",
+    "name": "Incline Dumbbell Curl",
+    "category": "Biceps",
+    "sourceID": "Incline_Dumbbell_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000017",
+    "name": "Incline Dumbbell Flyes",
+    "category": "Chest",
+    "sourceID": "Incline_Dumbbell_Flyes"
+  },
+  {
+    "id": "7d8c25e8-74ba-5394-b00f-a776d8a957b4",
+    "name": "Incline Dumbbell Flyes - With A Twist",
+    "category": "Chest",
+    "sourceID": "Incline_Dumbbell_Flyes_-_With_A_Twist"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000011",
+    "name": "Incline Dumbbell Press",
+    "category": "Chest",
+    "sourceID": "Incline_Dumbbell_Press"
+  },
+  {
+    "id": "262df2e1-da36-5430-becc-730b64c277cf",
+    "name": "Incline Hammer Curls",
+    "category": "Biceps",
+    "sourceID": "Incline_Hammer_Curls"
+  },
+  {
+    "id": "6c87abda-6b48-5f21-bff5-8a0537d741f2",
+    "name": "Incline Inner Biceps Curl",
+    "category": "Biceps",
+    "sourceID": "Incline_Inner_Biceps_Curl"
+  },
+  {
+    "id": "73331ce1-2280-5098-966c-b7a79d0a8043",
+    "name": "Incline Push-Up",
+    "category": "Chest",
+    "sourceID": "Incline_Push-Up"
+  },
+  {
+    "id": "e2838b05-4f40-5f7d-9285-a45c9a4180d4",
+    "name": "Incline Push-Up Close-Grip",
+    "category": "Triceps",
+    "sourceID": "Incline_Push-Up_Close-Grip"
+  },
+  {
+    "id": "5538b7e1-38ce-5746-a0dd-ecfd65a88cd2",
+    "name": "Incline Push-Up Depth Jump",
+    "category": "Chest",
+    "sourceID": "Incline_Push-Up_Depth_Jump"
+  },
+  {
+    "id": "48caa4d5-fc60-5829-a483-4341cd0f46c4",
+    "name": "Incline Push-Up Medium",
+    "category": "Chest",
+    "sourceID": "Incline_Push-Up_Medium"
+  },
+  {
+    "id": "40724f2b-3afd-581c-a39a-3911caf4f978",
+    "name": "Incline Push-Up Reverse Grip",
+    "category": "Chest",
+    "sourceID": "Incline_Push-Up_Reverse_Grip"
+  },
+  {
+    "id": "550722fe-fec7-5745-984d-d99b69faa92a",
+    "name": "Incline Push-Up Wide",
+    "category": "Chest",
+    "sourceID": "Incline_Push-Up_Wide"
+  },
+  {
+    "id": "49881d2b-26e5-5937-9a7c-9b59ab9c0c0d",
+    "name": "Intermediate Groin Stretch",
+    "category": "Legs",
+    "sourceID": "Intermediate_Groin_Stretch"
+  },
+  {
+    "id": "97f70516-c328-5267-8214-6111846cd5b9",
+    "name": "Intermediate Hip Flexor and Quad Stretch",
+    "category": "Legs",
+    "sourceID": "Intermediate_Hip_Flexor_and_Quad_Stretch"
+  },
+  {
+    "id": "eccdfe33-d902-5e0a-be3a-d87f61060be4",
+    "name": "Internal Rotation with Band",
+    "category": "Shoulders",
+    "sourceID": "Internal_Rotation_with_Band"
+  },
+  {
+    "id": "ccbaa02e-7fd8-57e8-a59c-8f27d1d8ffb4",
+    "name": "Inverted Row",
+    "category": "Back",
+    "sourceID": "Inverted_Row"
+  },
+  {
+    "id": "a87faec3-24a6-591a-9d1b-155f73e06939",
+    "name": "Inverted Row with Straps",
+    "category": "Back",
+    "sourceID": "Inverted_Row_with_Straps"
+  },
+  {
+    "id": "f57f3bce-aac0-5c91-a48e-20fa02f6a008",
+    "name": "Iron Cross",
+    "category": "Shoulders",
+    "sourceID": "Iron_Cross"
+  },
+  {
+    "id": "1a4fdcd4-d7c1-549d-9357-21ee59200c75",
+    "name": "Iron Crosses (stretch)",
+    "category": "Legs",
+    "sourceID": "Iron_Crosses_stretch"
+  },
+  {
+    "id": "04b837ae-9508-5e7a-8885-b53a458ab72e",
+    "name": "Isometric Chest Squeezes",
+    "category": "Chest",
+    "sourceID": "Isometric_Chest_Squeezes"
+  },
+  {
+    "id": "b9a48d15-bd30-5db2-8cd7-348bcd1a5efc",
+    "name": "Isometric Neck Exercise - Front And Back",
+    "category": "Neck",
+    "sourceID": "Isometric_Neck_Exercise_-_Front_And_Back"
+  },
+  {
+    "id": "4269905d-ecec-5bf4-9fd7-54da241a2c34",
+    "name": "Isometric Neck Exercise - Sides",
+    "category": "Neck",
+    "sourceID": "Isometric_Neck_Exercise_-_Sides"
+  },
+  {
+    "id": "09ab78f3-2b21-5450-94bf-c85fdcb7c3ef",
+    "name": "Isometric Wipers",
+    "category": "Chest",
+    "sourceID": "Isometric_Wipers"
+  },
+  {
+    "id": "2a1cd5aa-ee07-5887-adb0-f7d25234fc67",
+    "name": "IT Band and Glute Stretch",
+    "category": "Legs",
+    "sourceID": "IT_Band_and_Glute_Stretch"
+  },
+  {
+    "id": "19501db3-0e3f-5e22-bf0e-d86b51179486",
+    "name": "Jackknife Sit-Up",
+    "category": "Abdominals",
+    "sourceID": "Jackknife_Sit-Up"
+  },
+  {
+    "id": "c064944e-be31-5fa9-b38f-966e8a4100db",
+    "name": "Janda Sit-Up",
+    "category": "Abdominals",
+    "sourceID": "Janda_Sit-Up"
+  },
+  {
+    "id": "30a686d4-6796-5b1b-9d7e-62696ebe6b51",
+    "name": "Jefferson Squats",
+    "category": "Legs",
+    "sourceID": "Jefferson_Squats"
+  },
+  {
+    "id": "98016161-9724-5a4a-a651-b9f7af8468af",
+    "name": "Jerk Balance",
+    "category": "Shoulders",
+    "sourceID": "Jerk_Balance"
+  },
+  {
+    "id": "18e7f51a-8f46-53b3-920e-f0b3c6c1663b",
+    "name": "Jerk Dip Squat",
+    "category": "Legs",
+    "sourceID": "Jerk_Dip_Squat"
+  },
+  {
+    "id": "b9d1ffc1-f18c-57ac-9ddf-b8827e59c021",
+    "name": "JM Press",
+    "category": "Triceps",
+    "sourceID": "JM_Press"
+  },
+  {
+    "id": "fbd449b4-9f26-5cc2-a87a-be95d4e66d56",
+    "name": "Jogging, Treadmill",
+    "category": "Legs",
+    "sourceID": "Jogging_Treadmill"
+  },
+  {
+    "id": "eb7a6336-a709-56a3-a181-52b83019cc97",
+    "name": "Keg Load",
+    "category": "Back",
+    "sourceID": "Keg_Load"
+  },
+  {
+    "id": "de74e3e2-4fac-570e-ae3c-7f517136e2fc",
+    "name": "Kettlebell Arnold Press",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Arnold_Press"
+  },
+  {
+    "id": "77d7dbe3-399f-59c2-b46a-a69d410691dd",
+    "name": "Kettlebell Dead Clean",
+    "category": "Legs",
+    "sourceID": "Kettlebell_Dead_Clean"
+  },
+  {
+    "id": "5b6947ff-4429-5d86-aa88-c8a576ae7759",
+    "name": "Kettlebell Figure 8",
+    "category": "Abdominals",
+    "sourceID": "Kettlebell_Figure_8"
+  },
+  {
+    "id": "6b7c01d3-0e3a-53dc-9ac5-cc42ec935ff3",
+    "name": "Kettlebell Halo",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Halo"
+  },
+  {
+    "id": "9b4d6184-e536-5142-bc2f-74a280c75fca",
+    "name": "Kettlebell Halo with Overhead Extension",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Halo_With_Overhead_Extension"
+  },
+  {
+    "id": "5fffa3aa-e9f2-5cf7-abf8-e480a66a2cd8",
+    "name": "Kettlebell Hang Clean",
+    "category": "Legs",
+    "sourceID": "Kettlebell_Hang_Clean"
+  },
+  {
+    "id": "9c38ac30-f4f4-58b9-a52e-2c67fafeaca3",
+    "name": "Kettlebell One-Legged Deadlift",
+    "category": "Legs",
+    "sourceID": "Kettlebell_One-Legged_Deadlift"
+  },
+  {
+    "id": "19738cbb-2b58-5fcc-9831-e3bedb765a4f",
+    "name": "Kettlebell Overhead Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Kettlebell_Overhead_Triceps_Extension"
+  },
+  {
+    "id": "33d3729d-7c4b-51a6-8bd4-4234b9c8a2c8",
+    "name": "Kettlebell Pass Between The Legs",
+    "category": "Abdominals",
+    "sourceID": "Kettlebell_Pass_Between_The_Legs"
+  },
+  {
+    "id": "6ad30fff-2141-5b53-9fe3-769e0d7fa17e",
+    "name": "Kettlebell Pirate Ships",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Pirate_Ships"
+  },
+  {
+    "id": "bc8f2d53-b045-5221-aa24-3ce2d7c653b4",
+    "name": "Kettlebell Pistol Squat",
+    "category": "Legs",
+    "sourceID": "Kettlebell_Pistol_Squat"
+  },
+  {
+    "id": "4b76310c-b5ca-515a-8426-dcf94045f68e",
+    "name": "Kettlebell Seated Press",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Seated_Press"
+  },
+  {
+    "id": "6a6987d8-ae26-5695-8ea6-c69b3513c787",
+    "name": "Kettlebell Seesaw Press",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Seesaw_Press"
+  },
+  {
+    "id": "44ec97da-ef44-58ec-abc5-195e7f2a34d8",
+    "name": "Kettlebell Sumo High Pull",
+    "category": "Back",
+    "sourceID": "Kettlebell_Sumo_High_Pull"
+  },
+  {
+    "id": "88de734b-e68d-5c71-9600-b9b840cb5577",
+    "name": "Kettlebell Thruster",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Thruster"
+  },
+  {
+    "id": "cbfdb4a5-e4a5-5017-81e8-86e6248e975e",
+    "name": "Kettlebell Turkish Get-Up (Lunge style)",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Turkish_Get-Up_Lunge_style"
+  },
+  {
+    "id": "7dea45b8-8daa-5301-8d30-8d630956ac88",
+    "name": "Kettlebell Turkish Get-Up (Squat style)",
+    "category": "Shoulders",
+    "sourceID": "Kettlebell_Turkish_Get-Up_Squat_style"
+  },
+  {
+    "id": "2db0a29e-f440-5880-8e47-d9f4d8409d08",
+    "name": "Kettlebell Windmill",
+    "category": "Abdominals",
+    "sourceID": "Kettlebell_Windmill"
+  },
+  {
+    "id": "26ddfa12-3257-55f5-b5f3-d17491995e7e",
+    "name": "Kipping Muscle Up",
+    "category": "Back",
+    "sourceID": "Kipping_Muscle_Up"
+  },
+  {
+    "id": "4d19649d-793d-56d1-a74d-7e25c3484a02",
+    "name": "Knee Across The Body",
+    "category": "Legs",
+    "sourceID": "Knee_Across_The_Body"
+  },
+  {
+    "id": "04f889ac-127d-5a08-9806-d02d92795eb3",
+    "name": "Knee Circles",
+    "category": "Calves",
+    "sourceID": "Knee_Circles"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000105",
+    "name": "Knee Tuck Jump",
+    "category": "Legs",
+    "sourceID": "Knee_Tuck_Jump"
+  },
+  {
+    "id": "9e582cee-576b-5c7b-8cfe-4f89f50617c8",
+    "name": "Knee/Hip Raise On Parallel Bars",
+    "category": "Abdominals",
+    "sourceID": "Knee_Hip_Raise_On_Parallel_Bars"
+  },
+  {
+    "id": "f0878084-d827-55e5-a051-e24827470177",
+    "name": "Kneeling Arm Drill",
+    "category": "Shoulders",
+    "sourceID": "Kneeling_Arm_Drill"
+  },
+  {
+    "id": "c371d862-af65-5a17-9bdf-24ca201d6d45",
+    "name": "Kneeling Cable Crunch With Alternating Oblique Twists",
+    "category": "Abdominals",
+    "sourceID": "Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists"
+  },
+  {
+    "id": "1533feae-07a3-59c6-afd8-7f08386a5420",
+    "name": "Kneeling Cable Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Kneeling_Cable_Triceps_Extension"
+  },
+  {
+    "id": "d3c64963-bea8-583d-9dfd-c4763029a7e2",
+    "name": "Kneeling Forearm Stretch",
+    "category": "Forearms",
+    "sourceID": "Kneeling_Forearm_Stretch"
+  },
+  {
+    "id": "f46404f4-8160-5e29-b8d5-e5890f1bbf7c",
+    "name": "Kneeling High Pulley Row",
+    "category": "Back",
+    "sourceID": "Kneeling_High_Pulley_Row"
+  },
+  {
+    "id": "42334530-485f-58ea-b41f-fe77b81d5110",
+    "name": "Kneeling Hip Flexor",
+    "category": "Legs",
+    "sourceID": "Kneeling_Hip_Flexor"
+  },
+  {
+    "id": "9516af87-688a-566c-a58a-aafdf43b6cbd",
+    "name": "Kneeling Jump Squat",
+    "category": "Legs",
+    "sourceID": "Kneeling_Jump_Squat"
+  },
+  {
+    "id": "ca80b9bf-a659-5bb4-8f94-5089ca321aa2",
+    "name": "Kneeling Single-Arm High Pulley Row",
+    "category": "Back",
+    "sourceID": "Kneeling_Single-Arm_High_Pulley_Row"
+  },
+  {
+    "id": "ab55a5c9-5884-554a-b18b-feab340716b2",
+    "name": "Kneeling Squat",
+    "category": "Legs",
+    "sourceID": "Kneeling_Squat"
+  },
+  {
+    "id": "b8f13fe9-2471-59ea-8f8d-41f6103c36aa",
+    "name": "Landmine 180's",
+    "category": "Abdominals",
+    "sourceID": "Landmine_180s"
+  },
+  {
+    "id": "3532969e-9b33-5337-a7df-c36e81426e64",
+    "name": "Landmine Linear Jammer",
+    "category": "Shoulders",
+    "sourceID": "Landmine_Linear_Jammer"
+  },
+  {
+    "id": "869dfb29-dd5c-52ce-80c5-2c38647ca0f5",
+    "name": "Lateral Bound",
+    "category": "Legs",
+    "sourceID": "Lateral_Bound"
+  },
+  {
+    "id": "0e550cc4-2564-5bd9-8bc0-e4fda2831c41",
+    "name": "Lateral Box Jump",
+    "category": "Legs",
+    "sourceID": "Lateral_Box_Jump"
+  },
+  {
+    "id": "b0451f15-9da1-5257-8d11-56e7155dd381",
+    "name": "Lateral Cone Hops",
+    "category": "Legs",
+    "sourceID": "Lateral_Cone_Hops"
+  },
+  {
+    "id": "cff9de8b-be10-5b27-b5c7-a57c144f5a29",
+    "name": "Lateral Raise - With Bands",
+    "category": "Shoulders",
+    "sourceID": "Lateral_Raise_-_With_Bands"
+  },
+  {
+    "id": "7bf0429d-25f8-5096-bcca-72e6e847d38b",
+    "name": "Latissimus Dorsi-SMR",
+    "category": "Back",
+    "sourceID": "Latissimus_Dorsi-SMR"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000095",
+    "name": "Leg Extensions",
+    "category": "Legs",
+    "sourceID": "Leg_Extensions"
+  },
+  {
+    "id": "26d1126f-c44b-5de0-ac67-995fc0bfc91f",
+    "name": "Leg Lift",
+    "category": "Legs",
+    "sourceID": "Leg_Lift"
+  },
+  {
+    "id": "80678fff-cf5f-55af-b37a-99fdd2b0d85a",
+    "name": "Leg Pull-In",
+    "category": "Abdominals",
+    "sourceID": "Leg_Pull-In"
+  },
+  {
+    "id": "2c5052e5-c8d9-5008-bada-22b37151cb76",
+    "name": "Leg-Over Floor Press",
+    "category": "Chest",
+    "sourceID": "Leg-Over_Floor_Press"
+  },
+  {
+    "id": "8c15377b-a441-50fd-a6df-31e70344c819",
+    "name": "Leg-Up Hamstring Stretch",
+    "category": "Legs",
+    "sourceID": "Leg-Up_Hamstring_Stretch"
+  },
+  {
+    "id": "563abdae-fb19-5805-be9f-ceff6bbe5ff5",
+    "name": "Leverage Chest Press",
+    "category": "Chest",
+    "sourceID": "Leverage_Chest_Press"
+  },
+  {
+    "id": "8629c6f4-162d-53dd-847b-f57e3ac5abc3",
+    "name": "Leverage Deadlift",
+    "category": "Legs",
+    "sourceID": "Leverage_Deadlift"
+  },
+  {
+    "id": "9924da53-20c6-57ac-bb85-cae1a2e8b166",
+    "name": "Leverage Decline Chest Press",
+    "category": "Chest",
+    "sourceID": "Leverage_Decline_Chest_Press"
+  },
+  {
+    "id": "22d00262-5702-5d80-82b5-778bf7b927c1",
+    "name": "Leverage High Row",
+    "category": "Back",
+    "sourceID": "Leverage_High_Row"
+  },
+  {
+    "id": "8f4f6f4b-22c3-54be-ae44-ed877a9f2300",
+    "name": "Leverage Incline Chest Press",
+    "category": "Chest",
+    "sourceID": "Leverage_Incline_Chest_Press"
+  },
+  {
+    "id": "108978f3-77af-50a9-8a14-1f1be011262c",
+    "name": "Leverage Iso Row",
+    "category": "Back",
+    "sourceID": "Leverage_Iso_Row"
+  },
+  {
+    "id": "5ac02908-65f7-5827-916a-7eb79f89f99a",
+    "name": "Leverage Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Leverage_Shoulder_Press"
+  },
+  {
+    "id": "723fc88a-edda-5330-83d3-6c43c1ea8b08",
+    "name": "Leverage Shrug",
+    "category": "Back",
+    "sourceID": "Leverage_Shrug"
+  },
+  {
+    "id": "16da2db6-15f0-5a2c-9eec-4ba2c4f86c5f",
+    "name": "Linear 3-Part Start Technique",
+    "category": "Legs",
+    "sourceID": "Linear_3-Part_Start_Technique"
+  },
+  {
+    "id": "1f31b322-23db-594b-a651-b31e0b3e9c73",
+    "name": "Linear Acceleration Wall Drill",
+    "category": "Legs",
+    "sourceID": "Linear_Acceleration_Wall_Drill"
+  },
+  {
+    "id": "35704bd4-94c7-5d4a-9aa5-bbe9c3415c98",
+    "name": "Linear Depth Jump",
+    "category": "Legs",
+    "sourceID": "Linear_Depth_Jump"
+  },
+  {
+    "id": "2b34e238-7607-5e13-8f6a-10b90ed26c91",
+    "name": "Log Lift",
+    "category": "Shoulders",
+    "sourceID": "Log_Lift"
+  },
+  {
+    "id": "f8dbf50d-f660-5f7b-9b6c-83437e17983c",
+    "name": "London Bridges",
+    "category": "Back",
+    "sourceID": "London_Bridges"
+  },
+  {
+    "id": "5ab67c35-6685-5a58-b604-c66f2ad8ce67",
+    "name": "Looking At Ceiling",
+    "category": "Legs",
+    "sourceID": "Looking_At_Ceiling"
+  },
+  {
+    "id": "66e23531-1668-59c0-98a5-73e16325252a",
+    "name": "Low Cable Crossover",
+    "category": "Chest",
+    "sourceID": "Low_Cable_Crossover"
+  },
+  {
+    "id": "c5aba1de-68a2-5040-8684-8ea0de8c8269",
+    "name": "Low Cable Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Low_Cable_Triceps_Extension"
+  },
+  {
+    "id": "5462d06a-efe1-5a7b-b6e7-bceaa165b121",
+    "name": "Low Pulley Row To Neck",
+    "category": "Shoulders",
+    "sourceID": "Low_Pulley_Row_To_Neck"
+  },
+  {
+    "id": "4bd77192-9a33-5fdd-949f-7600934bb78a",
+    "name": "Lower Back Curl",
+    "category": "Abdominals",
+    "sourceID": "Lower_Back_Curl"
+  },
+  {
+    "id": "7f201ad6-aebd-5de7-8165-13d49048872d",
+    "name": "Lower Back-SMR",
+    "category": "Back",
+    "sourceID": "Lower_Back-SMR"
+  },
+  {
+    "id": "cb07358e-3e62-597d-a7a8-e0e846cd4eab",
+    "name": "Lunge Pass Through",
+    "category": "Legs",
+    "sourceID": "Lunge_Pass_Through"
+  },
+  {
+    "id": "78e159ff-ad0a-5684-b862-99583e02d590",
+    "name": "Lunge Sprint",
+    "category": "Legs",
+    "sourceID": "Lunge_Sprint"
+  },
+  {
+    "id": "7298fa5e-b95e-515a-8011-013f6e0be1cf",
+    "name": "Lying Bent Leg Groin",
+    "category": "Legs",
+    "sourceID": "Lying_Bent_Leg_Groin"
+  },
+  {
+    "id": "5c9bbb73-a06a-5ceb-ae79-aae31925c178",
+    "name": "Lying Cable Curl",
+    "category": "Biceps",
+    "sourceID": "Lying_Cable_Curl"
+  },
+  {
+    "id": "4835afa9-afca-5957-9bc4-8da5ca6b7df0",
+    "name": "Lying Cambered Barbell Row",
+    "category": "Back",
+    "sourceID": "Lying_Cambered_Barbell_Row"
+  },
+  {
+    "id": "57350908-2833-56c4-a0c7-74413b25e151",
+    "name": "Lying Close-Grip Bar Curl On High Pulley",
+    "category": "Biceps",
+    "sourceID": "Lying_Close-Grip_Bar_Curl_On_High_Pulley"
+  },
+  {
+    "id": "8632c6fe-28d8-56ec-b2c8-24c03cc83472",
+    "name": "Lying Close-Grip Barbell Triceps Extension Behind The Head",
+    "category": "Triceps",
+    "sourceID": "Lying_Close-Grip_Barbell_Triceps_Extension_Behind_The_Head"
+  },
+  {
+    "id": "f0444f58-de09-5d5a-92f9-b746d7aa8dba",
+    "name": "Lying Close-Grip Barbell Triceps Press To Chin",
+    "category": "Triceps",
+    "sourceID": "Lying_Close-Grip_Barbell_Triceps_Press_To_Chin"
+  },
+  {
+    "id": "cbc7cabf-71c4-5d5d-82f4-28d551ab6013",
+    "name": "Lying Crossover",
+    "category": "Legs",
+    "sourceID": "Lying_Crossover"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000082",
+    "name": "Lying Dumbbell Tricep Extension",
+    "category": "Triceps",
+    "sourceID": "Lying_Dumbbell_Tricep_Extension"
+  },
+  {
+    "id": "446edb40-e627-5860-a1d9-a6a8e723dfb7",
+    "name": "Lying Face Down Plate Neck Resistance",
+    "category": "Neck",
+    "sourceID": "Lying_Face_Down_Plate_Neck_Resistance"
+  },
+  {
+    "id": "cd39aadb-286f-5dc1-9295-fff5efdfa723",
+    "name": "Lying Face Up Plate Neck Resistance",
+    "category": "Neck",
+    "sourceID": "Lying_Face_Up_Plate_Neck_Resistance"
+  },
+  {
+    "id": "8f51ddcc-00a6-5708-958c-1d22b54deb39",
+    "name": "Lying Glute",
+    "category": "Legs",
+    "sourceID": "Lying_Glute"
+  },
+  {
+    "id": "ae394295-97ab-5200-ba8f-8d9153200273",
+    "name": "Lying Hamstring",
+    "category": "Legs",
+    "sourceID": "Lying_Hamstring"
+  },
+  {
+    "id": "75f24173-2da9-5d31-b2a1-b40fab1381d1",
+    "name": "Lying High Bench Barbell Curl",
+    "category": "Biceps",
+    "sourceID": "Lying_High_Bench_Barbell_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000097",
+    "name": "Lying Leg Curls",
+    "category": "Legs",
+    "sourceID": "Lying_Leg_Curls"
+  },
+  {
+    "id": "bfed2f0e-5e5b-5794-9f4d-11cb06b230fa",
+    "name": "Lying Machine Squat",
+    "category": "Legs",
+    "sourceID": "Lying_Machine_Squat"
+  },
+  {
+    "id": "36d63fe9-8b67-598b-a076-5581ab2d4d9d",
+    "name": "Lying One-Arm Lateral Raise",
+    "category": "Shoulders",
+    "sourceID": "Lying_One-Arm_Lateral_Raise"
+  },
+  {
+    "id": "abf120ab-b433-52b4-9cf9-01928307ef3b",
+    "name": "Lying Prone Quadriceps",
+    "category": "Legs",
+    "sourceID": "Lying_Prone_Quadriceps"
+  },
+  {
+    "id": "85330fb7-5118-5535-a762-7836c8c6216f",
+    "name": "Lying Rear Delt Raise",
+    "category": "Shoulders",
+    "sourceID": "Lying_Rear_Delt_Raise"
+  },
+  {
+    "id": "531b5f31-2fe2-54c8-85e7-c4f72174d3be",
+    "name": "Lying Supine Dumbbell Curl",
+    "category": "Biceps",
+    "sourceID": "Lying_Supine_Dumbbell_Curl"
+  },
+  {
+    "id": "19ecf50b-cc44-5a84-ae69-ec4218535537",
+    "name": "Lying T-Bar Row",
+    "category": "Back",
+    "sourceID": "Lying_T-Bar_Row"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000074",
+    "name": "Lying Triceps Press",
+    "category": "Triceps",
+    "sourceID": "Lying_Triceps_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000018",
+    "name": "Machine Bench Press",
+    "category": "Chest",
+    "sourceID": "Machine_Bench_Press"
+  },
+  {
+    "id": "864da4cb-9ddc-5cca-a3d2-081803e60843",
+    "name": "Machine Bicep Curl",
+    "category": "Biceps",
+    "sourceID": "Machine_Bicep_Curl"
+  },
+  {
+    "id": "c6e40093-dc7b-551a-b9bb-321d1f1ff643",
+    "name": "Machine Preacher Curls",
+    "category": "Biceps",
+    "sourceID": "Machine_Preacher_Curls"
+  },
+  {
+    "id": "a5e6c528-e295-570d-8b86-6cab22bea2d3",
+    "name": "Machine Shoulder (Military) Press",
+    "category": "Shoulders",
+    "sourceID": "Machine_Shoulder_Military_Press"
+  },
+  {
+    "id": "7dbf46fa-90ce-5613-ad43-d1cfd0c2426b",
+    "name": "Machine Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Machine_Triceps_Extension"
+  },
+  {
+    "id": "1f46eb8a-6c97-586a-a653-cc73a38877d1",
+    "name": "Medicine Ball Chest Pass",
+    "category": "Chest",
+    "sourceID": "Medicine_Ball_Chest_Pass"
+  },
+  {
+    "id": "ae43c995-f227-5cae-a64b-02cc86713077",
+    "name": "Medicine Ball Full Twist",
+    "category": "Abdominals",
+    "sourceID": "Medicine_Ball_Full_Twist"
+  },
+  {
+    "id": "935758ef-4b01-5e31-8d0e-204a1cbaf309",
+    "name": "Medicine Ball Scoop Throw",
+    "category": "Shoulders",
+    "sourceID": "Medicine_Ball_Scoop_Throw"
+  },
+  {
+    "id": "97a9a3f9-b5e5-5492-9754-e37e74362167",
+    "name": "Middle Back Shrug",
+    "category": "Back",
+    "sourceID": "Middle_Back_Shrug"
+  },
+  {
+    "id": "75d56614-8a4c-5671-9379-30b3615a3965",
+    "name": "Middle Back Stretch",
+    "category": "Back",
+    "sourceID": "Middle_Back_Stretch"
+  },
+  {
+    "id": "be1e3ce2-bda6-5e80-bd11-3d5bea673a60",
+    "name": "Mixed Grip Chin",
+    "category": "Back",
+    "sourceID": "Mixed_Grip_Chin"
+  },
+  {
+    "id": "6217ded2-427f-5b8d-825e-348683d10ffc",
+    "name": "Monster Walk",
+    "category": "Legs",
+    "sourceID": "Monster_Walk"
+  },
+  {
+    "id": "85539dbe-7566-59ac-9510-d140fe44a8f5",
+    "name": "Mountain Climbers",
+    "category": "Legs",
+    "sourceID": "Mountain_Climbers"
+  },
+  {
+    "id": "cdb20630-543f-5ebb-acd1-ad666593b96f",
+    "name": "Moving Claw Series",
+    "category": "Legs",
+    "sourceID": "Moving_Claw_Series"
+  },
+  {
+    "id": "08d150a6-b594-5859-b1df-cd202c4ef787",
+    "name": "Muscle Snatch",
+    "category": "Legs",
+    "sourceID": "Muscle_Snatch"
+  },
+  {
+    "id": "265eda82-82f5-5801-83a2-91717e4d1edc",
+    "name": "Muscle Up",
+    "category": "Back",
+    "sourceID": "Muscle_Up"
+  },
+  {
+    "id": "fac88a55-48c8-5df3-89e6-fe6aeef472c1",
+    "name": "Narrow Stance Hack Squats",
+    "category": "Legs",
+    "sourceID": "Narrow_Stance_Hack_Squats"
+  },
+  {
+    "id": "88ee3634-e74c-5462-8342-df1b08c4ec71",
+    "name": "Narrow Stance Leg Press",
+    "category": "Legs",
+    "sourceID": "Narrow_Stance_Leg_Press"
+  },
+  {
+    "id": "eb5656c4-cfb0-55ed-8463-4fffdd7d7fc9",
+    "name": "Narrow Stance Squats",
+    "category": "Legs",
+    "sourceID": "Narrow_Stance_Squats"
+  },
+  {
+    "id": "1f4652b7-679a-5e00-a2cd-7bfeb0146a23",
+    "name": "Natural Glute Ham Raise",
+    "category": "Legs",
+    "sourceID": "Natural_Glute_Ham_Raise"
+  },
+  {
+    "id": "f99c7b94-5ce8-5d6e-b36c-bd13cf8b3b0c",
+    "name": "Neck Press",
+    "category": "Chest",
+    "sourceID": "Neck_Press"
+  },
+  {
+    "id": "c7a4308f-fc80-573b-ad6d-5fd05b47b903",
+    "name": "Neck-SMR",
+    "category": "Neck",
+    "sourceID": "Neck-SMR"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000087",
+    "name": "Oblique Crunches",
+    "category": "Abdominals",
+    "sourceID": "Oblique_Crunches"
+  },
+  {
+    "id": "63c18ec8-b074-5ce6-bd3d-0b47553441e6",
+    "name": "Oblique Crunches - On The Floor",
+    "category": "Abdominals",
+    "sourceID": "Oblique_Crunches_-_On_The_Floor"
+  },
+  {
+    "id": "b1fe08d3-2392-5b36-88d0-86ef187033d7",
+    "name": "Olympic Squat",
+    "category": "Legs",
+    "sourceID": "Olympic_Squat"
+  },
+  {
+    "id": "40322254-bc70-5472-bd68-c896024de0a9",
+    "name": "On Your Side Quad Stretch",
+    "category": "Legs",
+    "sourceID": "On_Your_Side_Quad_Stretch"
+  },
+  {
+    "id": "a6a6357b-bb6b-5368-be6a-b965151dc504",
+    "name": "On-Your-Back Quad Stretch",
+    "category": "Legs",
+    "sourceID": "On-Your-Back_Quad_Stretch"
+  },
+  {
+    "id": "4821e80a-ffcb-52ba-bbd9-a5505d41a695",
+    "name": "One Arm Against Wall",
+    "category": "Back",
+    "sourceID": "One_Arm_Against_Wall"
+  },
+  {
+    "id": "81f1b1b4-b532-5852-ac34-23173527265f",
+    "name": "One Arm Chin-Up",
+    "category": "Back",
+    "sourceID": "One_Arm_Chin-Up"
+  },
+  {
+    "id": "13828d41-9699-514d-b922-f7319a3b5668",
+    "name": "One Arm Dumbbell Bench Press",
+    "category": "Chest",
+    "sourceID": "One_Arm_Dumbbell_Bench_Press"
+  },
+  {
+    "id": "77d72fd3-a94c-5376-958f-e016d43f4832",
+    "name": "One Arm Dumbbell Preacher Curl",
+    "category": "Biceps",
+    "sourceID": "One_Arm_Dumbbell_Preacher_Curl"
+  },
+  {
+    "id": "cf0ff7cc-d6b9-52f3-8e01-8b7a9fa0c744",
+    "name": "One Arm Floor Press",
+    "category": "Triceps",
+    "sourceID": "One_Arm_Floor_Press"
+  },
+  {
+    "id": "44eacece-b271-502d-beb3-562e57442611",
+    "name": "One Arm Lat Pulldown",
+    "category": "Back",
+    "sourceID": "One_Arm_Lat_Pulldown"
+  },
+  {
+    "id": "70b4ea72-ff21-524a-a6ba-983dcaaf331d",
+    "name": "One Arm Pronated Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "One_Arm_Pronated_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "965db214-62fe-5d0a-9993-e93c20565bc8",
+    "name": "One Arm Supinated Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "One_Arm_Supinated_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "e0273c24-4f8d-5c8d-af43-c26531422fec",
+    "name": "One Half Locust",
+    "category": "Legs",
+    "sourceID": "One_Half_Locust"
+  },
+  {
+    "id": "05caedbc-819a-5fc9-95cb-bb51ea1f8f21",
+    "name": "One Handed Hang",
+    "category": "Back",
+    "sourceID": "One_Handed_Hang"
+  },
+  {
+    "id": "640ba78b-1376-5234-b000-a1ef6d42da7e",
+    "name": "One Knee To Chest",
+    "category": "Legs",
+    "sourceID": "One_Knee_To_Chest"
+  },
+  {
+    "id": "10bbb8e6-c436-5d33-bea2-26e06d243227",
+    "name": "One Leg Barbell Squat",
+    "category": "Legs",
+    "sourceID": "One_Leg_Barbell_Squat"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000022",
+    "name": "One-Arm Dumbbell Row",
+    "category": "Back",
+    "sourceID": "One-Arm_Dumbbell_Row"
+  },
+  {
+    "id": "df6776f4-2bfb-508a-b5af-140fa750ab93",
+    "name": "One-Arm Flat Bench Dumbbell Flye",
+    "category": "Chest",
+    "sourceID": "One-Arm_Flat_Bench_Dumbbell_Flye"
+  },
+  {
+    "id": "426e1b29-9a60-50e0-bdc4-c6555346d8b9",
+    "name": "One-Arm High-Pulley Cable Side Bends",
+    "category": "Abdominals",
+    "sourceID": "One-Arm_High-Pulley_Cable_Side_Bends"
+  },
+  {
+    "id": "fcc9907c-b796-51e1-abb6-c0d8b96e434f",
+    "name": "One-Arm Incline Lateral Raise",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Incline_Lateral_Raise"
+  },
+  {
+    "id": "87c9ca49-dcb9-5f3b-b66e-f9b6ad78412a",
+    "name": "One-Arm Kettlebell Clean",
+    "category": "Legs",
+    "sourceID": "One-Arm_Kettlebell_Clean"
+  },
+  {
+    "id": "ff30aca7-0fb2-540b-bf2e-c5580df203d4",
+    "name": "One-Arm Kettlebell Clean and Jerk",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Clean_and_Jerk"
+  },
+  {
+    "id": "ecd5f233-61f3-5293-9afe-b1b08a2fb567",
+    "name": "One-Arm Kettlebell Floor Press",
+    "category": "Chest",
+    "sourceID": "One-Arm_Kettlebell_Floor_Press"
+  },
+  {
+    "id": "9d04bb9e-6d4f-5588-a7dc-dc060cc7be2c",
+    "name": "One-Arm Kettlebell Jerk",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Jerk"
+  },
+  {
+    "id": "044fd190-237e-54e4-8b45-38800aa634b1",
+    "name": "One-Arm Kettlebell Military Press To The Side",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Military_Press_To_The_Side"
+  },
+  {
+    "id": "2141b81f-376a-5684-a203-6a5c9170a6f9",
+    "name": "One-Arm Kettlebell Para Press",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Para_Press"
+  },
+  {
+    "id": "9b899bbc-bfee-5d2b-9edc-d27f64a84c4a",
+    "name": "One-Arm Kettlebell Push Press",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Push_Press"
+  },
+  {
+    "id": "b5ce2b73-1351-5b74-98c3-70365135eca2",
+    "name": "One-Arm Kettlebell Row",
+    "category": "Back",
+    "sourceID": "One-Arm_Kettlebell_Row"
+  },
+  {
+    "id": "e0c7f90e-ad57-5f47-9320-003e69bef58e",
+    "name": "One-Arm Kettlebell Snatch",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Snatch"
+  },
+  {
+    "id": "c7f786ee-daf8-5320-8318-678675923117",
+    "name": "One-Arm Kettlebell Split Jerk",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Split_Jerk"
+  },
+  {
+    "id": "9a236a94-65f4-5ca6-bc32-98a3bb756c12",
+    "name": "One-Arm Kettlebell Split Snatch",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Kettlebell_Split_Snatch"
+  },
+  {
+    "id": "600b6c3c-f7c5-5d0f-ad78-d3f7a8a9fa1f",
+    "name": "One-Arm Kettlebell Swings",
+    "category": "Legs",
+    "sourceID": "One-Arm_Kettlebell_Swings"
+  },
+  {
+    "id": "32a44cd4-01c5-5f07-8cdc-2765152772f9",
+    "name": "One-Arm Long Bar Row",
+    "category": "Back",
+    "sourceID": "One-Arm_Long_Bar_Row"
+  },
+  {
+    "id": "90fff087-ee77-5381-838f-a0b2a97b582a",
+    "name": "One-Arm Medicine Ball Slam",
+    "category": "Abdominals",
+    "sourceID": "One-Arm_Medicine_Ball_Slam"
+  },
+  {
+    "id": "8b966e3c-b261-5840-b0f4-77b275ecba7c",
+    "name": "One-Arm Open Palm Kettlebell Clean",
+    "category": "Legs",
+    "sourceID": "One-Arm_Open_Palm_Kettlebell_Clean"
+  },
+  {
+    "id": "528d4576-bd0c-580d-a766-243f921b1053",
+    "name": "One-Arm Overhead Kettlebell Squats",
+    "category": "Legs",
+    "sourceID": "One-Arm_Overhead_Kettlebell_Squats"
+  },
+  {
+    "id": "b848db3d-5c60-5171-8e52-69c1d555db2a",
+    "name": "One-Arm Side Deadlift",
+    "category": "Legs",
+    "sourceID": "One-Arm_Side_Deadlift"
+  },
+  {
+    "id": "5b5a5061-6cbe-5d53-b9cc-5f728fc5886a",
+    "name": "One-Arm Side Laterals",
+    "category": "Shoulders",
+    "sourceID": "One-Arm_Side_Laterals"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000140",
+    "name": "One-Legged Cable Kickback",
+    "category": "Legs",
+    "sourceID": "One-Legged_Cable_Kickback"
+  },
+  {
+    "id": "89f696e5-d939-56dd-8258-c7dc087a548e",
+    "name": "Open Palm Kettlebell Clean",
+    "category": "Legs",
+    "sourceID": "Open_Palm_Kettlebell_Clean"
+  },
+  {
+    "id": "adb88295-bd97-5cea-931f-e89d2ebfca70",
+    "name": "Otis-Up",
+    "category": "Abdominals",
+    "sourceID": "Otis-Up"
+  },
+  {
+    "id": "3509d7c4-47d3-533c-90eb-8a693f0e3a62",
+    "name": "Overhead Cable Curl",
+    "category": "Biceps",
+    "sourceID": "Overhead_Cable_Curl"
+  },
+  {
+    "id": "99a3b6d7-e6ef-54f6-b9a6-42a942f9cae0",
+    "name": "Overhead Lat",
+    "category": "Back",
+    "sourceID": "Overhead_Lat"
+  },
+  {
+    "id": "79697032-5d7c-5567-a5cf-bcafee20f0a9",
+    "name": "Overhead Slam",
+    "category": "Back",
+    "sourceID": "Overhead_Slam"
+  },
+  {
+    "id": "616d1c4f-1d0b-5347-8a47-3e203fa75337",
+    "name": "Overhead Squat",
+    "category": "Legs",
+    "sourceID": "Overhead_Squat"
+  },
+  {
+    "id": "e95f5814-7afd-5464-b894-32db3fdcc23c",
+    "name": "Overhead Stretch",
+    "category": "Abdominals",
+    "sourceID": "Overhead_Stretch"
+  },
+  {
+    "id": "1f5fe4e7-46c2-5ee8-bd6e-2ae9cffbcc85",
+    "name": "Overhead Triceps",
+    "category": "Triceps",
+    "sourceID": "Overhead_Triceps"
+  },
+  {
+    "id": "a387fb21-d54f-5582-add7-050efa8f41d9",
+    "name": "Pallof Press",
+    "category": "Abdominals",
+    "sourceID": "Pallof_Press"
+  },
+  {
+    "id": "34124b79-c5df-5555-a6a4-679c611ec899",
+    "name": "Pallof Press With Rotation",
+    "category": "Abdominals",
+    "sourceID": "Pallof_Press_With_Rotation"
+  },
+  {
+    "id": "8e9b8478-ce85-513c-b3ef-2937da88de26",
+    "name": "Palms-Down Dumbbell Wrist Curl Over A Bench",
+    "category": "Forearms",
+    "sourceID": "Palms-Down_Dumbbell_Wrist_Curl_Over_A_Bench"
+  },
+  {
+    "id": "275cc3da-c920-5627-9d88-5b56f0fb87a9",
+    "name": "Palms-Down Wrist Curl Over A Bench",
+    "category": "Forearms",
+    "sourceID": "Palms-Down_Wrist_Curl_Over_A_Bench"
+  },
+  {
+    "id": "be682dae-e3ff-512a-8084-28069dc011bf",
+    "name": "Palms-Up Barbell Wrist Curl Over A Bench",
+    "category": "Forearms",
+    "sourceID": "Palms-Up_Barbell_Wrist_Curl_Over_A_Bench"
+  },
+  {
+    "id": "9bd7507d-d9b7-5a2e-b7ec-4a7ccd780c9e",
+    "name": "Palms-Up Dumbbell Wrist Curl Over A Bench",
+    "category": "Forearms",
+    "sourceID": "Palms-Up_Dumbbell_Wrist_Curl_Over_A_Bench"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000085",
+    "name": "Parallel Bar Dip",
+    "category": "Triceps",
+    "sourceID": "Parallel_Bar_Dip"
+  },
+  {
+    "id": "99e6a6bf-e525-521a-81a1-eaf94893f1fd",
+    "name": "Pelvic Tilt Into Bridge",
+    "category": "Back",
+    "sourceID": "Pelvic_Tilt_Into_Bridge"
+  },
+  {
+    "id": "cd8eba29-2c5c-5999-8226-6c51f9b9cc3d",
+    "name": "Peroneals Stretch",
+    "category": "Calves",
+    "sourceID": "Peroneals_Stretch"
+  },
+  {
+    "id": "0922362b-b626-5b7b-9797-1347e0d65db2",
+    "name": "Peroneals-SMR",
+    "category": "Calves",
+    "sourceID": "Peroneals-SMR"
+  },
+  {
+    "id": "b253c145-6500-5b90-9383-822d7db0b255",
+    "name": "Physioball Hip Bridge",
+    "category": "Legs",
+    "sourceID": "Physioball_Hip_Bridge"
+  },
+  {
+    "id": "ff9817e0-18ae-54ad-a1ce-b55e368018fe",
+    "name": "Pin Presses",
+    "category": "Triceps",
+    "sourceID": "Pin_Presses"
+  },
+  {
+    "id": "c04ea19e-25d7-5096-9241-0055caee916a",
+    "name": "Piriformis-SMR",
+    "category": "Legs",
+    "sourceID": "Piriformis-SMR"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000090",
+    "name": "Plank",
+    "category": "Abdominals",
+    "sourceID": "Plank"
+  },
+  {
+    "id": "16559550-f6bf-536f-83ff-121426dbab14",
+    "name": "Plate Pinch",
+    "category": "Forearms",
+    "sourceID": "Plate_Pinch"
+  },
+  {
+    "id": "ddc82dff-f195-5d0a-b4ec-ddf87b86addc",
+    "name": "Plate Twist",
+    "category": "Abdominals",
+    "sourceID": "Plate_Twist"
+  },
+  {
+    "id": "2fc95141-77ac-520b-9046-5d46a2b920e9",
+    "name": "Platform Hamstring Slides",
+    "category": "Legs",
+    "sourceID": "Platform_Hamstring_Slides"
+  },
+  {
+    "id": "3c58fa52-6be0-5ba2-962a-0464e4fba04a",
+    "name": "Plie Dumbbell Squat",
+    "category": "Legs",
+    "sourceID": "Plie_Dumbbell_Squat"
+  },
+  {
+    "id": "67c6a2f5-abdd-5962-8170-6980976a8542",
+    "name": "Plyo Kettlebell Pushups",
+    "category": "Chest",
+    "sourceID": "Plyo_Kettlebell_Pushups"
+  },
+  {
+    "id": "b48008f3-4e1c-595e-a7f1-d7887a233398",
+    "name": "Plyo Push-up",
+    "category": "Chest",
+    "sourceID": "Plyo_Push-up"
+  },
+  {
+    "id": "00eede32-d83a-599d-aeed-b9df5f832b8c",
+    "name": "Posterior Tibialis Stretch",
+    "category": "Calves",
+    "sourceID": "Posterior_Tibialis_Stretch"
+  },
+  {
+    "id": "6236103e-5586-565c-affd-bba1ab887b9c",
+    "name": "Power Clean",
+    "category": "Legs",
+    "sourceID": "Power_Clean"
+  },
+  {
+    "id": "f5509487-0b8c-5335-9206-b84b7006394a",
+    "name": "Power Clean from Blocks",
+    "category": "Legs",
+    "sourceID": "Power_Clean_from_Blocks"
+  },
+  {
+    "id": "c4b0b799-6b2f-5f3b-8ae0-6c1ce1409d10",
+    "name": "Power Jerk",
+    "category": "Legs",
+    "sourceID": "Power_Jerk"
+  },
+  {
+    "id": "c625f0ea-9399-59fc-bb7f-e80ec75aee3f",
+    "name": "Power Partials",
+    "category": "Shoulders",
+    "sourceID": "Power_Partials"
+  },
+  {
+    "id": "c7730e77-f268-5591-b358-c587d5cad839",
+    "name": "Power Snatch",
+    "category": "Legs",
+    "sourceID": "Power_Snatch"
+  },
+  {
+    "id": "4d21fcc2-b80b-575c-b347-cd26e9ef284c",
+    "name": "Power Snatch from Blocks",
+    "category": "Legs",
+    "sourceID": "Power_Snatch_from_Blocks"
+  },
+  {
+    "id": "6ac285db-431f-5b29-87bd-9e5684018e0c",
+    "name": "Power Stairs",
+    "category": "Legs",
+    "sourceID": "Power_Stairs"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000064",
+    "name": "Preacher Curl",
+    "category": "Biceps",
+    "sourceID": "Preacher_Curl"
+  },
+  {
+    "id": "e3d0facd-aa5d-596c-9af7-780db4bfd38c",
+    "name": "Preacher Hammer Dumbbell Curl",
+    "category": "Biceps",
+    "sourceID": "Preacher_Hammer_Dumbbell_Curl"
+  },
+  {
+    "id": "e32f4b75-6299-5f5e-8dc2-e8253b3c135b",
+    "name": "Press Sit-Up",
+    "category": "Abdominals",
+    "sourceID": "Press_Sit-Up"
+  },
+  {
+    "id": "d5ab2b40-2f8c-57ad-b078-8b61891521b0",
+    "name": "Prone Manual Hamstring",
+    "category": "Legs",
+    "sourceID": "Prone_Manual_Hamstring"
+  },
+  {
+    "id": "400f5caf-eebe-5278-94a9-4d15e03bc544",
+    "name": "Prowler Sprint",
+    "category": "Legs",
+    "sourceID": "Prowler_Sprint"
+  },
+  {
+    "id": "e22f5009-4e62-563a-8725-b602b365c038",
+    "name": "Pull Through",
+    "category": "Legs",
+    "sourceID": "Pull_Through"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000051",
+    "name": "Push Press",
+    "category": "Shoulders",
+    "sourceID": "Push_Press"
+  },
+  {
+    "id": "f7a772f0-652d-518f-ae76-a84a51619c39",
+    "name": "Push Press - Behind the Neck",
+    "category": "Shoulders",
+    "sourceID": "Push_Press_-_Behind_the_Neck"
+  },
+  {
+    "id": "ff7f8690-e96e-59da-99ff-008de7d9d451",
+    "name": "Push Up to Side Plank",
+    "category": "Chest",
+    "sourceID": "Push_Up_to_Side_Plank"
+  },
+  {
+    "id": "ec26400d-53be-5fb8-b338-7e8c640ab6e8",
+    "name": "Push-Up Wide",
+    "category": "Chest",
+    "sourceID": "Push-Up_Wide"
+  },
+  {
+    "id": "96ba340b-b2ba-52f3-8471-f477ce0ff52d",
+    "name": "Push-Ups - Close Triceps Position",
+    "category": "Triceps",
+    "sourceID": "Push-Ups_-_Close_Triceps_Position"
+  },
+  {
+    "id": "6544bf7d-a6cd-5bf9-9c8f-2bad7c50b1a5",
+    "name": "Push-Ups With Feet Elevated",
+    "category": "Chest",
+    "sourceID": "Push-Ups_With_Feet_Elevated"
+  },
+  {
+    "id": "3dcc399d-3bfe-5f14-b92e-ceced87c436f",
+    "name": "Push-Ups With Feet On An Exercise Ball",
+    "category": "Chest",
+    "sourceID": "Push-Ups_With_Feet_On_An_Exercise_Ball"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000021",
+    "name": "Pushups",
+    "category": "Chest",
+    "sourceID": "Pushups"
+  },
+  {
+    "id": "87ff17c6-f723-5800-818e-be70a9055608",
+    "name": "Pushups (Close and Wide Hand Positions)",
+    "category": "Chest",
+    "sourceID": "Pushups_Close_and_Wide_Hand_Positions"
+  },
+  {
+    "id": "3cd7bde7-82fc-5258-a782-d471ef7a9b51",
+    "name": "Pyramid",
+    "category": "Back",
+    "sourceID": "Pyramid"
+  },
+  {
+    "id": "98dee089-849d-5b7f-ab97-8530b264aa8f",
+    "name": "Quad Stretch",
+    "category": "Legs",
+    "sourceID": "Quad_Stretch"
+  },
+  {
+    "id": "ff0dc462-80db-5594-bf51-e6850a7898d8",
+    "name": "Quadriceps-SMR",
+    "category": "Legs",
+    "sourceID": "Quadriceps-SMR"
+  },
+  {
+    "id": "27895699-226a-5751-98f9-ee0c88681aac",
+    "name": "Quick Leap",
+    "category": "Legs",
+    "sourceID": "Quick_Leap"
+  },
+  {
+    "id": "c587f3d7-0996-51ec-aa94-5036f6eb436e",
+    "name": "Rack Delivery",
+    "category": "Shoulders",
+    "sourceID": "Rack_Delivery"
+  },
+  {
+    "id": "ae9b6772-bd25-5158-a4b1-180a2593c3fb",
+    "name": "Rack Pull with Bands",
+    "category": "Back",
+    "sourceID": "Rack_Pull_with_Bands"
+  },
+  {
+    "id": "38eeda31-007f-5fb9-89fb-b2476f141bc7",
+    "name": "Rack Pulls",
+    "category": "Back",
+    "sourceID": "Rack_Pulls"
+  },
+  {
+    "id": "3cfce247-95a0-5933-8ced-4dfa55543e2e",
+    "name": "Rear Leg Raises",
+    "category": "Legs",
+    "sourceID": "Rear_Leg_Raises"
+  },
+  {
+    "id": "c90ce264-923a-5adb-9f26-24904df5ca1b",
+    "name": "Recumbent Bike",
+    "category": "Legs",
+    "sourceID": "Recumbent_Bike"
+  },
+  {
+    "id": "81464da9-56d3-5f01-b64b-5b4813731b37",
+    "name": "Return Push from Stance",
+    "category": "Shoulders",
+    "sourceID": "Return_Push_from_Stance"
+  },
+  {
+    "id": "a62e80be-baa5-5194-bb9f-c29372af5921",
+    "name": "Reverse Band Bench Press",
+    "category": "Triceps",
+    "sourceID": "Reverse_Band_Bench_Press"
+  },
+  {
+    "id": "3475b2a5-0db3-5038-b76f-04c8b57703b7",
+    "name": "Reverse Band Box Squat",
+    "category": "Legs",
+    "sourceID": "Reverse_Band_Box_Squat"
+  },
+  {
+    "id": "db189b07-864e-5a6d-9863-339200c21403",
+    "name": "Reverse Band Deadlift",
+    "category": "Back",
+    "sourceID": "Reverse_Band_Deadlift"
+  },
+  {
+    "id": "e73db355-5328-59b7-9670-bb7bb538c95a",
+    "name": "Reverse Band Power Squat",
+    "category": "Legs",
+    "sourceID": "Reverse_Band_Power_Squat"
+  },
+  {
+    "id": "e5216c86-1d4c-5055-ac86-221a3f7ed770",
+    "name": "Reverse Band Sumo Deadlift",
+    "category": "Legs",
+    "sourceID": "Reverse_Band_Sumo_Deadlift"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000073",
+    "name": "Reverse Barbell Curl",
+    "category": "Biceps",
+    "sourceID": "Reverse_Barbell_Curl"
+  },
+  {
+    "id": "a15dfe61-d8e8-5772-b4d3-2e5494c53b75",
+    "name": "Reverse Barbell Preacher Curls",
+    "category": "Biceps",
+    "sourceID": "Reverse_Barbell_Preacher_Curls"
+  },
+  {
+    "id": "4120e246-8eec-5896-9421-e4769b639a76",
+    "name": "Reverse Cable Curl",
+    "category": "Biceps",
+    "sourceID": "Reverse_Cable_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000092",
+    "name": "Reverse Crunch",
+    "category": "Abdominals",
+    "sourceID": "Reverse_Crunch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000048",
+    "name": "Reverse Flyes",
+    "category": "Shoulders",
+    "sourceID": "Reverse_Flyes"
+  },
+  {
+    "id": "cffeb1ca-fd37-5060-a201-6abe7b47b9c8",
+    "name": "Reverse Flyes With External Rotation",
+    "category": "Shoulders",
+    "sourceID": "Reverse_Flyes_With_External_Rotation"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000030",
+    "name": "Reverse Grip Bent-Over Rows",
+    "category": "Back",
+    "sourceID": "Reverse_Grip_Bent-Over_Rows"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000079",
+    "name": "Reverse Grip Triceps Pushdown",
+    "category": "Triceps",
+    "sourceID": "Reverse_Grip_Triceps_Pushdown"
+  },
+  {
+    "id": "76ef9a1b-084b-53aa-8f78-ef0023176e6b",
+    "name": "Reverse Hyperextension",
+    "category": "Legs",
+    "sourceID": "Reverse_Hyperextension"
+  },
+  {
+    "id": "561375b3-e739-5661-9b36-e350b29028f7",
+    "name": "Reverse Machine Flyes",
+    "category": "Shoulders",
+    "sourceID": "Reverse_Machine_Flyes"
+  },
+  {
+    "id": "791fd725-2880-5bc2-9e38-89d9918cde81",
+    "name": "Reverse Plate Curls",
+    "category": "Biceps",
+    "sourceID": "Reverse_Plate_Curls"
+  },
+  {
+    "id": "bf98b5e3-b5d1-501f-b8f3-1451b0b09424",
+    "name": "Reverse Triceps Bench Press",
+    "category": "Triceps",
+    "sourceID": "Reverse_Triceps_Bench_Press"
+  },
+  {
+    "id": "bdfeb79a-ea65-5993-a65e-dc3a14b791f4",
+    "name": "Rhomboids-SMR",
+    "category": "Back",
+    "sourceID": "Rhomboids-SMR"
+  },
+  {
+    "id": "b73036ea-544b-54ad-b3d5-8f3beca9c00a",
+    "name": "Rickshaw Carry",
+    "category": "Forearms",
+    "sourceID": "Rickshaw_Carry"
+  },
+  {
+    "id": "fdcd89dc-164c-5402-85eb-5bcbef836220",
+    "name": "Rickshaw Deadlift",
+    "category": "Legs",
+    "sourceID": "Rickshaw_Deadlift"
+  },
+  {
+    "id": "49575f97-fd91-58f4-84f4-5bd7338a23ca",
+    "name": "Ring Dips",
+    "category": "Triceps",
+    "sourceID": "Ring_Dips"
+  },
+  {
+    "id": "c6559dfc-193f-50f9-b5f8-2fa3830aae53",
+    "name": "Rocket Jump",
+    "category": "Legs",
+    "sourceID": "Rocket_Jump"
+  },
+  {
+    "id": "82973eab-147f-53d8-858a-05e5e7271931",
+    "name": "Rocking Standing Calf Raise",
+    "category": "Calves",
+    "sourceID": "Rocking_Standing_Calf_Raise"
+  },
+  {
+    "id": "309b264e-243d-57bd-9839-116da117ba1d",
+    "name": "Rocky Pull-Ups/Pulldowns",
+    "category": "Back",
+    "sourceID": "Rocky_Pull-Ups_Pulldowns"
+  },
+  {
+    "id": "aa6614aa-2f86-5fcf-a088-2b15ca2e7b14",
+    "name": "Romanian Deadlift from Deficit",
+    "category": "Legs",
+    "sourceID": "Romanian_Deadlift_from_Deficit"
+  },
+  {
+    "id": "ac1efa8f-8513-5634-9580-b20ee3bc5872",
+    "name": "Rope Climb",
+    "category": "Back",
+    "sourceID": "Rope_Climb"
+  },
+  {
+    "id": "28eb6a48-5c87-5e89-84b6-edf1db34429e",
+    "name": "Rope Crunch",
+    "category": "Abdominals",
+    "sourceID": "Rope_Crunch"
+  },
+  {
+    "id": "010b69df-4146-5e93-8abf-27cf4d98e970",
+    "name": "Rope Jumping",
+    "category": "Legs",
+    "sourceID": "Rope_Jumping"
+  },
+  {
+    "id": "e6cae701-8662-5757-9a8a-b3b976e9406b",
+    "name": "Rope Straight-Arm Pulldown",
+    "category": "Back",
+    "sourceID": "Rope_Straight-Arm_Pulldown"
+  },
+  {
+    "id": "fbf64676-85e8-5b57-befe-80cfaef8b444",
+    "name": "Round The World Shoulder Stretch",
+    "category": "Shoulders",
+    "sourceID": "Round_The_World_Shoulder_Stretch"
+  },
+  {
+    "id": "cd128af3-b417-5545-b9bc-fba5b270150e",
+    "name": "Rowing, Stationary",
+    "category": "Legs",
+    "sourceID": "Rowing_Stationary"
+  },
+  {
+    "id": "29915c34-4b97-53c3-9e63-65db7b5adb6f",
+    "name": "Runner's Stretch",
+    "category": "Legs",
+    "sourceID": "Runners_Stretch"
+  },
+  {
+    "id": "17b7cf2d-1905-5095-afeb-0889cd71d013",
+    "name": "Running, Treadmill",
+    "category": "Legs",
+    "sourceID": "Running_Treadmill"
+  },
+  {
+    "id": "a234ef69-817c-531d-ad78-26a0875101ea",
+    "name": "Russian Twist",
+    "category": "Abdominals",
+    "sourceID": "Russian_Twist"
+  },
+  {
+    "id": "ed32c2f2-a65a-527b-85ec-cb8c93cb0544",
+    "name": "Sandbag Load",
+    "category": "Legs",
+    "sourceID": "Sandbag_Load"
+  },
+  {
+    "id": "f23e80b9-0c11-57b9-90a2-16af10743cc5",
+    "name": "Scapular Pull-Up",
+    "category": "Back",
+    "sourceID": "Scapular_Pull-Up"
+  },
+  {
+    "id": "8d6f382e-13c3-53eb-a8a4-98aa72aa5349",
+    "name": "Scissor Kick",
+    "category": "Abdominals",
+    "sourceID": "Scissor_Kick"
+  },
+  {
+    "id": "da464b4f-e057-5128-84c8-fc8b6a8713ae",
+    "name": "Scissors Jump",
+    "category": "Legs",
+    "sourceID": "Scissors_Jump"
+  },
+  {
+    "id": "97a5b70a-2d51-5228-b3d8-29a995a04777",
+    "name": "Seated Band Hamstring Curl",
+    "category": "Legs",
+    "sourceID": "Seated_Band_Hamstring_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000054",
+    "name": "Seated Barbell Military Press",
+    "category": "Shoulders",
+    "sourceID": "Seated_Barbell_Military_Press"
+  },
+  {
+    "id": "9872d426-f886-54e4-a32e-6d08493e7abf",
+    "name": "Seated Barbell Twist",
+    "category": "Abdominals",
+    "sourceID": "Seated_Barbell_Twist"
+  },
+  {
+    "id": "845fd0ba-9e92-5265-80f2-11492a7a6d27",
+    "name": "Seated Bent-Over One-Arm Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Seated_Bent-Over_One-Arm_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "a017bf28-cadb-5e05-afc1-b00f948680e4",
+    "name": "Seated Bent-Over Rear Delt Raise",
+    "category": "Shoulders",
+    "sourceID": "Seated_Bent-Over_Rear_Delt_Raise"
+  },
+  {
+    "id": "d796171c-4df3-5af3-a6f6-bb8e2af09647",
+    "name": "Seated Bent-Over Two-Arm Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Seated_Bent-Over_Two-Arm_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "706905ae-6b9a-5271-9f4e-86eccfec878b",
+    "name": "Seated Biceps",
+    "category": "Biceps",
+    "sourceID": "Seated_Biceps"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000024",
+    "name": "Seated Cable Rows",
+    "category": "Back",
+    "sourceID": "Seated_Cable_Rows"
+  },
+  {
+    "id": "35dfae41-20c6-5649-a548-584d25b648a9",
+    "name": "Seated Cable Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Seated_Cable_Shoulder_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000144",
+    "name": "Seated Calf Raise",
+    "category": "Calves",
+    "sourceID": "Seated_Calf_Raise"
+  },
+  {
+    "id": "9d63c79e-ab2d-53df-a4bc-ebec7ffbce48",
+    "name": "Seated Calf Stretch",
+    "category": "Calves",
+    "sourceID": "Seated_Calf_Stretch"
+  },
+  {
+    "id": "696bb359-d91c-5c4b-93e5-3944b6cb3ed3",
+    "name": "Seated Close-Grip Concentration Barbell Curl",
+    "category": "Biceps",
+    "sourceID": "Seated_Close-Grip_Concentration_Barbell_Curl"
+  },
+  {
+    "id": "1416f6b2-297a-5d36-ac32-941e07b1e4e1",
+    "name": "Seated Dumbbell Curl",
+    "category": "Biceps",
+    "sourceID": "Seated_Dumbbell_Curl"
+  },
+  {
+    "id": "7e9cabce-1f68-5d46-86d2-7cd6bc8ac284",
+    "name": "Seated Dumbbell Inner Biceps Curl",
+    "category": "Biceps",
+    "sourceID": "Seated_Dumbbell_Inner_Biceps_Curl"
+  },
+  {
+    "id": "0ddd08d9-6721-5db5-a775-cb6f9c05838a",
+    "name": "Seated Dumbbell Palms-Down Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Seated_Dumbbell_Palms-Down_Wrist_Curl"
+  },
+  {
+    "id": "b441f2fc-f08e-5a0f-8b4f-1eaf7d4d4cde",
+    "name": "Seated Dumbbell Palms-Up Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Seated_Dumbbell_Palms-Up_Wrist_Curl"
+  },
+  {
+    "id": "e4285ffe-d0c0-59e7-9ce2-10afe7615279",
+    "name": "Seated Dumbbell Press",
+    "category": "Shoulders",
+    "sourceID": "Seated_Dumbbell_Press"
+  },
+  {
+    "id": "1da908ee-c668-5f76-a636-103b949cee54",
+    "name": "Seated Flat Bench Leg Pull-In",
+    "category": "Abdominals",
+    "sourceID": "Seated_Flat_Bench_Leg_Pull-In"
+  },
+  {
+    "id": "99c7d952-63f9-540e-aaf4-8dc37f124ce9",
+    "name": "Seated Floor Hamstring Stretch",
+    "category": "Legs",
+    "sourceID": "Seated_Floor_Hamstring_Stretch"
+  },
+  {
+    "id": "7271b308-6cd8-5d62-9221-9bc763c6027e",
+    "name": "Seated Front Deltoid",
+    "category": "Shoulders",
+    "sourceID": "Seated_Front_Deltoid"
+  },
+  {
+    "id": "d7eead8f-4bfb-5f6c-bcc4-1e2a69d56d26",
+    "name": "Seated Glute",
+    "category": "Legs",
+    "sourceID": "Seated_Glute"
+  },
+  {
+    "id": "5a42cb1b-00b6-5f7f-9766-06ce75912325",
+    "name": "Seated Good Mornings",
+    "category": "Back",
+    "sourceID": "Seated_Good_Mornings"
+  },
+  {
+    "id": "f675a8a4-5eb7-5189-98f2-29b0d0cfcc8f",
+    "name": "Seated Hamstring",
+    "category": "Legs",
+    "sourceID": "Seated_Hamstring"
+  },
+  {
+    "id": "a560c0db-ab04-527b-8ecf-c0cde22ad6bd",
+    "name": "Seated Hamstring and Calf Stretch",
+    "category": "Legs",
+    "sourceID": "Seated_Hamstring_and_Calf_Stretch"
+  },
+  {
+    "id": "37f1bd4a-cfc3-5099-8e50-8620c4315256",
+    "name": "Seated Head Harness Neck Resistance",
+    "category": "Neck",
+    "sourceID": "Seated_Head_Harness_Neck_Resistance"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000099",
+    "name": "Seated Leg Curl",
+    "category": "Legs",
+    "sourceID": "Seated_Leg_Curl"
+  },
+  {
+    "id": "f18ab799-3193-50e5-a6c3-719f81695f47",
+    "name": "Seated Leg Tucks",
+    "category": "Abdominals",
+    "sourceID": "Seated_Leg_Tucks"
+  },
+  {
+    "id": "75dc9cbf-3a3e-5992-89c2-7fab5ff1f4ea",
+    "name": "Seated One-arm Cable Pulley Rows",
+    "category": "Back",
+    "sourceID": "Seated_One-arm_Cable_Pulley_Rows"
+  },
+  {
+    "id": "3363e2e3-925b-5907-a8ba-1d78d8505e1b",
+    "name": "Seated One-Arm Dumbbell Palms-Down Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Seated_One-Arm_Dumbbell_Palms-Down_Wrist_Curl"
+  },
+  {
+    "id": "39bb4a41-52cd-5847-9260-32ac3584512b",
+    "name": "Seated One-Arm Dumbbell Palms-Up Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Seated_One-Arm_Dumbbell_Palms-Up_Wrist_Curl"
+  },
+  {
+    "id": "9f8dd698-bf1c-5119-a38f-fffaa8671dad",
+    "name": "Seated Overhead Stretch",
+    "category": "Abdominals",
+    "sourceID": "Seated_Overhead_Stretch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000071",
+    "name": "Seated Palm-Up Barbell Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Seated_Palm-Up_Barbell_Wrist_Curl"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000072",
+    "name": "Seated Palms-Down Barbell Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Seated_Palms-Down_Barbell_Wrist_Curl"
+  },
+  {
+    "id": "71c693c6-8f42-5a1b-9eae-5d8b38b3befa",
+    "name": "Seated Side Lateral Raise",
+    "category": "Shoulders",
+    "sourceID": "Seated_Side_Lateral_Raise"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000076",
+    "name": "Seated Triceps Press",
+    "category": "Triceps",
+    "sourceID": "Seated_Triceps_Press"
+  },
+  {
+    "id": "3816395c-de50-5bb7-ac5b-544d5ba5f9fd",
+    "name": "Seated Two-Arm Palms-Up Low-Pulley Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Seated_Two-Arm_Palms-Up_Low-Pulley_Wrist_Curl"
+  },
+  {
+    "id": "2b622cc4-5b2e-5e9e-b66c-3e8e6b5ee806",
+    "name": "See-Saw Press (Alternating Side Press)",
+    "category": "Shoulders",
+    "sourceID": "See-Saw_Press_Alternating_Side_Press"
+  },
+  {
+    "id": "4e9f9ed4-c8d2-56ac-8df1-20e1c7a3624b",
+    "name": "Shotgun Row",
+    "category": "Back",
+    "sourceID": "Shotgun_Row"
+  },
+  {
+    "id": "83e681b4-fb12-5c66-a4f4-348f4580e835",
+    "name": "Shoulder Circles",
+    "category": "Shoulders",
+    "sourceID": "Shoulder_Circles"
+  },
+  {
+    "id": "65e268ef-06b1-5732-a7f6-030476212f32",
+    "name": "Shoulder Press - With Bands",
+    "category": "Shoulders",
+    "sourceID": "Shoulder_Press_-_With_Bands"
+  },
+  {
+    "id": "af0b024e-1d47-5d09-9195-0ef1b8c427fb",
+    "name": "Shoulder Raise",
+    "category": "Shoulders",
+    "sourceID": "Shoulder_Raise"
+  },
+  {
+    "id": "21e34b5b-0258-51ff-9021-a9eb14cc3a23",
+    "name": "Shoulder Stretch",
+    "category": "Shoulders",
+    "sourceID": "Shoulder_Stretch"
+  },
+  {
+    "id": "ac338c52-c1c6-592c-854b-f5ef6f465c9c",
+    "name": "Side Bridge",
+    "category": "Abdominals",
+    "sourceID": "Side_Bridge"
+  },
+  {
+    "id": "7f973946-48fd-5c53-8355-4db3083865f7",
+    "name": "Side Hop-Sprint",
+    "category": "Legs",
+    "sourceID": "Side_Hop-Sprint"
+  },
+  {
+    "id": "0ed6c57d-7faf-58c7-8719-083218878d81",
+    "name": "Side Jackknife",
+    "category": "Abdominals",
+    "sourceID": "Side_Jackknife"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000043",
+    "name": "Side Lateral Raise",
+    "category": "Shoulders",
+    "sourceID": "Side_Lateral_Raise"
+  },
+  {
+    "id": "595cfa9e-dbea-558d-8ab1-8bc5762d7c37",
+    "name": "Side Laterals to Front Raise",
+    "category": "Shoulders",
+    "sourceID": "Side_Laterals_to_Front_Raise"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000134",
+    "name": "Side Leg Raises",
+    "category": "Legs",
+    "sourceID": "Side_Leg_Raises"
+  },
+  {
+    "id": "1dd6e04f-92c1-5d8a-83bd-c8de7fe7f14f",
+    "name": "Side Lying Groin Stretch",
+    "category": "Legs",
+    "sourceID": "Side_Lying_Groin_Stretch"
+  },
+  {
+    "id": "5416a45b-564b-5cd2-9516-5958bdb62254",
+    "name": "Side Neck Stretch",
+    "category": "Neck",
+    "sourceID": "Side_Neck_Stretch"
+  },
+  {
+    "id": "259e86c1-f42e-5e8a-ac53-3a6d961058f0",
+    "name": "Side Standing Long Jump",
+    "category": "Legs",
+    "sourceID": "Side_Standing_Long_Jump"
+  },
+  {
+    "id": "f9602760-03ae-5a21-b385-db9df91c67c9",
+    "name": "Side to Side Box Shuffle",
+    "category": "Legs",
+    "sourceID": "Side_to_Side_Box_Shuffle"
+  },
+  {
+    "id": "137b44b0-5948-5b5b-b0fc-f7134e5aeb36",
+    "name": "Side To Side Chins",
+    "category": "Back",
+    "sourceID": "Side_To_Side_Chins"
+  },
+  {
+    "id": "055b1670-76af-5eba-afc3-caa5e77129b3",
+    "name": "Side Wrist Pull",
+    "category": "Shoulders",
+    "sourceID": "Side_Wrist_Pull"
+  },
+  {
+    "id": "6b11ba8d-fd79-5403-ad26-2d54bd2b2a5e",
+    "name": "Side-Lying Floor Stretch",
+    "category": "Back",
+    "sourceID": "Side-Lying_Floor_Stretch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000059",
+    "name": "Single Dumbbell Raise",
+    "category": "Shoulders",
+    "sourceID": "Single_Dumbbell_Raise"
+  },
+  {
+    "id": "429bf996-73c4-571d-b6c2-166f9a5bbdc6",
+    "name": "Single Leg Butt Kick",
+    "category": "Legs",
+    "sourceID": "Single_Leg_Butt_Kick"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000120",
+    "name": "Single Leg Glute Bridge",
+    "category": "Legs",
+    "sourceID": "Single_Leg_Glute_Bridge"
+  },
+  {
+    "id": "d10d36e3-7cba-5e8d-9884-86ac28bfd321",
+    "name": "Single Leg Push-off",
+    "category": "Legs",
+    "sourceID": "Single_Leg_Push-off"
+  },
+  {
+    "id": "3adbd506-3d4d-538e-ae26-28c60f3021e9",
+    "name": "Single-Arm Cable Crossover",
+    "category": "Chest",
+    "sourceID": "Single-Arm_Cable_Crossover"
+  },
+  {
+    "id": "904162a5-e226-51de-a6be-1f1cda8590d0",
+    "name": "Single-Arm Linear Jammer",
+    "category": "Shoulders",
+    "sourceID": "Single-Arm_Linear_Jammer"
+  },
+  {
+    "id": "45854b35-ef1f-5356-b66a-8e82a97b8d4d",
+    "name": "Single-Arm Push-Up",
+    "category": "Chest",
+    "sourceID": "Single-Arm_Push-Up"
+  },
+  {
+    "id": "f25fb184-7872-5539-af9f-280ef3b23298",
+    "name": "Single-Cone Sprint Drill",
+    "category": "Legs",
+    "sourceID": "Single-Cone_Sprint_Drill"
+  },
+  {
+    "id": "052eb046-5203-5804-beb6-793d1c913da1",
+    "name": "Single-Leg High Box Squat",
+    "category": "Legs",
+    "sourceID": "Single-Leg_High_Box_Squat"
+  },
+  {
+    "id": "fbaf6c18-f967-5cdb-8552-51d7cdd5a256",
+    "name": "Single-Leg Hop Progression",
+    "category": "Legs",
+    "sourceID": "Single-Leg_Hop_Progression"
+  },
+  {
+    "id": "7fcd2b01-9b90-585c-bc3b-e8bb4d50f385",
+    "name": "Single-Leg Lateral Hop",
+    "category": "Legs",
+    "sourceID": "Single-Leg_Lateral_Hop"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000100",
+    "name": "Single-Leg Leg Extension",
+    "category": "Legs",
+    "sourceID": "Single-Leg_Leg_Extension"
+  },
+  {
+    "id": "e3a5ada3-3160-5a40-86c8-bf12cdb73655",
+    "name": "Single-Leg Stride Jump",
+    "category": "Legs",
+    "sourceID": "Single-Leg_Stride_Jump"
+  },
+  {
+    "id": "3db4e509-a35e-5496-82d7-336df216c955",
+    "name": "Sit Squats",
+    "category": "Legs",
+    "sourceID": "Sit_Squats"
+  },
+  {
+    "id": "6b6a6faa-b557-5d86-843e-600f2e3a093a",
+    "name": "Sit-Up",
+    "category": "Abdominals",
+    "sourceID": "Sit-Up"
+  },
+  {
+    "id": "d7593061-7d9c-599c-ac2a-8ed6ac68a8bc",
+    "name": "Skating",
+    "category": "Legs",
+    "sourceID": "Skating"
+  },
+  {
+    "id": "c8173ef5-6444-50e4-b1d4-df9b7eb7c48a",
+    "name": "Sled Drag - Harness",
+    "category": "Legs",
+    "sourceID": "Sled_Drag_-_Harness"
+  },
+  {
+    "id": "e8a00c95-14c2-5f82-92a6-276e31e5c189",
+    "name": "Sled Overhead Backward Walk",
+    "category": "Shoulders",
+    "sourceID": "Sled_Overhead_Backward_Walk"
+  },
+  {
+    "id": "2e06b78e-53bb-53cc-9434-2d6fd1eb0063",
+    "name": "Sled Overhead Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Sled_Overhead_Triceps_Extension"
+  },
+  {
+    "id": "56aa54f0-385e-5bab-9ced-5f701ed35e67",
+    "name": "Sled Push",
+    "category": "Legs",
+    "sourceID": "Sled_Push"
+  },
+  {
+    "id": "b905b1a0-25b8-568e-b008-9242c7e3f3a4",
+    "name": "Sled Reverse Flye",
+    "category": "Shoulders",
+    "sourceID": "Sled_Reverse_Flye"
+  },
+  {
+    "id": "1fcef7ba-1066-5b4d-b8f4-a6af07a7bd50",
+    "name": "Sled Row",
+    "category": "Back",
+    "sourceID": "Sled_Row"
+  },
+  {
+    "id": "df9b177b-4c8a-5cb5-879b-19f93c50cd57",
+    "name": "Sledgehammer Swings",
+    "category": "Abdominals",
+    "sourceID": "Sledgehammer_Swings"
+  },
+  {
+    "id": "7f0b1384-5c79-5f65-9859-2729f68cd263",
+    "name": "Smith Incline Shoulder Raise",
+    "category": "Shoulders",
+    "sourceID": "Smith_Incline_Shoulder_Raise"
+  },
+  {
+    "id": "b2debd6d-8056-50aa-beca-477c26bf4608",
+    "name": "Smith Machine Behind the Back Shrug",
+    "category": "Back",
+    "sourceID": "Smith_Machine_Behind_the_Back_Shrug"
+  },
+  {
+    "id": "0c727001-050d-5248-b5b2-5e95c0e53f3d",
+    "name": "Smith Machine Bench Press",
+    "category": "Chest",
+    "sourceID": "Smith_Machine_Bench_Press"
+  },
+  {
+    "id": "e5e1b1f3-6cbd-5794-82a5-1eb906ec6b22",
+    "name": "Smith Machine Bent Over Row",
+    "category": "Back",
+    "sourceID": "Smith_Machine_Bent_Over_Row"
+  },
+  {
+    "id": "0e9d9a39-71c2-5278-b9d3-20dcb9f4893b",
+    "name": "Smith Machine Calf Raise",
+    "category": "Calves",
+    "sourceID": "Smith_Machine_Calf_Raise"
+  },
+  {
+    "id": "71fc4471-be66-55d9-a5ce-ee42d0d86539",
+    "name": "Smith Machine Close-Grip Bench Press",
+    "category": "Triceps",
+    "sourceID": "Smith_Machine_Close-Grip_Bench_Press"
+  },
+  {
+    "id": "ceb4f6ec-d384-5267-afd3-1c8551c4d20c",
+    "name": "Smith Machine Decline Press",
+    "category": "Chest",
+    "sourceID": "Smith_Machine_Decline_Press"
+  },
+  {
+    "id": "0155b8f5-66ef-5ee5-8bb3-0bb591735f95",
+    "name": "Smith Machine Hang Power Clean",
+    "category": "Legs",
+    "sourceID": "Smith_Machine_Hang_Power_Clean"
+  },
+  {
+    "id": "482abbb5-f383-596e-bcd2-e894872d7163",
+    "name": "Smith Machine Hip Raise",
+    "category": "Abdominals",
+    "sourceID": "Smith_Machine_Hip_Raise"
+  },
+  {
+    "id": "e6182649-b66e-52e6-9a2b-f807c9b8a4e8",
+    "name": "Smith Machine Incline Bench Press",
+    "category": "Chest",
+    "sourceID": "Smith_Machine_Incline_Bench_Press"
+  },
+  {
+    "id": "75b8ca8e-9b8c-5672-bf22-c28150b2a978",
+    "name": "Smith Machine Leg Press",
+    "category": "Legs",
+    "sourceID": "Smith_Machine_Leg_Press"
+  },
+  {
+    "id": "7ce031a3-7a73-5f72-8ed2-c9579ddb48b0",
+    "name": "Smith Machine One-Arm Upright Row",
+    "category": "Shoulders",
+    "sourceID": "Smith_Machine_One-Arm_Upright_Row"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000046",
+    "name": "Smith Machine Overhead Shoulder Press",
+    "category": "Shoulders",
+    "sourceID": "Smith_Machine_Overhead_Shoulder_Press"
+  },
+  {
+    "id": "0686f1fc-64c5-5a12-aeb5-6b0f80bede0c",
+    "name": "Smith Machine Pistol Squat",
+    "category": "Legs",
+    "sourceID": "Smith_Machine_Pistol_Squat"
+  },
+  {
+    "id": "195c5a7e-0c4f-564f-b60e-b4158af69591",
+    "name": "Smith Machine Reverse Calf Raises",
+    "category": "Calves",
+    "sourceID": "Smith_Machine_Reverse_Calf_Raises"
+  },
+  {
+    "id": "18838177-529a-504d-9103-e4a10afa5fa3",
+    "name": "Smith Machine Squat",
+    "category": "Legs",
+    "sourceID": "Smith_Machine_Squat"
+  },
+  {
+    "id": "064a816f-2a50-5194-9160-b76ac4fda457",
+    "name": "Smith Machine Stiff-Legged Deadlift",
+    "category": "Legs",
+    "sourceID": "Smith_Machine_Stiff-Legged_Deadlift"
+  },
+  {
+    "id": "f75154e8-b183-543a-83d7-dcd2ebe4dd58",
+    "name": "Smith Machine Upright Row",
+    "category": "Back",
+    "sourceID": "Smith_Machine_Upright_Row"
+  },
+  {
+    "id": "8d34afb3-7184-5fc4-90ca-8b147e962f98",
+    "name": "Smith Single-Leg Split Squat",
+    "category": "Legs",
+    "sourceID": "Smith_Single-Leg_Split_Squat"
+  },
+  {
+    "id": "aa9b2951-98d0-5034-bb2f-c4f625b173ca",
+    "name": "Snatch",
+    "category": "Legs",
+    "sourceID": "Snatch"
+  },
+  {
+    "id": "6f363898-d7a4-5e77-86fe-e5982a3bc541",
+    "name": "Snatch Balance",
+    "category": "Legs",
+    "sourceID": "Snatch_Balance"
+  },
+  {
+    "id": "475e6bd0-a447-5f81-b556-f5c09ac29f30",
+    "name": "Snatch Deadlift",
+    "category": "Legs",
+    "sourceID": "Snatch_Deadlift"
+  },
+  {
+    "id": "4f2dd1ab-ee99-581a-a940-03ac58a7b61d",
+    "name": "Snatch from Blocks",
+    "category": "Legs",
+    "sourceID": "Snatch_from_Blocks"
+  },
+  {
+    "id": "06a362d7-65c3-56a8-896d-246b5ea63dd0",
+    "name": "Snatch Pull",
+    "category": "Legs",
+    "sourceID": "Snatch_Pull"
+  },
+  {
+    "id": "529718a5-672b-50fe-b6b0-8990c0380fb8",
+    "name": "Snatch Shrug",
+    "category": "Back",
+    "sourceID": "Snatch_Shrug"
+  },
+  {
+    "id": "cb57f2ff-0f32-57d3-be20-bd15d8bc3e5a",
+    "name": "Speed Band Overhead Triceps",
+    "category": "Triceps",
+    "sourceID": "Speed_Band_Overhead_Triceps"
+  },
+  {
+    "id": "de152502-061f-59ee-b4f7-26c385ef25aa",
+    "name": "Speed Box Squat",
+    "category": "Legs",
+    "sourceID": "Speed_Box_Squat"
+  },
+  {
+    "id": "fe44fadc-0816-5e59-8292-1a7b2fc2f57b",
+    "name": "Speed Squats",
+    "category": "Legs",
+    "sourceID": "Speed_Squats"
+  },
+  {
+    "id": "f7e04550-decb-5d35-aa67-7a2c030670f1",
+    "name": "Spell Caster",
+    "category": "Abdominals",
+    "sourceID": "Spell_Caster"
+  },
+  {
+    "id": "fea12893-c00e-5a1f-801c-aa57508dbd98",
+    "name": "Spider Crawl",
+    "category": "Abdominals",
+    "sourceID": "Spider_Crawl"
+  },
+  {
+    "id": "03f29de2-db85-5b7d-93c1-f5170fe9bd6e",
+    "name": "Spider Curl",
+    "category": "Biceps",
+    "sourceID": "Spider_Curl"
+  },
+  {
+    "id": "0d0be7a6-b965-5d0b-9786-760778964292",
+    "name": "Spinal Stretch",
+    "category": "Back",
+    "sourceID": "Spinal_Stretch"
+  },
+  {
+    "id": "18667a9f-e5de-533f-a5bb-78131c2dbf19",
+    "name": "Split Clean",
+    "category": "Legs",
+    "sourceID": "Split_Clean"
+  },
+  {
+    "id": "9eca7fca-ac27-56a2-bc19-1068f1dbf385",
+    "name": "Split Jerk",
+    "category": "Legs",
+    "sourceID": "Split_Jerk"
+  },
+  {
+    "id": "4f37cf60-3a0b-5c95-9db6-1d4e8e92b6d0",
+    "name": "Split Jump",
+    "category": "Legs",
+    "sourceID": "Split_Jump"
+  },
+  {
+    "id": "21c72ed9-40d7-558a-bdde-a8ad889af1cb",
+    "name": "Split Snatch",
+    "category": "Legs",
+    "sourceID": "Split_Snatch"
+  },
+  {
+    "id": "6682fa54-8375-5848-a7da-57d2c3459eac",
+    "name": "Split Squat with Dumbbells",
+    "category": "Legs",
+    "sourceID": "Split_Squat_with_Dumbbells"
+  },
+  {
+    "id": "6a45fced-5cf0-54ad-9c23-f02d464485b6",
+    "name": "Split Squats",
+    "category": "Legs",
+    "sourceID": "Split_Squats"
+  },
+  {
+    "id": "c7113073-16fc-5f8d-acde-1d8608039f3b",
+    "name": "Squat Jerk",
+    "category": "Legs",
+    "sourceID": "Squat_Jerk"
+  },
+  {
+    "id": "5f800ed7-aae3-574a-bc4a-c14835faae80",
+    "name": "Squat with Bands",
+    "category": "Legs",
+    "sourceID": "Squat_with_Bands"
+  },
+  {
+    "id": "f99346ea-4a5e-5c63-946a-044968cd352d",
+    "name": "Squat with Chains",
+    "category": "Legs",
+    "sourceID": "Squat_with_Chains"
+  },
+  {
+    "id": "8e4cd0d0-da76-5498-8c02-a4efa8a22da5",
+    "name": "Squat with Plate Movers",
+    "category": "Legs",
+    "sourceID": "Squat_with_Plate_Movers"
+  },
+  {
+    "id": "038023e4-4be6-5c49-9f20-b38814daf3d1",
+    "name": "Squats - With Bands",
+    "category": "Legs",
+    "sourceID": "Squats_-_With_Bands"
+  },
+  {
+    "id": "f48f6da6-de0c-56ad-a2da-6a873a703cfe",
+    "name": "Stairmaster",
+    "category": "Legs",
+    "sourceID": "Stairmaster"
+  },
+  {
+    "id": "47e7316d-177d-5e01-9967-70e5bde1155c",
+    "name": "Standing Alternating Dumbbell Press",
+    "category": "Shoulders",
+    "sourceID": "Standing_Alternating_Dumbbell_Press"
+  },
+  {
+    "id": "cf8586e1-d304-5950-b51e-1c9f3e205747",
+    "name": "Standing Barbell Calf Raise",
+    "category": "Calves",
+    "sourceID": "Standing_Barbell_Calf_Raise"
+  },
+  {
+    "id": "0ee38dd2-0bda-5925-9141-77f408cae98c",
+    "name": "Standing Barbell Press Behind Neck",
+    "category": "Shoulders",
+    "sourceID": "Standing_Barbell_Press_Behind_Neck"
+  },
+  {
+    "id": "406b9705-31d1-51b1-9143-97e34ca1dbc3",
+    "name": "Standing Bent-Over One-Arm Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Standing_Bent-Over_One-Arm_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "374df486-cdc2-56de-8cc8-c347b8a29b04",
+    "name": "Standing Bent-Over Two-Arm Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Standing_Bent-Over_Two-Arm_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000069",
+    "name": "Standing Biceps Cable Curl",
+    "category": "Biceps",
+    "sourceID": "Standing_Biceps_Cable_Curl"
+  },
+  {
+    "id": "a5cc2311-e5f1-517f-98d3-cdd9b1aac64f",
+    "name": "Standing Biceps Stretch",
+    "category": "Biceps",
+    "sourceID": "Standing_Biceps_Stretch"
+  },
+  {
+    "id": "183946f4-8fba-5977-a90f-4f9deaff2cef",
+    "name": "Standing Bradford Press",
+    "category": "Shoulders",
+    "sourceID": "Standing_Bradford_Press"
+  },
+  {
+    "id": "77755feb-e7c9-558e-bcfe-6bfc38e9b758",
+    "name": "Standing Cable Chest Press",
+    "category": "Chest",
+    "sourceID": "Standing_Cable_Chest_Press"
+  },
+  {
+    "id": "6c9de5a5-eda1-537b-a25e-20f4d4eb3d16",
+    "name": "Standing Cable Lift",
+    "category": "Abdominals",
+    "sourceID": "Standing_Cable_Lift"
+  },
+  {
+    "id": "fc63e08f-674a-5b10-9f5e-a8a546078e95",
+    "name": "Standing Cable Wood Chop",
+    "category": "Abdominals",
+    "sourceID": "Standing_Cable_Wood_Chop"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000145",
+    "name": "Standing Calf Raises",
+    "category": "Calves",
+    "sourceID": "Standing_Calf_Raises"
+  },
+  {
+    "id": "ab6ace8e-7ae5-5964-aeb9-614c9fc51964",
+    "name": "Standing Concentration Curl",
+    "category": "Biceps",
+    "sourceID": "Standing_Concentration_Curl"
+  },
+  {
+    "id": "9181ff28-c477-516f-b19c-cea553df77d8",
+    "name": "Standing Dumbbell Calf Raise",
+    "category": "Calves",
+    "sourceID": "Standing_Dumbbell_Calf_Raise"
+  },
+  {
+    "id": "277527c4-0296-59f1-a327-e0f7fb38ef97",
+    "name": "Standing Dumbbell Press",
+    "category": "Shoulders",
+    "sourceID": "Standing_Dumbbell_Press"
+  },
+  {
+    "id": "c41204af-69a0-56e0-be65-5d8fbd404c6b",
+    "name": "Standing Dumbbell Reverse Curl",
+    "category": "Biceps",
+    "sourceID": "Standing_Dumbbell_Reverse_Curl"
+  },
+  {
+    "id": "c27f02ff-637c-52a7-b066-a667be7c2ffd",
+    "name": "Standing Dumbbell Straight-Arm Front Delt Raise Above Head",
+    "category": "Shoulders",
+    "sourceID": "Standing_Dumbbell_Straight-Arm_Front_Delt_Raise_Above_Head"
+  },
+  {
+    "id": "7a0db4e2-9732-57db-86ec-8e5805dfcc9a",
+    "name": "Standing Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Standing_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "473425b7-5347-505c-98fb-c6b8ecef71e8",
+    "name": "Standing Dumbbell Upright Row",
+    "category": "Back",
+    "sourceID": "Standing_Dumbbell_Upright_Row"
+  },
+  {
+    "id": "aeb9a72d-95ef-53da-9d62-195c7e4d3368",
+    "name": "Standing Elevated Quad Stretch",
+    "category": "Legs",
+    "sourceID": "Standing_Elevated_Quad_Stretch"
+  },
+  {
+    "id": "6fbee8bb-82bd-52fa-8196-20d9ced9b6ad",
+    "name": "Standing Front Barbell Raise Over Head",
+    "category": "Shoulders",
+    "sourceID": "Standing_Front_Barbell_Raise_Over_Head"
+  },
+  {
+    "id": "05976fc9-03eb-5e9a-8c19-d470b2d52440",
+    "name": "Standing Gastrocnemius Calf Stretch",
+    "category": "Calves",
+    "sourceID": "Standing_Gastrocnemius_Calf_Stretch"
+  },
+  {
+    "id": "ba7b38a5-bf70-5cf1-a4ae-ba622e4622d9",
+    "name": "Standing Hamstring and Calf Stretch",
+    "category": "Legs",
+    "sourceID": "Standing_Hamstring_and_Calf_Stretch"
+  },
+  {
+    "id": "f1f1a514-57bd-57ee-886e-e8380e435eb4",
+    "name": "Standing Hip Circles",
+    "category": "Legs",
+    "sourceID": "Standing_Hip_Circles"
+  },
+  {
+    "id": "759e75ab-c37e-545a-bf91-188b16e80184",
+    "name": "Standing Hip Flexors",
+    "category": "Legs",
+    "sourceID": "Standing_Hip_Flexors"
+  },
+  {
+    "id": "69c5ecba-f7f8-570c-ba76-cb637b353382",
+    "name": "Standing Inner-Biceps Curl",
+    "category": "Biceps",
+    "sourceID": "Standing_Inner-Biceps_Curl"
+  },
+  {
+    "id": "18cc7138-c866-5d0f-ba36-972a536fa443",
+    "name": "Standing Lateral Stretch",
+    "category": "Abdominals",
+    "sourceID": "Standing_Lateral_Stretch"
+  },
+  {
+    "id": "bb263a95-1359-5124-98df-3635394073ec",
+    "name": "Standing Leg Curl",
+    "category": "Legs",
+    "sourceID": "Standing_Leg_Curl"
+  },
+  {
+    "id": "600bd20e-9d08-5e81-914b-45121aaa3905",
+    "name": "Standing Long Jump",
+    "category": "Legs",
+    "sourceID": "Standing_Long_Jump"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000049",
+    "name": "Standing Low-Pulley Deltoid Raise",
+    "category": "Shoulders",
+    "sourceID": "Standing_Low-Pulley_Deltoid_Raise"
+  },
+  {
+    "id": "9e8fc2e0-30ac-55d1-8464-dcd939962e82",
+    "name": "Standing Low-Pulley One-Arm Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Standing_Low-Pulley_One-Arm_Triceps_Extension"
+  },
+  {
+    "id": "5f79a6fd-0a54-532d-8802-f080c21fd9ce",
+    "name": "Standing Olympic Plate Hand Squeeze",
+    "category": "Forearms",
+    "sourceID": "Standing_Olympic_Plate_Hand_Squeeze"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000068",
+    "name": "Standing One-Arm Cable Curl",
+    "category": "Biceps",
+    "sourceID": "Standing_One-Arm_Cable_Curl"
+  },
+  {
+    "id": "d0f8f3be-1918-5ce3-b374-a7aa4282e081",
+    "name": "Standing One-Arm Dumbbell Curl Over Incline Bench",
+    "category": "Biceps",
+    "sourceID": "Standing_One-Arm_Dumbbell_Curl_Over_Incline_Bench"
+  },
+  {
+    "id": "e6ea3770-0a9d-5802-adef-c5869317cc6b",
+    "name": "Standing One-Arm Dumbbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Standing_One-Arm_Dumbbell_Triceps_Extension"
+  },
+  {
+    "id": "2795e124-7329-5fd4-bf43-fba2feedd9f3",
+    "name": "Standing Overhead Barbell Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Standing_Overhead_Barbell_Triceps_Extension"
+  },
+  {
+    "id": "4f2a5859-484c-562e-bda6-0ce584ee9cdd",
+    "name": "Standing Palm-In One-Arm Dumbbell Press",
+    "category": "Shoulders",
+    "sourceID": "Standing_Palm-In_One-Arm_Dumbbell_Press"
+  },
+  {
+    "id": "889e582e-5e2a-583f-9941-27970a822078",
+    "name": "Standing Palms-In Dumbbell Press",
+    "category": "Shoulders",
+    "sourceID": "Standing_Palms-In_Dumbbell_Press"
+  },
+  {
+    "id": "9a5c44b6-50d2-5bf0-ab5c-95cc658f8380",
+    "name": "Standing Palms-Up Barbell Behind The Back Wrist Curl",
+    "category": "Forearms",
+    "sourceID": "Standing_Palms-Up_Barbell_Behind_The_Back_Wrist_Curl"
+  },
+  {
+    "id": "4b381fb4-9712-5311-b357-5e58174d7abe",
+    "name": "Standing Pelvic Tilt",
+    "category": "Back",
+    "sourceID": "Standing_Pelvic_Tilt"
+  },
+  {
+    "id": "dde2e237-cb0c-58dd-ba54-383c5e75f1b6",
+    "name": "Standing Rope Crunch",
+    "category": "Abdominals",
+    "sourceID": "Standing_Rope_Crunch"
+  },
+  {
+    "id": "d338b12a-b1f3-573b-8a67-87470c77ebb4",
+    "name": "Standing Soleus And Achilles Stretch",
+    "category": "Calves",
+    "sourceID": "Standing_Soleus_And_Achilles_Stretch"
+  },
+  {
+    "id": "a0e3d2bd-70d7-5fd8-95f4-762332946441",
+    "name": "Standing Toe Touches",
+    "category": "Legs",
+    "sourceID": "Standing_Toe_Touches"
+  },
+  {
+    "id": "4856494e-13b8-57a6-aa49-a33654f4f68d",
+    "name": "Standing Towel Triceps Extension",
+    "category": "Triceps",
+    "sourceID": "Standing_Towel_Triceps_Extension"
+  },
+  {
+    "id": "e2df50f0-1d48-5fe0-8c93-2331afc6022e",
+    "name": "Standing Two-Arm Overhead Throw",
+    "category": "Shoulders",
+    "sourceID": "Standing_Two-Arm_Overhead_Throw"
+  },
+  {
+    "id": "f9a0ba02-39bf-5dc1-83f2-1055d6486ed5",
+    "name": "Star Jump",
+    "category": "Legs",
+    "sourceID": "Star_Jump"
+  },
+  {
+    "id": "9e495a44-79e2-5e48-adc1-dc1b8e959156",
+    "name": "Step Mill",
+    "category": "Legs",
+    "sourceID": "Step_Mill"
+  },
+  {
+    "id": "5ea1071f-3292-5583-94af-48a038bb637d",
+    "name": "Step-up with Knee Raise",
+    "category": "Legs",
+    "sourceID": "Step-up_with_Knee_Raise"
+  },
+  {
+    "id": "80187f01-e9aa-5024-b6db-e9538ab1cfaa",
+    "name": "Stiff Leg Barbell Good Morning",
+    "category": "Back",
+    "sourceID": "Stiff_Leg_Barbell_Good_Morning"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000103",
+    "name": "Stiff-Legged Barbell Deadlift",
+    "category": "Legs",
+    "sourceID": "Stiff-Legged_Barbell_Deadlift"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000102",
+    "name": "Stiff-Legged Dumbbell Deadlift",
+    "category": "Legs",
+    "sourceID": "Stiff-Legged_Dumbbell_Deadlift"
+  },
+  {
+    "id": "6285be25-7401-5171-9cd6-af5de004558c",
+    "name": "Stomach Vacuum",
+    "category": "Abdominals",
+    "sourceID": "Stomach_Vacuum"
+  },
+  {
+    "id": "55d4633e-06d5-5f1d-a681-7e8b4171016b",
+    "name": "Straight Bar Bench Mid Rows",
+    "category": "Back",
+    "sourceID": "Straight_Bar_Bench_Mid_Rows"
+  },
+  {
+    "id": "1267fd5a-41d8-5fcc-a286-e63e57ab4a40",
+    "name": "Straight Raises on Incline Bench",
+    "category": "Shoulders",
+    "sourceID": "Straight_Raises_on_Incline_Bench"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000035",
+    "name": "Straight-Arm Dumbbell Pullover",
+    "category": "Chest",
+    "sourceID": "Straight-Arm_Dumbbell_Pullover"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000033",
+    "name": "Straight-Arm Pulldown",
+    "category": "Back",
+    "sourceID": "Straight-Arm_Pulldown"
+  },
+  {
+    "id": "a28f7f60-ce0d-545a-b94b-56e21f0ff101",
+    "name": "Stride Jump Crossover",
+    "category": "Legs",
+    "sourceID": "Stride_Jump_Crossover"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000037",
+    "name": "Sumo Deadlift",
+    "category": "Legs",
+    "sourceID": "Sumo_Deadlift"
+  },
+  {
+    "id": "57537a8e-a16f-5f19-8f71-c7ed9d985852",
+    "name": "Sumo Deadlift with Bands",
+    "category": "Legs",
+    "sourceID": "Sumo_Deadlift_with_Bands"
+  },
+  {
+    "id": "23e44d33-dd9c-5f2e-a4ca-da5237992c00",
+    "name": "Sumo Deadlift with Chains",
+    "category": "Legs",
+    "sourceID": "Sumo_Deadlift_with_Chains"
+  },
+  {
+    "id": "0bb98b56-ffea-525c-a58b-7bc45d34386b",
+    "name": "Superman",
+    "category": "Back",
+    "sourceID": "Superman"
+  },
+  {
+    "id": "a6673109-26e2-5fb7-afb9-d4fbc47b2af3",
+    "name": "Supine Chest Throw",
+    "category": "Triceps",
+    "sourceID": "Supine_Chest_Throw"
+  },
+  {
+    "id": "6d2d6120-30bb-52dc-9c1f-c51e4b79ca9d",
+    "name": "Supine One-Arm Overhead Throw",
+    "category": "Abdominals",
+    "sourceID": "Supine_One-Arm_Overhead_Throw"
+  },
+  {
+    "id": "522b0572-30e9-5194-940b-6327520d92e2",
+    "name": "Supine Two-Arm Overhead Throw",
+    "category": "Abdominals",
+    "sourceID": "Supine_Two-Arm_Overhead_Throw"
+  },
+  {
+    "id": "888e1d81-2a54-5831-bf25-52d471db97e7",
+    "name": "Suspended Fallout",
+    "category": "Abdominals",
+    "sourceID": "Suspended_Fallout"
+  },
+  {
+    "id": "af985dda-fdd4-55e6-8a40-8d6db74b0d22",
+    "name": "Suspended Push-Up",
+    "category": "Chest",
+    "sourceID": "Suspended_Push-Up"
+  },
+  {
+    "id": "cd31b32c-6946-500b-a01b-5f2518df02cd",
+    "name": "Suspended Reverse Crunch",
+    "category": "Abdominals",
+    "sourceID": "Suspended_Reverse_Crunch"
+  },
+  {
+    "id": "64e986d8-9873-56c9-b87d-a37ccfc492f5",
+    "name": "Suspended Row",
+    "category": "Back",
+    "sourceID": "Suspended_Row"
+  },
+  {
+    "id": "d1081a1f-2f9a-58ee-b883-4fd564305167",
+    "name": "Suspended Split Squat",
+    "category": "Legs",
+    "sourceID": "Suspended_Split_Squat"
+  },
+  {
+    "id": "c738fec2-3e57-5523-aaf7-57bfe01eaa2a",
+    "name": "Svend Press",
+    "category": "Chest",
+    "sourceID": "Svend_Press"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000029",
+    "name": "T-Bar Row with Handle",
+    "category": "Back",
+    "sourceID": "T-Bar_Row_with_Handle"
+  },
+  {
+    "id": "6213e976-2d3b-58f0-9845-1caae8416ad8",
+    "name": "Tate Press",
+    "category": "Triceps",
+    "sourceID": "Tate_Press"
+  },
+  {
+    "id": "4dd3105a-2952-5185-809d-ffb720a3bed4",
+    "name": "The Straddle",
+    "category": "Legs",
+    "sourceID": "The_Straddle"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000129",
+    "name": "Thigh Abductor",
+    "category": "Legs",
+    "sourceID": "Thigh_Abductor"
+  },
+  {
+    "id": "e1fd1001-010f-523f-881f-369ed03cbf61",
+    "name": "Thigh Adductor",
+    "category": "Legs",
+    "sourceID": "Thigh_Adductor"
+  },
+  {
+    "id": "2aa9f7cb-2b60-511e-a345-6afa587d2ee1",
+    "name": "Tire Flip",
+    "category": "Legs",
+    "sourceID": "Tire_Flip"
+  },
+  {
+    "id": "21c5161d-7c4e-595d-8fb1-59b39bcf2b08",
+    "name": "Toe Touchers",
+    "category": "Abdominals",
+    "sourceID": "Toe_Touchers"
+  },
+  {
+    "id": "ef197b73-ad35-52a2-b7f1-1347480a428b",
+    "name": "Torso Rotation",
+    "category": "Abdominals",
+    "sourceID": "Torso_Rotation"
+  },
+  {
+    "id": "c20b6153-c882-53fc-887b-e7814690a024",
+    "name": "Trail Running/Walking",
+    "category": "Legs",
+    "sourceID": "Trail_Running_Walking"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000038",
+    "name": "Trap Bar Deadlift",
+    "category": "Legs",
+    "sourceID": "Trap_Bar_Deadlift"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000078",
+    "name": "Tricep Dumbbell Kickback",
+    "category": "Triceps",
+    "sourceID": "Tricep_Dumbbell_Kickback"
+  },
+  {
+    "id": "43c5c80d-853c-5556-acac-f9e1fbea921f",
+    "name": "Tricep Side Stretch",
+    "category": "Triceps",
+    "sourceID": "Tricep_Side_Stretch"
+  },
+  {
+    "id": "1fe7625f-11c4-5ec6-b70b-814262ccbcfe",
+    "name": "Triceps Overhead Extension with Rope",
+    "category": "Triceps",
+    "sourceID": "Triceps_Overhead_Extension_with_Rope"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000075",
+    "name": "Triceps Pushdown - Rope Attachment",
+    "category": "Triceps",
+    "sourceID": "Triceps_Pushdown_-_Rope_Attachment"
+  },
+  {
+    "id": "a4332496-c594-50d5-97e6-bc1299802e9b",
+    "name": "Triceps Pushdown - V-Bar Attachment",
+    "category": "Triceps",
+    "sourceID": "Triceps_Pushdown_-_V-Bar_Attachment"
+  },
+  {
+    "id": "13d66afb-5b4d-5382-a1b3-d47b77a18615",
+    "name": "Triceps Stretch",
+    "category": "Triceps",
+    "sourceID": "Triceps_Stretch"
+  },
+  {
+    "id": "e7314990-c1f9-590d-b7f5-cea4e8f4ce3a",
+    "name": "Tuck Crunch",
+    "category": "Abdominals",
+    "sourceID": "Tuck_Crunch"
+  },
+  {
+    "id": "62aca801-3e7b-5aee-ad5c-4bce80199df0",
+    "name": "Two-Arm Dumbbell Preacher Curl",
+    "category": "Biceps",
+    "sourceID": "Two-Arm_Dumbbell_Preacher_Curl"
+  },
+  {
+    "id": "aa763615-2f90-5680-92e0-d20e55e668b7",
+    "name": "Two-Arm Kettlebell Clean",
+    "category": "Shoulders",
+    "sourceID": "Two-Arm_Kettlebell_Clean"
+  },
+  {
+    "id": "dd3ff9a2-4063-5720-a418-e25e9f47e4f8",
+    "name": "Two-Arm Kettlebell Jerk",
+    "category": "Shoulders",
+    "sourceID": "Two-Arm_Kettlebell_Jerk"
+  },
+  {
+    "id": "c690870a-f380-52ef-9041-385aa5f36ed7",
+    "name": "Two-Arm Kettlebell Military Press",
+    "category": "Shoulders",
+    "sourceID": "Two-Arm_Kettlebell_Military_Press"
+  },
+  {
+    "id": "9faf2c75-5413-56a7-9b08-372422a221fb",
+    "name": "Two-Arm Kettlebell Row",
+    "category": "Back",
+    "sourceID": "Two-Arm_Kettlebell_Row"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000027",
+    "name": "Underhand Cable Pulldowns",
+    "category": "Back",
+    "sourceID": "Underhand_Cable_Pulldowns"
+  },
+  {
+    "id": "c4cd8fb5-61cc-5023-b31b-88cec74ce170",
+    "name": "Upper Back Stretch",
+    "category": "Back",
+    "sourceID": "Upper_Back_Stretch"
+  },
+  {
+    "id": "d39eae3c-9a35-51d3-b657-a10749390193",
+    "name": "Upper Back-Leg Grab",
+    "category": "Legs",
+    "sourceID": "Upper_Back-Leg_Grab"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000047",
+    "name": "Upright Barbell Row",
+    "category": "Shoulders",
+    "sourceID": "Upright_Barbell_Row"
+  },
+  {
+    "id": "59fa9ede-26ca-59b9-b87e-cb6c24ed3af6",
+    "name": "Upright Cable Row",
+    "category": "Back",
+    "sourceID": "Upright_Cable_Row"
+  },
+  {
+    "id": "66877205-6ff9-5152-8b15-71f5ed5974ee",
+    "name": "Upright Row - With Bands",
+    "category": "Back",
+    "sourceID": "Upright_Row_-_With_Bands"
+  },
+  {
+    "id": "39a2b728-74f6-5f20-b3fd-0a93f1b2c161",
+    "name": "Upward Stretch",
+    "category": "Shoulders",
+    "sourceID": "Upward_Stretch"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000025",
+    "name": "V-Bar Pulldown",
+    "category": "Back",
+    "sourceID": "V-Bar_Pulldown"
+  },
+  {
+    "id": "6e4ba83d-b380-55e1-90d1-f811bcd28e0d",
+    "name": "V-Bar Pullup",
+    "category": "Back",
+    "sourceID": "V-Bar_Pullup"
+  },
+  {
+    "id": "4e1b5ce6-b05d-5af4-8bd3-54565cd68c57",
+    "name": "Vertical Swing",
+    "category": "Legs",
+    "sourceID": "Vertical_Swing"
+  },
+  {
+    "id": "80b882ec-91e3-54d0-b8be-075d3d8b4f78",
+    "name": "Walking, Treadmill",
+    "category": "Legs",
+    "sourceID": "Walking_Treadmill"
+  },
+  {
+    "id": "cfd233a8-1c2f-5ee3-80b8-dccfa5aea094",
+    "name": "Weighted Ball Hyperextension",
+    "category": "Back",
+    "sourceID": "Weighted_Ball_Hyperextension"
+  },
+  {
+    "id": "3fa80e98-6bf6-5eb0-8c70-0b07116544ec",
+    "name": "Weighted Ball Side Bend",
+    "category": "Abdominals",
+    "sourceID": "Weighted_Ball_Side_Bend"
+  },
+  {
+    "id": "16cbe2f6-1893-5c0f-ad47-2ca16c0e1d26",
+    "name": "Weighted Bench Dip",
+    "category": "Triceps",
+    "sourceID": "Weighted_Bench_Dip"
+  },
+  {
+    "id": "b688f59b-8742-5b2b-83a8-00afffd6457e",
+    "name": "Weighted Crunches",
+    "category": "Abdominals",
+    "sourceID": "Weighted_Crunches"
+  },
+  {
+    "id": "bf488e78-223d-5a19-96cd-d1dbcc6ba0a3",
+    "name": "Weighted Jump Squat",
+    "category": "Legs",
+    "sourceID": "Weighted_Jump_Squat"
+  },
+  {
+    "id": "316a9dc1-78ce-522b-9685-40dc754cf74c",
+    "name": "Weighted Pull Ups",
+    "category": "Back",
+    "sourceID": "Weighted_Pull_Ups"
+  },
+  {
+    "id": "2a7d8a35-c4a6-546e-97ff-6357ec4ab40a",
+    "name": "Weighted Sissy Squat",
+    "category": "Legs",
+    "sourceID": "Weighted_Sissy_Squat"
+  },
+  {
+    "id": "20eeb2a7-e331-5cdb-be1c-da6409b2fecc",
+    "name": "Weighted Sit-Ups - With Bands",
+    "category": "Abdominals",
+    "sourceID": "Weighted_Sit-Ups_-_With_Bands"
+  },
+  {
+    "id": "47a9ee5c-f07b-5693-8567-df80b22fb8ee",
+    "name": "Weighted Squat",
+    "category": "Legs",
+    "sourceID": "Weighted_Squat"
+  },
+  {
+    "id": "95cfa376-f4a0-5569-a731-9000194863a5",
+    "name": "Wide Stance Barbell Squat",
+    "category": "Legs",
+    "sourceID": "Wide_Stance_Barbell_Squat"
+  },
+  {
+    "id": "f34e1b74-8ae1-5ac2-953a-4a414fb4f5d1",
+    "name": "Wide Stance Stiff Legs",
+    "category": "Legs",
+    "sourceID": "Wide_Stance_Stiff_Legs"
+  },
+  {
+    "id": "7d4501da-393c-59d9-92d1-9edb4e1346cc",
+    "name": "Wide-Grip Barbell Bench Press",
+    "category": "Chest",
+    "sourceID": "Wide-Grip_Barbell_Bench_Press"
+  },
+  {
+    "id": "872047e5-5c7b-52a4-9c68-4de372856559",
+    "name": "Wide-Grip Decline Barbell Bench Press",
+    "category": "Chest",
+    "sourceID": "Wide-Grip_Decline_Barbell_Bench_Press"
+  },
+  {
+    "id": "2919d1f7-f8b7-5ccc-b0b5-f9d98acff7ac",
+    "name": "Wide-Grip Decline Barbell Pullover",
+    "category": "Chest",
+    "sourceID": "Wide-Grip_Decline_Barbell_Pullover"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000023",
+    "name": "Wide-Grip Lat Pulldown",
+    "category": "Back",
+    "sourceID": "Wide-Grip_Lat_Pulldown"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000026",
+    "name": "Wide-Grip Pulldown Behind The Neck",
+    "category": "Back",
+    "sourceID": "Wide-Grip_Pulldown_Behind_The_Neck"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000031",
+    "name": "Wide-Grip Rear Pull-Up",
+    "category": "Back",
+    "sourceID": "Wide-Grip_Rear_Pull-Up"
+  },
+  {
+    "id": "a8607df6-f931-5b9d-afb7-d2c4c8873d80",
+    "name": "Wide-Grip Standing Barbell Curl",
+    "category": "Biceps",
+    "sourceID": "Wide-Grip_Standing_Barbell_Curl"
+  },
+  {
+    "id": "24a74397-79aa-5d23-b883-d3379fc2b45c",
+    "name": "Wind Sprints",
+    "category": "Abdominals",
+    "sourceID": "Wind_Sprints"
+  },
+  {
+    "id": "b0662b40-bba3-5896-8969-09447ac2d889",
+    "name": "Windmills",
+    "category": "Legs",
+    "sourceID": "Windmills"
+  },
+  {
+    "id": "796add3b-332f-5eac-a373-c4d5cfb70b7e",
+    "name": "World's Greatest Stretch",
+    "category": "Legs",
+    "sourceID": "Worlds_Greatest_Stretch"
+  },
+  {
+    "id": "05a6c909-febb-573b-963d-19ce71cd7182",
+    "name": "Wrist Circles",
+    "category": "Forearms",
+    "sourceID": "Wrist_Circles"
+  },
+  {
+    "id": "3a6e0e8e-f98f-51fc-9163-a44b77865e5a",
+    "name": "Wrist Roller",
+    "category": "Forearms",
+    "sourceID": "Wrist_Roller"
+  },
+  {
+    "id": "e02491ef-4a87-59e0-a439-97eb18b7d3f5",
+    "name": "Wrist Rotations with Straight Bar",
+    "category": "Forearms",
+    "sourceID": "Wrist_Rotations_with_Straight_Bar"
+  },
+  {
+    "id": "b0c04756-2d00-5715-98df-2f525b12f424",
+    "name": "Yoke Walk",
+    "category": "Legs",
+    "sourceID": "Yoke_Walk"
+  },
+  {
+    "id": "1964c0a6-8cfe-5e8e-b995-dc00ad90755a",
+    "name": "Zercher Squats",
+    "category": "Legs",
+    "sourceID": "Zercher_Squats"
+  },
+  {
+    "id": "1d82896a-1da5-58cc-8eff-97d6c55a7518",
+    "name": "Zottman Curl",
+    "category": "Biceps",
+    "sourceID": "Zottman_Curl"
+  },
+  {
+    "id": "1bb514f2-7d74-5ae1-b1af-11744b12aaaa",
+    "name": "Zottman Preacher Curl",
+    "category": "Biceps",
+    "sourceID": "Zottman_Preacher_Curl"
+  }
+]

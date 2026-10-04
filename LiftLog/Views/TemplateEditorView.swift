@@ -22,10 +22,10 @@ struct TemplateEditorView: View {
                 }
                 ForEach(Array(draft.exercises.enumerated()), id: \.element.id) { exerciseIndex, exercise in
                     Section {
-                        SetColumnHeader(unit: store.unit)
+                        SetColumnHeader(unit: store.unit, repsTitle: "TARGET REPS")
                         ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { setIndex, set in
-                            SetInputRow(number: setIndex + 1, unit: store.unit, weight: set.weight, reps: set.reps, onChange: { weight, reps in
-                                draft.exercises[exerciseIndex].updateSetValues(weight: weight, reps: reps)
+                            SetInputRow(number: setIndex + 1, unit: store.unit, weight: set.weight, reps: set.targetReps, repsTitle: "Target reps", onChange: { weight, reps in
+                                draft.exercises[exerciseIndex].updateSetValues(weight: weight, targetReps: reps)
                             }, onValidity: { valid in
                                 if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
                             })
@@ -38,7 +38,7 @@ struct TemplateEditorView: View {
                         }
                         Button("Add Set", systemImage: "plus") {
                             let last = draft.exercises[exerciseIndex].sets.last
-                            draft.exercises[exerciseIndex].sets.append(TemplateSet(weight: last?.weight ?? 0, reps: last?.reps ?? 10))
+                            draft.exercises[exerciseIndex].sets.append(TemplateSet(weight: last?.weight ?? 0, targetReps: last?.targetReps ?? 10))
                         }
                     } header: {
                         HStack {
@@ -56,7 +56,7 @@ struct TemplateEditorView: View {
                     Button("Add Exercise", systemImage: "plus.circle.fill") { pickingExercise = true }
                         .accessibilityIdentifier("addExerciseButton")
                 } footer: {
-                    Text("Use templates to plan exercises and sets. Each workout gets its own copy so you can adjust as you train.")
+                    Text("Plan exercises, weights, and target reps. Record actual reps separately when you train.")
                 }
             }
             .workoutErrorAlert(enabled: !pickingExercise)
@@ -76,7 +76,7 @@ struct TemplateEditorView: View {
             }
             .sheet(isPresented: $pickingExercise) {
                 ExercisePickerView { exercise in
-                    draft.exercises.append(TemplateExercise(exercise: exercise, sets: [TemplateSet(weight: 0, reps: 10)]))
+                    draft.exercises.append(TemplateExercise(exercise: exercise, sets: [TemplateSet(weight: 0, targetReps: 10)]))
                 }
             }
         }

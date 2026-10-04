@@ -10,9 +10,11 @@
 		0935821E762AA9AE915BAE1E /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AD21AADB322170282982C4 /* Workout.swift */; };
 		141A8FA4F70C64BD03FA09CB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6024B29CF57ADD9CD63AD4 /* RootView.swift */; };
 		197FC90DBE0A53A8CA1085EA /* WorkoutHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E340D7BEC3D5CD9C452727 /* WorkoutHistoryView.swift */; };
+		1CF46A22988BDF9C160A9E82 /* free-exercise-db-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0F01D32B9758556D21AC93DF /* free-exercise-db-LICENSE.txt */; };
 		1F83DD23FDF095D24881B279 /* LiftLogUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */; };
 		20B9698330ED8FB88969D88D /* ExerciseCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564E8B8B5AE363A497173FB9 /* ExerciseCatalog.swift */; };
 		32FFDBE40F7B764D3F2C628E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A7362A4BF1BBB49DF08484B /* Assets.xcassets */; };
+		5CEB2D496DB7192533C64A9C /* exercise-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 837669AE694080AC1CA4ED1B /* exercise-catalog.json */; };
 		729B7917B33319B426F22D3E /* LiftLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34EF9BEBC35DE75C1D1C8CA /* LiftLogApp.swift */; };
 		854529A35898BEE3CC7BF012 /* TemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307670086F599871C2ED930C /* TemplateEditorView.swift */; };
 		86B10999D30EC2A7D4E2893F /* WeightUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AEDE53FC1923E6574833CA /* WeightUnit.swift */; };
@@ -35,6 +37,7 @@
 
 /* Begin PBXFileReference section */
 		01E340D7BEC3D5CD9C452727 /* WorkoutHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryView.swift; sourceTree = "<group>"; };
+		0F01D32B9758556D21AC93DF /* free-exercise-db-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "free-exercise-db-LICENSE.txt"; sourceTree = "<group>"; };
 		1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftLogUITests.swift; sourceTree = "<group>"; };
 		255E8F29C0E21AEFE1638ED6 /* WorkoutEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEditorComponents.swift; sourceTree = "<group>"; };
 		2C6024B29CF57ADD9CD63AD4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -44,6 +47,7 @@
 		5CE6A3627E5DD815C07C4AEC /* LiftLogUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiftLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		618856612FF2A6A825D3D784 /* WorkoutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStore.swift; sourceTree = "<group>"; };
 		66AD21AADB322170282982C4 /* Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workout.swift; sourceTree = "<group>"; };
+		837669AE694080AC1CA4ED1B /* exercise-catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "exercise-catalog.json"; sourceTree = "<group>"; };
 		85034D1B9231C25CDE0F365E /* LiftLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiftLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		853D2FC1DD7AB22F4B431211 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
 		8A7362A4BF1BBB49DF08484B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -95,6 +99,15 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		8E9FC8A979E7D3649703FC7A /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				837669AE694080AC1CA4ED1B /* exercise-catalog.json */,
+				0F01D32B9758556D21AC93DF /* free-exercise-db-LICENSE.txt */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		992BE1DBD1C3B59B273DC34C /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -110,6 +123,7 @@
 				564E8B8B5AE363A497173FB9 /* ExerciseCatalog.swift */,
 				618856612FF2A6A825D3D784 /* WorkoutStore.swift */,
 				103AD2FF91DFE8DD2A0D9475 /* Models */,
+				8E9FC8A979E7D3649703FC7A /* Resources */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -211,6 +225,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				32FFDBE40F7B764D3F2C628E /* Assets.xcassets in Resources */,
+				5CEB2D496DB7192533C64A9C /* exercise-catalog.json in Resources */,
+				1CF46A22988BDF9C160A9E82 /* free-exercise-db-LICENSE.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

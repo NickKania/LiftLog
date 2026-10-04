@@ -7,7 +7,7 @@ The first version focuses on templates, workout execution, and a local workout h
 ## Features
 
 - Create and edit templates with exercises, set weights, and repetition counts.
-- Find exercises in the searchable catalog or add an exercise by name.
+- Find exercises in the searchable, offline catalog of 876 exercises or add an exercise by name.
 - Start a workout from a template and record the weight and reps for each set.
 - Mark sets complete and save finished workouts to history.
 - Resume a saved active workout after reopening the app.
@@ -42,6 +42,8 @@ swift test
 See [testing guidance](docs/TESTING.md) for the Xcode UI test command, simulator checks, and manual acceptance checklist. See [architecture](docs/ARCHITECTURE.md) for the data model and persistence decisions.
 
 ## Data and scope
+
+The exercise catalog comes from [free-exercise-db](https://github.com/yuhonas/free-exercise-db), published under the Unlicense. A pinned dataset and its license are included in this repository. See [catalog provenance and generation](docs/EXERCISE_CATALOG.md) for source details and compatibility with saved workouts.
 
 Templates, settings, history, and the active workout are stored on the device in `Application Support/LiftLog/workouts.json` inside the app sandbox. Finishing a workout saves only completed sets to history. Uncompleted sets are excluded from the finished record; templates remain reusable.
 

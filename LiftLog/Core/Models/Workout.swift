@@ -44,12 +44,14 @@ struct WorkoutSet: Codable, Equatable, Identifiable {
     var id: UUID
     var weight: Double
     var reps: Int
+    var targetReps: Int?
     var isCompleted: Bool
 
-    init(id: UUID = UUID(), weight: Double = 0, reps: Int = 8, isCompleted: Bool = false) {
+    init(id: UUID = UUID(), weight: Double = 0, reps: Int = 8, targetReps: Int? = nil, isCompleted: Bool = false) {
         self.id = id
         self.weight = weight
         self.reps = reps
+        self.targetReps = targetReps
         self.isCompleted = isCompleted
     }
 }

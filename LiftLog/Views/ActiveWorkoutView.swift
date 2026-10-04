@@ -85,7 +85,7 @@ struct ActiveWorkoutView: View {
                 Section {
                     SetColumnHeader(unit: workout.unit, completion: true)
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
-                        SetInputRow(number: index + 1, unit: workout.unit, weight: set.weight, reps: set.reps, completed: set.isCompleted, onChange: { weight, reps in
+                        SetInputRow(number: index + 1, unit: workout.unit, weight: set.weight, reps: set.reps, targetReps: set.targetReps, completed: set.isCompleted, onChange: { weight, reps in
                             mutate { session in
                                 guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
                                 session.exercises[index].updateSetValues(weight: weight, reps: reps)
@@ -110,7 +110,7 @@ struct ActiveWorkoutView: View {
                         mutate { session in
                             guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
                             let last = session.exercises[index].sets.last
-                            session.exercises[index].sets.append(WorkoutSet(weight: last?.weight ?? 0, reps: last?.reps ?? 10))
+                            session.exercises[index].sets.append(WorkoutSet(weight: last?.weight ?? 0, reps: last?.reps ?? 10, targetReps: last?.targetReps))
                         }
                     }
                     .accessibilityIdentifier("addSet-\(exercise.exercise.name)")
