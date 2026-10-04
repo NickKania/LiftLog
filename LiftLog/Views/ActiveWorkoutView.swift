@@ -86,7 +86,10 @@ struct ActiveWorkoutView: View {
                     SetColumnHeader(unit: workout.unit, completion: true)
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                         SetInputRow(number: index + 1, unit: workout.unit, weight: set.weight, reps: set.reps, completed: set.isCompleted, onChange: { weight, reps in
-                            updateSet(exerciseID: exercise.id, setID: set.id) { $0.weight = weight; $0.reps = reps }
+                            mutate { session in
+                                guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
+                                session.exercises[index].updateSetValues(weight: weight, reps: reps)
+                            }
                         }, onCompletion: {
                             updateSet(exerciseID: exercise.id, setID: set.id) { $0.isCompleted.toggle() }
                         }, onValidity: { valid in

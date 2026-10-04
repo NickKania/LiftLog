@@ -25,8 +25,7 @@ struct TemplateEditorView: View {
                         SetColumnHeader(unit: store.unit)
                         ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { setIndex, set in
                             SetInputRow(number: setIndex + 1, unit: store.unit, weight: set.weight, reps: set.reps, onChange: { weight, reps in
-                                draft.exercises[exerciseIndex].sets[setIndex].weight = weight
-                                draft.exercises[exerciseIndex].sets[setIndex].reps = reps
+                                draft.exercises[exerciseIndex].updateSetValues(weight: weight, reps: reps)
                             }, onValidity: { valid in
                                 if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
                             })

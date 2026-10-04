@@ -24,6 +24,53 @@ final class WorkoutStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testExpandedCatalogPreservesOriginalIdentitiesAndStarterTemplates() async throws {
+        let store = WorkoutStore(fileURL: try temporaryFile())
+        let originalNames = ["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row",
+                             "Pull Up", "Dumbbell Curl", "Triceps Pushdown", "Romanian Deadlift", "Leg Press"]
+        XCTAssertEqual(Array(store.exercises.prefix(10)).map(\.name), originalNames)
+        for (index, exercise) in store.exercises.prefix(10).enumerated() {
+            XCTAssertEqual(exercise.id.uuidString, String(format: "00000000-0000-0000-0000-%012d", index + 1))
+        }
+        XCTAssertEqual(Set(store.exercises.map(\.id)).count, store.exercises.count)
+        XCTAssertEqual(Set(store.exercises.map { $0.name.lowercased() }).count, store.exercises.count)
+        XCTAssertTrue(store.exercises.allSatisfy { !$0.name.isEmpty && !$0.category.isEmpty })
+        XCTAssertTrue(Set(["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Abdominals", "Legs", "Calves"])
+            .isSubset(of: Set(store.exercises.map(\.category))))
+        XCTAssertEqual(store.templates.map { $0.exercises.map { $0.exercise.name } }, [
+            ["Bench Press", "Barbell Row", "Overhead Press", "Dumbbell Curl"],
+            ["Squat", "Romanian Deadlift", "Leg Press"]
+        ])
+    }
+
+    @MainActor
+    func testExpandedCatalogIsAvailableWithExistingDataAndNewExercisesPersist() async throws {
+        let file = try temporaryFile()
+        let originalStore = WorkoutStore(fileURL: file)
+        let savedTemplates = originalStore.templates
+        let existingData = try Data(contentsOf: file)
+        let store = WorkoutStore(fileURL: file)
+        XCTAssertEqual(try Data(contentsOf: file), existingData)
+        XCTAssertEqual(store.templates, savedTemplates)
+        XCTAssertEqual(store.exercises, originalStore.exercises)
+
+        let exercise = try XCTUnwrap(store.exercises.first { $0.name == "Dumbbell Goblet Squat" })
+        XCTAssertEqual(exercise.category, "Legs")
+        let addedTemplate = WorkoutTemplate(name: "Expanded Catalog", exercises: [TemplateExercise(exercise: exercise)])
+        XCTAssertTrue(store.saveTemplate(addedTemplate))
+        XCTAssertTrue(store.startWorkout(template: addedTemplate))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.finishWorkout())
+
+        let reloaded = WorkoutStore(fileURL: file)
+        XCTAssertEqual(reloaded.templates.first { $0.id == addedTemplate.id }, addedTemplate)
+        XCTAssertEqual(reloaded.history.first?.exercises.first?.exercise, exercise)
+        XCTAssertEqual(reloaded.exercises.first { $0.id == exercise.id }, exercise)
+    }
+
+    @MainActor
     func testTemplateCreateEditDeletePersists() async throws {
         let file = try temporaryFile()
         let store = WorkoutStore(fileURL: file)
@@ -97,6 +144,41 @@ final class WorkoutStoreTests: XCTestCase {
         edited.exercises[0].sets[0].isCompleted = true
         XCTAssertTrue(store.updateActiveWorkout(edited))
         XCTAssertEqual(store.templates.first { $0.id == original.id }, original)
+    }
+
+    @MainActor
+    func testExerciseSetValuesPropagateAndPersistWithoutChangingOtherExercises() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        let original = template()
+        var editedTemplate = original
+        let plannedIDs = original.exercises[0].sets.map(\.id)
+        editedTemplate.exercises[0].updateSetValues(weight: 142.5, reps: 7)
+        XCTAssertTrue(store.saveTemplate(editedTemplate))
+        let reloadedTemplate = try XCTUnwrap(WorkoutStore(fileURL: file).templates.first { $0.id == original.id })
+        XCTAssertEqual(reloadedTemplate.exercises[0].sets.map(\.weight), [142.5, 142.5])
+        XCTAssertEqual(reloadedTemplate.exercises[0].sets.map(\.reps), [7, 7])
+        XCTAssertEqual(reloadedTemplate.exercises[0].sets.map(\.id), plannedIDs)
+        XCTAssertEqual(reloadedTemplate.exercises[1], original.exercises[1])
+
+        XCTAssertTrue(store.startWorkout(template: reloadedTemplate))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].isCompleted = true
+        let setIDs = active.exercises[0].sets.map(\.id)
+        let otherExercise = active.exercises[1]
+        active.exercises[0].updateSetValues(weight: 150, reps: 6)
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        let reloaded = try XCTUnwrap(WorkoutStore(fileURL: file).activeWorkout)
+        XCTAssertEqual(reloaded.exercises[0].sets.map(\.weight), [150, 150])
+        XCTAssertEqual(reloaded.exercises[0].sets.map(\.reps), [6, 6])
+        XCTAssertEqual(reloaded.exercises[0].sets.map(\.id), setIDs)
+        XCTAssertEqual(reloaded.exercises[0].sets.map(\.isCompleted), [true, false])
+        XCTAssertEqual(reloaded.exercises[1], otherExercise)
+        XCTAssertEqual(store.templates.first { $0.id == original.id }, reloadedTemplate)
+
+        active.exercises[0].updateSetValues(weight: -1, reps: 0)
+        XCTAssertFalse(store.updateActiveWorkout(active))
+        XCTAssertEqual(store.activeWorkout, reloaded)
     }
 
     @MainActor

@@ -6,6 +6,41 @@ final class LiftLogUITests: XCTestCase {
     }
 
     @MainActor
+    func testSetValuesPropagateAcrossExerciseSets() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-ui-testing"]
+        app.launch()
+        let start = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "startTemplate-")).firstMatch
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        start.tap()
+
+        let weight = app.textFields["setWeight-1"].firstMatch
+        XCTAssertTrue(weight.waitForExistence(timeout: 5))
+        weight.tap()
+        weight.typeText(XCUIKeyboardKey.delete.rawValue + "142.5")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(app.textFields["setWeight-2"].firstMatch.value as? String, "142.5")
+        XCTAssertEqual(app.textFields["setWeight-3"].firstMatch.value as? String, "142.5")
+
+        let reps = app.textFields["setReps-2"].firstMatch
+        reps.tap()
+        reps.typeText(XCUIKeyboardKey.delete.rawValue + "6")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(app.textFields["setReps-1"].firstMatch.value as? String, "6")
+        XCTAssertEqual(app.textFields["setReps-3"].firstMatch.value as? String, "6")
+        XCTAssertEqual(weight.value as? String, "142.5")
+
+        app.terminate()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 10))
+        app.buttons["resumeWorkoutButton"].tap()
+        XCTAssertTrue(app.textFields["setWeight-3"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["setWeight-3"].firstMatch.value as? String, "142.5")
+        XCTAssertEqual(app.textFields["setReps-3"].firstMatch.value as? String, "6")
+    }
+
+    @MainActor
     func testCreateTemplateCompleteSetAndResumeAfterRelaunch() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing"]
@@ -16,12 +51,23 @@ final class LiftLogUITests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
         name.typeText("Smoke Routine")
+        app.buttons["Done"].tap()
         app.buttons["addExerciseButton"].tap()
         app.buttons["exercise-Bench Press"].tap()
+        app.buttons["Add Set"].tap()
+        XCTAssertTrue(app.textFields["setWeight-2"].waitForExistence(timeout: 5))
         let weight = app.textFields["setWeight-1"].firstMatch
         XCTAssertTrue(weight.waitForExistence(timeout: 5))
         weight.tap()
         weight.typeText(XCUIKeyboardKey.delete.rawValue + "135")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(app.textFields["setWeight-2"].value as? String, "135")
+        let reps = app.textFields["setReps-2"]
+        reps.tap()
+        reps.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 2) + "6")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(app.textFields["setReps-1"].value as? String, "6")
+        XCTAssertEqual(reps.value as? String, "6")
         app.buttons["saveTemplateButton"].tap()
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["Smoke Routine"].waitForExistence(timeout: 5))

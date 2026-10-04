@@ -24,7 +24,7 @@ final class WorkoutStore {
 
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL
-        exercises = Self.catalog
+        exercises = ExerciseCatalog.all
         if FileManager.default.fileExists(atPath: self.fileURL.path) {
             do {
                 let data = try Data(contentsOf: self.fileURL)
@@ -267,19 +267,6 @@ final class WorkoutStore {
             ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("LiftLog", isDirectory: true).appendingPathComponent("workouts.json")
     }
-
-    private static let catalog: [Exercise] = [
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, name: "Bench Press", category: "Chest"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!, name: "Squat", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!, name: "Deadlift", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!, name: "Overhead Press", category: "Shoulders"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000005")!, name: "Barbell Row", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000006")!, name: "Pull Up", category: "Back"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000007")!, name: "Dumbbell Curl", category: "Arms"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000008")!, name: "Triceps Pushdown", category: "Arms"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000009")!, name: "Romanian Deadlift", category: "Legs"),
-        Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000010")!, name: "Leg Press", category: "Legs")
-    ]
 
     private static func starterTemplates(catalog: [Exercise]) -> [WorkoutTemplate] {
         func item(_ index: Int, reps: Int = 8) -> TemplateExercise {

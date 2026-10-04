@@ -42,7 +42,7 @@ For interactive verification, open the project in Xcode and run it on an iPhone 
 ### Workout execution
 
 - Start a template and confirm its exercise order and planned sets are copied into the workout.
-- Change a set’s weight and reps, complete it, and verify its completion state is visible.
+- Change any set’s weight and reps and verify both values appear across all sets of that exercise. Confirm other exercises retain their values and each set keeps its own completion state.
 - Toggle a set back to incomplete and verify it can be completed again.
 - Add and remove exercises and sets in the active workout without changing the source template.
 - Close and reopen the app during a workout; confirm valid edits and completion flags resume.

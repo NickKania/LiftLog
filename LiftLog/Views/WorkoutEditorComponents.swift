@@ -107,13 +107,24 @@ struct SetInputRow: View {
         }
         .onAppear {
             guard !initialized else { return }
-            weightText = weight == weight.rounded() && weight < 1e15 ? String(format: "%.0f", weight) : String(weight)
+            weightText = formattedWeight
             repsText = String(reps)
             initialized = true
             onValidity?(valid)
         }
         .onChange(of: weightText) { _, _ in commit() }
         .onChange(of: repsText) { _, _ in commit() }
+        .onChange(of: weight) { _, _ in
+            // Preserve partially typed decimals when their numeric value is unchanged.
+            if parsedWeight != weight { weightText = formattedWeight }
+        }
+        .onChange(of: reps) { _, _ in
+            if parsedReps != reps { repsText = String(reps) }
+        }
+    }
+
+    private var formattedWeight: String {
+        weight == weight.rounded() && weight < 1e15 ? String(format: "%.0f", weight) : String(weight)
     }
 
     private func commit() {
