@@ -53,13 +53,3 @@ struct WorkoutSet: Codable, Equatable, Identifiable {
         self.isCompleted = isCompleted
     }
 }
-
-extension WorkoutExercise {
-    /// Applies the same weight and reps to every set, preserving set IDs and completion state.
-    mutating func updateSetValues(weight: Double, reps: Int) {
-        for index in sets.indices {
-            sets[index].weight = weight
-            sets[index].reps = reps
-        }
-    }
-}

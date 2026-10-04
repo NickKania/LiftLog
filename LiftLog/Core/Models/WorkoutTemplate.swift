@@ -23,6 +23,7 @@ struct TemplateExercise: Codable, Equatable, Identifiable {
         self.sets = sets
     }
 
+    /// Applies the same weight and reps to every set, preserving set IDs.
     mutating func updateSetValues(weight: Double, reps: Int) {
         for index in sets.indices {
             sets[index].weight = weight
@@ -40,15 +41,5 @@ struct TemplateSet: Codable, Equatable, Identifiable {
         self.id = id
         self.weight = weight
         self.reps = reps
-    }
-}
-
-extension TemplateExercise {
-    /// Applies the same weight and reps to every set, preserving set IDs.
-    mutating func updateSetValues(weight: Double, reps: Int) {
-        for index in sets.indices {
-            sets[index].weight = weight
-            sets[index].reps = reps
-        }
     }
 }
