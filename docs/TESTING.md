@@ -13,9 +13,11 @@ These tests exercise workout behavior and persistence through the `LiftLogCore` 
 
 Catalog coverage verifies all 876 bundled entries load, original starter identities and order remain stable, matched exercises reuse existing IDs, and retired exercise snapshots survive in templates, active workouts, and history. The generator check verifies the resource matches the pinned upstream dataset and reviewed compatibility mappings without accessing the network.
 
-The core suite passes 49 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
+The core suite passes 56 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
 
 Eleven import tests use `Tests/LiftLogCoreTests/Fixtures/strong_workouts.csv`, the supplied Strong export, to verify every exercise, weight, rep value, timestamp, duration, and excluded rest record. Synthetic cases cover quoted CSV, BOM/CRLF, malformed data, unsupported measurements, explicit units/time zones, exercise overrides, selected subsets, duplicate imports after reload, and atomic write failures. `WorkoutImportUITests` adds three UI tests covering cancellation, single/multiple selection, matching, unit preservation during navigation, saving, relaunch, and duplicate detection using a DEBUG-only synthetic fixture.
+
+All three import UI cases passed across targeted runs on a dedicated iPhone 17 Pro simulator (iOS 26.5). Run simulator suites on separate devices when working concurrently; two test runners installing the app on the same simulator interfere with each other.
 
 Generate and build the iOS project separately:
 
@@ -24,7 +26,7 @@ xcodegen generate
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, contains nine simulator UI integration tests. They exercise template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, unit preferences, and workout imports. Run it with an installed iPhone simulator, for example:
+The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, contains ten simulator UI integration tests. They exercise template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, unit preferences, and workout imports. Run it with an installed iPhone simulator, for example:
 
 ```sh
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
@@ -35,6 +37,18 @@ Replace `iPhone 17` with an available simulator name from `xcrun simctl list dev
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
 ## Manual acceptance checklist
+
+### Personal exercise catalog
+
+- Import a workout containing an unmatched exercise, relaunch, and search for that exercise when adding an exercise to a template or workout.
+- Save a manually created custom exercise in a template or active workout and verify it appears in subsequent searches after relaunch.
+- Search with different capitalization and repeated whitespace. The existing exercise should remain selectable without a duplicate create option.
+- Cancel an import or a new template containing a custom exercise. It should not add that unsaved exercise to the catalog.
+- Load older saved data with custom exercises. They should become reusable while the original workout and template snapshots remain unchanged.
+
+`PersonalCatalogUITests` exercises importing, relaunching, normalized search, and reusing an imported custom exercise in a new template.
+
+Seven core catalog tests cover merged identities, persisted personal entries, legacy backfill without history changes, bundled-name overlap, template/active-workout registration, cancellation and skipped duplicates, and atomic failures.
 
 ### Templates
 

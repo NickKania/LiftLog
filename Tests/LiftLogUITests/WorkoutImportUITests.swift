@@ -79,6 +79,10 @@ final class WorkoutImportUITests: XCTestCase {
         scrollTo(upper, in: app)
         upper.tap()
         XCTAssertEqual(app.buttons["reviewOrImportButton"].label, "Import 1 Workout")
+        let selectionScreenshot = XCTAttachment(screenshot: app.screenshot())
+        selectionScreenshot.name = "Workout import selection"
+        selectionScreenshot.lifetime = .keepAlways
+        add(selectionScreenshot)
         app.staticTexts["Sample Upper"].tap()
         XCTAssertTrue(app.staticTexts["50 kg × 10"].waitForExistence(timeout: 5))
         app.navigationBars.buttons.element(boundBy: 0).tap()

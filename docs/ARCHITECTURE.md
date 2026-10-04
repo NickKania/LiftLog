@@ -24,6 +24,8 @@ An exercise has an identifier, name, and category. A template contains an ordere
 
 `ExerciseCatalog` loads 876 exercises from a bundled JSON resource generated from the public-domain free-exercise-db dataset. It is available offline on every launch, independently of saved workout data. Original starter identities and ordering are retained, and reviewed equivalent exercises reuse existing IDs. See [Exercise catalog](EXERCISE_CATALOG.md) for provenance, generation, and compatibility details.
 
+`WorkoutStore.exercises` exposes the bundled catalog in its original order followed by persisted `personalExercises`. Personal entries deduplicate names by lowercasing and collapsing whitespace, with bundled entries preferred. New picker-created and unmatched imported exercises reuse an existing catalog identity when saved. Other supplied exercise snapshots keep their recorded metadata. Existing history is never rewritten.
+
 A workout session is a separate snapshot with its own exercise entries and sets. Session sets store actual `reps` separately from an optional `targetReps` snapshot and carry a completion flag, while the session records its starting time, optional finishing time, and weight unit. Starting a workout copies target reps into the session and initially prefills actual reps with that target. Editing actual reps never changes the target. Starting a workout does not mutate the source template. A later template edit does not rewrite past workouts.
 
 Only one workout is active at a time. Completed sessions are kept in history. Finishing filters out uncompleted sets and exercise entries with no completed sets, so history represents work actually performed.
@@ -34,11 +36,13 @@ Editing weight or target reps in the template editor, or weight or actual reps i
 
 ## Persistence
 
-The store saves a Codable JSON snapshot in `Application Support/LiftLog/workouts.json` inside the app sandbox. The snapshot carries schema version `1`, templates, unit preference, workout history, and the current active workout. Valid changes to the active workout are saved so that a user can resume after the app is closed.
+The store saves a Codable JSON snapshot in `Application Support/LiftLog/workouts.json` inside the app sandbox. The snapshot carries schema version `1`, templates, personal exercises, unit preference, workout history, and the current active workout. Valid changes to the active workout are saved so that a user can resume after the app is closed.
+
+Older version-1 files without `personalExercises` decode with an empty catalog. Loading backfills reusable nonbundled exercises from history, templates, and the active workout without rewriting those snapshots or the file. The next successful mutation persists the backfilled catalog. Saved personal entries are retained independently of their originating template or workout.
 
 Legacy template `reps` fields decode as `targetReps` and are written using the new name on the next save. Older sessions retain their recorded reps with no target snapshot; targets are not inferred from templates that may have changed.
 
-Mutations validate and atomically write the next snapshot before publishing it to in-memory state. A failed write leaves the prior state intact and exposes an error. On first launch, the store seeds Upper Body and Lower Body templates and an exercise catalog.
+Template saves, active-workout saves, and imports register personal exercises only in the proposed snapshot. Import registration occurs after duplicate detection. Previewing or canceling drafts and skipped duplicate imports cannot add entries. Mutations validate and atomically write the next snapshot before publishing it to in-memory state. A failed write leaves the prior state intact and exposes an error. On first launch, the store seeds Upper Body and Lower Body templates and an exercise catalog.
 
 If an existing file cannot be decoded, has an unsupported schema version, or fails validation, the store preserves the file and rejects mutations for that launch. Restore or move the affected file and relaunch to recover; it is not automatically replaced with fresh data.
 

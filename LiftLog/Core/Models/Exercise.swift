@@ -5,6 +5,10 @@ struct Exercise: Codable, Equatable, Identifiable {
     var name: String
     var category: String
 
+    static func normalizedName(_ name: String) -> String {
+        name.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
     init(id: UUID = UUID(), name: String, category: String = "Other") {
         self.id = id
         self.name = name

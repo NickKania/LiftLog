@@ -7,7 +7,7 @@ The first version focuses on templates, workout execution, and a local workout h
 ## Features
 
 - Create and edit templates with exercises, set weights, and target reps.
-- Find exercises in the searchable, offline catalog of 876 exercises or add an exercise by name.
+- Find exercises in the searchable, offline catalog of 876 bundled exercises plus your saved personal exercises, or add an exercise by name.
 - Start a workout from a template and record the weight and actual reps for each set, with the original target shown alongside.
 - Mark sets complete and save finished workouts to history.
 - Resume a saved active workout after reopening the app.
@@ -48,6 +48,8 @@ See [testing guidance](docs/TESTING.md) for the Xcode UI test command, simulator
 
 The exercise catalog comes from [free-exercise-db](https://github.com/yuhonas/free-exercise-db), published under the Unlicense. A pinned dataset and its license are included in this repository. See [catalog provenance and generation](docs/EXERCISE_CATALOG.md) for source details and compatibility with saved workouts.
 
-Templates, settings, history, and the active workout are stored on the device in `Application Support/LiftLog/workouts.json` inside the app sandbox. Finishing a workout saves only completed sets to history. Uncompleted sets are excluded from the finished record; templates remain reusable.
+Custom exercises become reusable after saving a template, active workout, or import. They remain in your personal catalog after deleting a template or discarding its workout. Canceling a draft or import review adds nothing.
+
+Templates, personal exercises, settings, history, and the active workout are stored on the device in `Application Support/LiftLog/workouts.json` inside the app sandbox. Finishing a workout saves only completed sets to history. Uncompleted sets are excluded from the finished record; templates remain reusable.
 
 This initial app does not include cloud sync, Apple Health integration, Apple Watch support, charts, or social features. Local data is tied to the app installation; deleting the app removes its local files.

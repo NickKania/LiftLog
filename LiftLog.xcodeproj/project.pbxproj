@@ -18,6 +18,7 @@
 		5CEB2D496DB7192533C64A9C /* exercise-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 837669AE694080AC1CA4ED1B /* exercise-catalog.json */; };
 		63FEF153F1D4A1152CEF20BB /* WorkoutImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346AF47C2B8BAF1DB14D8537 /* WorkoutImportView.swift */; };
 		729B7917B33319B426F22D3E /* LiftLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34EF9BEBC35DE75C1D1C8CA /* LiftLogApp.swift */; };
+		76A4F4F1F9E50A7A266B8D5A /* PersonalCatalogUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF119549ADEE654B1F436C3 /* PersonalCatalogUITests.swift */; };
 		854529A35898BEE3CC7BF012 /* TemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307670086F599871C2ED930C /* TemplateEditorView.swift */; };
 		86B10999D30EC2A7D4E2893F /* WeightUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AEDE53FC1923E6574833CA /* WeightUnit.swift */; };
 		88CCB7FD0707A6B3920F1238 /* WorkflowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 937217B83F84CD9827FEE598 /* WorkflowUITests.swift */; };
@@ -64,6 +65,7 @@
 		A8251E09E01B75056F035BE7 /* WorkoutImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImport.swift; sourceTree = "<group>"; };
 		B5AEDE53FC1923E6574833CA /* WeightUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightUnit.swift; sourceTree = "<group>"; };
 		D34EF9BEBC35DE75C1D1C8CA /* LiftLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftLogApp.swift; sourceTree = "<group>"; };
+		DCF119549ADEE654B1F436C3 /* PersonalCatalogUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalCatalogUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -145,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */,
+				DCF119549ADEE654B1F436C3 /* PersonalCatalogUITests.swift */,
 				937217B83F84CD9827FEE598 /* WorkflowUITests.swift */,
 				3529283D0B184F68A1D285B8 /* WorkoutImportUITests.swift */,
 			);
@@ -275,6 +278,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1F83DD23FDF095D24881B279 /* LiftLogUITests.swift in Sources */,
+				76A4F4F1F9E50A7A266B8D5A /* PersonalCatalogUITests.swift in Sources */,
 				88CCB7FD0707A6B3920F1238 /* WorkflowUITests.swift in Sources */,
 				1E336F4101032512B0CCF4E4 /* WorkoutImportUITests.swift in Sources */,
 			);

@@ -7,7 +7,7 @@ struct ExercisePickerView: View {
     let onSelect: (Exercise) -> Void
 
     private var matches: [Exercise] {
-        store.exercises.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
+        store.exercises.filter { Exercise.normalizedName(search).isEmpty || Exercise.normalizedName($0.name).contains(Exercise.normalizedName(search)) }
     }
 
     var body: some View {
@@ -25,7 +25,7 @@ struct ExercisePickerView: View {
                     }
                     .accessibilityIdentifier("exercise-\(exercise.name)")
                 }
-                if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !Exercise.normalizedName(search).isEmpty && !store.exercises.contains(where: { Exercise.normalizedName($0.name) == Exercise.normalizedName(search) }) {
                     Section {
                         Button {
                             onSelect(Exercise(name: search.trimmingCharacters(in: .whitespacesAndNewlines), category: "Custom"))

@@ -124,14 +124,10 @@ enum StrongWorkoutImporter {
         let candidates = sessions.filter { !invalidGroups.contains($0.importSourceKey!) }.map { WorkoutImportCandidate(id: $0.importSourceKey!, session: $0) }
         let includedNames = Set(candidates.flatMap { $0.session.exercises.map(\.exercise.name) })
         let mappings = sourceNames.filter(includedNames.contains).map { sourceName in
-            let matches = catalog.filter { normalized($0.name) == normalized(sourceName) }
+            let matches = catalog.filter { Exercise.normalizedName($0.name) == Exercise.normalizedName(sourceName) }
             return WorkoutImportExerciseMapping(sourceName: sourceName, matchedExercise: matches.count == 1 ? matches[0] : nil)
         }
         return WorkoutImportPreview(workouts: candidates, exerciseMappings: mappings, warnings: warnings, skippedRestRows: skippedRestRows)
-    }
-
-    private static func normalized(_ name: String) -> String {
-        name.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     private static func optionalNumber(_ text: String) -> Double? {

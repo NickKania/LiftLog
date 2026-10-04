@@ -8,7 +8,8 @@ final class WorkoutStore {
     private(set) var history: [WorkoutSession] = []
     private(set) var activeWorkout: WorkoutSession?
     private(set) var unit: WeightUnit = .lb
-    let exercises: [Exercise]
+    private(set) var personalExercises: [Exercise] = []
+    var exercises: [Exercise] { ExerciseCatalog.all + personalExercises }
     var errorMessage: String?
 
     @ObservationIgnored private let fileURL: URL
@@ -20,11 +21,33 @@ final class WorkoutStore {
         var history: [WorkoutSession]
         var activeWorkout: WorkoutSession?
         var unit: WeightUnit
+        var personalExercises: [Exercise] = []
+
+        enum CodingKeys: String, CodingKey {
+            case version, templates, history, activeWorkout, unit, personalExercises
+        }
+
+        init(templates: [WorkoutTemplate], history: [WorkoutSession], activeWorkout: WorkoutSession?, unit: WeightUnit, personalExercises: [Exercise]) {
+            self.templates = templates
+            self.history = history
+            self.activeWorkout = activeWorkout
+            self.unit = unit
+            self.personalExercises = personalExercises
+        }
+
+        init(from decoder: Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            version = try values.decode(Int.self, forKey: .version)
+            templates = try values.decode([WorkoutTemplate].self, forKey: .templates)
+            history = try values.decode([WorkoutSession].self, forKey: .history)
+            activeWorkout = try values.decodeIfPresent(WorkoutSession.self, forKey: .activeWorkout)
+            unit = try values.decode(WeightUnit.self, forKey: .unit)
+            personalExercises = try values.decodeIfPresent([Exercise].self, forKey: .personalExercises) ?? []
+        }
     }
 
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL
-        exercises = ExerciseCatalog.all
         if FileManager.default.fileExists(atPath: self.fileURL.path) {
             do {
                 let data = try Data(contentsOf: self.fileURL)
@@ -33,7 +56,7 @@ final class WorkoutStore {
                     throw StoreError.invalid("This workout file uses an unsupported version.")
                 }
                 try Self.validate(snapshot)
-                apply(snapshot)
+                apply(Self.backfillingCatalog(snapshot))
             } catch {
                 let message = "Could not load your workouts: \(error.localizedDescription) Your saved file was preserved. Restore or move the file and relaunch to continue."
                 loadFailure = message
@@ -52,6 +75,9 @@ final class WorkoutStore {
             var next = snapshot
             var trimmed = template
             trimmed.name = template.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            for index in trimmed.exercises.indices {
+                trimmed.exercises[index].exercise = Self.register(trimmed.exercises[index].exercise, in: &next)
+            }
             if let index = next.templates.firstIndex(where: { $0.id == trimmed.id }) {
                 next.templates[index] = trimmed
             } else {
@@ -76,7 +102,7 @@ final class WorkoutStore {
         do {
             if let template { try Self.validate(template) }
             var next = snapshot
-            next.activeWorkout = WorkoutSession(
+            var workout = WorkoutSession(
                 templateID: template?.id,
                 name: template?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Workout",
                 unit: unit,
@@ -86,6 +112,10 @@ final class WorkoutStore {
                     })
                 } ?? []
             )
+            for index in workout.exercises.indices {
+                workout.exercises[index].exercise = Self.register(workout.exercises[index].exercise, in: &next)
+            }
+            next.activeWorkout = workout
             return commit(next)
         } catch { return fail(error) }
     }
@@ -104,6 +134,9 @@ final class WorkoutStore {
             updated.unit = activeWorkout.unit
             updated.finishedAt = nil
             var next = snapshot
+            for index in updated.exercises.indices {
+                updated.exercises[index].exercise = Self.register(updated.exercises[index].exercise, in: &next)
+            }
             next.activeWorkout = updated
             return commit(next)
         } catch { return fail(error) }
@@ -171,7 +204,11 @@ final class WorkoutStore {
                 return nil
             }
             if !keys.insert(key).inserted { duplicates += 1; continue }
-            next.history.append(session)
+            var saved = session
+            for index in saved.exercises.indices {
+                saved.exercises[index].exercise = Self.register(saved.exercises[index].exercise, in: &next)
+            }
+            next.history.append(saved)
             imported += 1
         }
         next.history.sort { $0.startedAt > $1.startedAt }
@@ -180,7 +217,7 @@ final class WorkoutStore {
     }
 
     private var snapshot: Snapshot {
-        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit)
+        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit, personalExercises: personalExercises)
     }
 
     private func apply(_ snapshot: Snapshot) {
@@ -188,6 +225,40 @@ final class WorkoutStore {
         history = snapshot.history
         activeWorkout = snapshot.activeWorkout
         unit = snapshot.unit
+        personalExercises = snapshot.personalExercises
+    }
+
+    /// Registers only in the proposed snapshot; failed writes and abandoned drafts publish nothing.
+    /// Picker-created and unmatched import entries use Custom and adopt a reusable identity.
+    /// Other supplied snapshots preserve their recorded metadata, including retired catalog entries.
+    private static func register(_ exercise: Exercise, in snapshot: inout Snapshot) -> Exercise {
+        let name = Exercise.normalizedName(exercise.name)
+        if let canonical = ExerciseCatalog.all.first(where: { Exercise.normalizedName($0.name) == name }) {
+            return exercise.category == "Custom" ? canonical : exercise
+        }
+        if let canonical = snapshot.personalExercises.first(where: { Exercise.normalizedName($0.name) == name }) {
+            return exercise.category == "Custom" ? canonical : exercise
+        }
+        var personal = exercise
+        personal.name = exercise.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if ExerciseCatalog.all.contains(where: { $0.id == personal.id }) || snapshot.personalExercises.contains(where: { $0.id == personal.id }) {
+            personal.id = UUID()
+        }
+        snapshot.personalExercises.append(personal)
+        return exercise.category == "Custom" ? personal : exercise
+    }
+
+    /// Old workout snapshots stay byte-for-byte untouched on load. Their exercises become reusable
+    /// in memory and join the same atomic snapshot on the next successful mutation.
+    private static func backfillingCatalog(_ snapshot: Snapshot) -> Snapshot {
+        var next = snapshot
+        next.personalExercises = []
+        let saved = snapshot.personalExercises
+            + snapshot.history.flatMap { $0.exercises.map(\.exercise) }
+            + snapshot.templates.flatMap { $0.exercises.map(\.exercise) }
+            + (snapshot.activeWorkout?.exercises.map(\.exercise) ?? [])
+        for exercise in saved { _ = register(exercise, in: &next) }
+        return next
     }
 
     private func commit(_ next: Snapshot) -> Bool {
@@ -276,6 +347,8 @@ final class WorkoutStore {
     }
 
     private static func validate(_ snapshot: Snapshot) throws {
+        try validateIDs(snapshot.personalExercises.map(\.id))
+        for exercise in snapshot.personalExercises { try validateName(exercise.name) }
         try validateIDs(snapshot.templates.map(\.id))
         try validateIDs(snapshot.history.map(\.id))
         for template in snapshot.templates { try validate(template) }
