@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Owns local workout data. Mutations commit only after the atomic disk write succeeds.
+/// Owns local workout data. Mutations publish only after the SQLite transaction succeeds.
 @Observable @MainActor
 final class WorkoutStore {
     private(set) var templates: [WorkoutTemplate] = []
@@ -15,56 +15,39 @@ final class WorkoutStore {
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private var loadFailure: String?
 
-    private struct Snapshot: Codable {
-        var version = 1
-        var templates: [WorkoutTemplate]
-        var history: [WorkoutSession]
-        var activeWorkout: WorkoutSession?
-        var unit: WeightUnit
-        var personalExercises: [Exercise] = []
+    private typealias Snapshot = WorkoutSnapshot
+    let cloudBackup: CloudBackupManager
+    private(set) var isRestoring = false
 
-        enum CodingKeys: String, CodingKey {
-            case version, templates, history, activeWorkout, unit, personalExercises
-        }
-
-        init(templates: [WorkoutTemplate], history: [WorkoutSession], activeWorkout: WorkoutSession?, unit: WeightUnit, personalExercises: [Exercise]) {
-            self.templates = templates
-            self.history = history
-            self.activeWorkout = activeWorkout
-            self.unit = unit
-            self.personalExercises = personalExercises
-        }
-
-        init(from decoder: Decoder) throws {
-            let values = try decoder.container(keyedBy: CodingKeys.self)
-            version = try values.decode(Int.self, forKey: .version)
-            templates = try values.decode([WorkoutTemplate].self, forKey: .templates)
-            history = try values.decode([WorkoutSession].self, forKey: .history)
-            activeWorkout = try values.decodeIfPresent(WorkoutSession.self, forKey: .activeWorkout)
-            unit = try values.decode(WeightUnit.self, forKey: .unit)
-            personalExercises = try values.decodeIfPresent([Exercise].self, forKey: .personalExercises) ?? []
-        }
-    }
-
-    init(fileURL: URL? = nil) {
+    init(fileURL: URL? = nil, legacyFileURL: URL? = nil, cloudBackup: CloudBackupManager? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL
-        if FileManager.default.fileExists(atPath: self.fileURL.path) {
-            do {
-                let data = try Data(contentsOf: self.fileURL)
-                let snapshot = try JSONDecoder().decode(Snapshot.self, from: data)
-                guard snapshot.version == 1 else {
-                    throw StoreError.invalid("This workout file uses an unsupported version.")
-                }
-                try Self.validate(snapshot)
-                apply(Self.backfillingCatalog(snapshot))
-            } catch {
-                let message = "Could not load your workouts: \(error.localizedDescription) Your saved file was preserved. Restore or move the file and relaunch to continue."
-                loadFailure = message
-                errorMessage = message
+        self.cloudBackup = cloudBackup ?? CloudBackupManager(databaseURL: self.fileURL, available: fileURL == nil)
+        let legacyURL = legacyFileURL ?? self.fileURL.deletingPathExtension().appendingPathExtension("json")
+        do {
+            let database = WorkoutDatabase(url: self.fileURL)
+            if FileManager.default.fileExists(atPath: self.fileURL.path) {
+                let saved = try database.load(recoverInterruptedWrite: true)
+                try Self.validate(saved)
+                apply(Self.backfillingCatalog(saved))
+            } else if FileManager.default.fileExists(atPath: legacyURL.path) {
+                let saved = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: legacyURL))
+                guard saved.version == 1 else { throw StoreError.invalid("This workout file uses an unsupported version.") }
+                try Self.validate(saved)
+                let migrated = Self.backfillingCatalog(saved)
+                // Publish a complete database only after migration succeeds. Keep the original JSON.
+                let staging = self.fileURL.deletingLastPathComponent().appendingPathComponent("migration-\(UUID().uuidString).sqlite")
+                defer { try? FileManager.default.removeItem(at: staging) }
+                try WorkoutDatabase(url: staging).save(migrated)
+                try FileManager.default.moveItem(at: staging, to: self.fileURL)
+                apply(migrated)
+            } else {
+                templates = Self.starterTemplates(catalog: exercises)
+                _ = commit(snapshot)
             }
-        } else {
-            templates = Self.starterTemplates(catalog: exercises)
-            _ = commit(snapshot)
+        } catch {
+            let message = "Could not load your workouts: \(error.localizedDescription) Your saved data was preserved. Restore a backup in Settings or restore the saved file and relaunch."
+            loadFailure = message
+            errorMessage = message
         }
     }
 
@@ -268,18 +251,45 @@ final class WorkoutStore {
         }
         do {
             try Self.validate(next)
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(next)
-            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try data.write(to: fileURL, options: .atomic)
+            guard !isRestoring else { throw StoreError.invalid("Wait for the backup restore to finish before making changes.") }
+            try WorkoutDatabase(url: fileURL).save(next)
             apply(next)
             errorMessage = nil
+            cloudBackup.scheduleBackup()
             return true
         } catch {
             errorMessage = "Could not save your workouts: \(error.localizedDescription)"
             return false
         }
+    }
+
+    func beginRestore() { isRestoring = true }
+    func endRestore() { isRestoring = false }
+
+    /// A valid standalone file replaces local storage atomically, even if the old database is damaged.
+    func restoreDatabase(from source: URL) throws {
+        let saved = try WorkoutDatabase(url: source).load()
+        try Self.validate(saved)
+        let restored = Self.backfillingCatalog(saved)
+        let folder = fileURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let staging = folder.appendingPathComponent("restoring-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: staging) }
+        try WorkoutDatabase(url: staging).save(restored)
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            let recovery = folder.appendingPathComponent("before-restore-\(UUID().uuidString).sqlite")
+            if loadFailure == nil {
+                try WorkoutDatabase(url: fileURL).backup(to: recovery)
+            } else {
+                // Preserve damaged bytes when SQLite cannot open the current database.
+                try FileManager.default.copyItem(at: fileURL, to: recovery)
+            }
+        }
+        try Data(contentsOf: staging).write(to: fileURL, options: .atomic)
+        apply(restored)
+        loadFailure = nil
+        errorMessage = nil
+        cloudBackup.scheduleBackup()
     }
 
     private func fail(_ error: Error) -> Bool {
@@ -294,7 +304,7 @@ final class WorkoutStore {
         }
     }
 
-    private static func validateSet(weight: Double, reps: Int) throws {
+    nonisolated private static func validateSet(weight: Double, reps: Int) throws {
         guard weight.isFinite, weight >= 0 else {
             throw StoreError.invalid("Weight must be a finite number of zero or more.")
         }
@@ -303,13 +313,13 @@ final class WorkoutStore {
         }
     }
 
-    private static func validateName(_ name: String) throws {
+    nonisolated private static func validateName(_ name: String) throws {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw StoreError.invalid("Enter a name before saving.")
         }
     }
 
-    private static func validate(_ template: WorkoutTemplate) throws {
+    nonisolated private static func validate(_ template: WorkoutTemplate) throws {
         try validateName(template.name)
         guard !template.exercises.isEmpty else {
             throw StoreError.invalid("Add at least one exercise to your template.")
@@ -325,8 +335,12 @@ final class WorkoutStore {
         }
     }
 
-    private static func validate(_ workout: WorkoutSession) throws {
+    nonisolated private static func validate(_ workout: WorkoutSession) throws {
         try validateName(workout.name)
+        guard workout.startedAt.timeIntervalSinceReferenceDate.isFinite,
+              workout.finishedAt.map({ $0.timeIntervalSinceReferenceDate.isFinite && $0 >= workout.startedAt }) ?? true else {
+            throw StoreError.invalid("A workout contains invalid dates.")
+        }
         try validateIDs(workout.exercises.map(\.id))
         for item in workout.exercises {
             try validateName(item.exercise.name)
@@ -340,13 +354,13 @@ final class WorkoutStore {
         }
     }
 
-    private static func validateIDs(_ ids: [UUID]) throws {
+    nonisolated private static func validateIDs(_ ids: [UUID]) throws {
         guard Set(ids).count == ids.count else {
             throw StoreError.invalid("Workout items must have unique identifiers.")
         }
     }
 
-    private static func validate(_ snapshot: Snapshot) throws {
+    nonisolated static func validate(_ snapshot: WorkoutSnapshot) throws {
         try validateIDs(snapshot.personalExercises.map(\.id))
         for exercise in snapshot.personalExercises { try validateName(exercise.name) }
         try validateIDs(snapshot.templates.map(\.id))
@@ -370,7 +384,7 @@ final class WorkoutStore {
     private static var defaultFileURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("LiftLog", isDirectory: true).appendingPathComponent("workouts.json")
+        return base.appendingPathComponent("LiftLog", isDirectory: true).appendingPathComponent("workouts.sqlite")
     }
 
     private static func starterTemplates(catalog: [Exercise]) -> [WorkoutTemplate] {

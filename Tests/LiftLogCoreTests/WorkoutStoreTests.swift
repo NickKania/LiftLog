@@ -20,7 +20,7 @@ final class WorkoutStoreTests: XCTestCase {
             .appendingPathComponent("LiftLogTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
-        return directory.appendingPathComponent("workouts.json")
+        return directory.appendingPathComponent("workouts.sqlite")
     }
 
     @MainActor
@@ -138,7 +138,7 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertTrue(store.updateActiveWorkout(active))
         XCTAssertTrue(store.finishWorkout())
         XCTAssertTrue(store.startWorkout(template: planned))
-        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: legacyJSON(from: store)) as? [String: Any])
         func rewriteSets(_ entry: [String: Any], template: Bool) -> [String: Any] {
             var entry = entry
             entry["exercises"] = (entry["exercises"] as! [[String: Any]]).map { exercise in
@@ -156,7 +156,9 @@ final class WorkoutStoreTests: XCTestCase {
         snapshot["templates"] = (snapshot["templates"] as! [[String: Any]]).map { rewriteSets($0, template: true) }
         snapshot["history"] = (snapshot["history"] as! [[String: Any]]).map { rewriteSets($0, template: false) }
         snapshot["activeWorkout"] = rewriteSets(snapshot["activeWorkout"] as! [String: Any], template: false)
-        try JSONSerialization.data(withJSONObject: snapshot).write(to: file)
+        let legacy = file.deletingPathExtension().appendingPathExtension("json")
+        try JSONSerialization.data(withJSONObject: snapshot).write(to: legacy)
+        try FileManager.default.removeItem(at: file)
 
         let migrated = WorkoutStore(fileURL: file)
         XCTAssertNil(migrated.errorMessage)
@@ -166,12 +168,8 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertEqual(migrated.activeWorkout?.exercises[0].sets.map(\.reps), [8, 6])
         XCTAssertNil(migrated.activeWorkout?.exercises[0].sets[0].targetReps)
         XCTAssertTrue(migrated.saveTemplate(planned))
-        let persisted = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
-        let templates = try XCTUnwrap(persisted["templates"] as? [[String: Any]])
-        let exercises = try XCTUnwrap(templates[0]["exercises"] as? [[String: Any]])
-        let sets = try XCTUnwrap(exercises[0]["sets"] as? [[String: Any]])
-        XCTAssertNotNil(sets[0]["targetReps"])
-        XCTAssertNil(sets[0]["reps"])
+        let persisted = try WorkoutDatabase(url: file).load()
+        XCTAssertEqual(persisted.templates.first { $0.id == planned.id }, planned)
         XCTAssertEqual(WorkoutStore(fileURL: file).history, migrated.history)
     }
 
@@ -539,15 +537,18 @@ final class WorkoutStoreTests: XCTestCase {
     @MainActor
     func testUnsupportedPersistenceVersionIsRejectedWithoutOverwritingIt() async throws {
         let file = try temporaryFile()
-        _ = WorkoutStore(fileURL: file)
-        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        let store = WorkoutStore(fileURL: file)
+        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: legacyJSON(from: store)) as? [String: Any])
         snapshot["version"] = 999
         let unsupported = try JSONSerialization.data(withJSONObject: snapshot)
-        try unsupported.write(to: file)
-        let store = WorkoutStore(fileURL: file)
-        XCTAssertNotNil(store.errorMessage)
-        XCTAssertTrue(store.templates.isEmpty)
-        XCTAssertEqual(try Data(contentsOf: file), unsupported)
+        let legacy = file.deletingPathExtension().appendingPathExtension("json")
+        try unsupported.write(to: legacy)
+        try FileManager.default.removeItem(at: file)
+        let reloaded = WorkoutStore(fileURL: file)
+        XCTAssertNotNil(reloaded.errorMessage)
+        XCTAssertTrue(reloaded.templates.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: legacy), unsupported)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
     }
 
     @MainActor
@@ -555,7 +556,7 @@ final class WorkoutStoreTests: XCTestCase {
         let file = try temporaryFile()
         let store = WorkoutStore(fileURL: file)
         XCTAssertTrue(store.startWorkout(template: template()))
-        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: legacyJSON(from: store)) as? [String: Any])
         var active = try XCTUnwrap(snapshot["activeWorkout"] as? [String: Any])
         var exercises = try XCTUnwrap(active["exercises"] as? [[String: Any]])
         var sets = try XCTUnwrap(exercises[0]["sets"] as? [[String: Any]])
@@ -564,12 +565,14 @@ final class WorkoutStoreTests: XCTestCase {
         active["exercises"] = exercises
         snapshot["activeWorkout"] = active
         let invalid = try JSONSerialization.data(withJSONObject: snapshot)
-        try invalid.write(to: file)
+        let legacy = file.deletingPathExtension().appendingPathExtension("json")
+        try invalid.write(to: legacy)
+        try FileManager.default.removeItem(at: file)
 
         let reloaded = WorkoutStore(fileURL: file)
         XCTAssertNotNil(reloaded.errorMessage)
         XCTAssertNil(reloaded.activeWorkout)
         XCTAssertFalse(reloaded.startWorkout())
-        XCTAssertEqual(try Data(contentsOf: file), invalid)
+        XCTAssertEqual(try Data(contentsOf: legacy), invalid)
     }
 }

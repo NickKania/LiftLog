@@ -6,7 +6,7 @@ let package = Package(
     platforms: [.macOS(.v14), .iOS(.v17)],
     products: [.library(name: "LiftLogCore", targets: ["LiftLogCore"])],
     targets: [
-        .target(name: "LiftLogCore", path: "LiftLog/Core", resources: [.process("Resources")]),
+        .target(name: "LiftLogCore", path: "LiftLog/Core", resources: [.process("Resources")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "LiftLogCoreTests", dependencies: ["LiftLogCore"], path: "Tests/LiftLogCoreTests", resources: [.copy("Fixtures")])
     ]
 )

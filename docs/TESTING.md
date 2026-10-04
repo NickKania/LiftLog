@@ -13,7 +13,7 @@ These tests exercise workout behavior and persistence through the `LiftLogCore` 
 
 Catalog coverage verifies all 876 bundled entries load, original starter identities and order remain stable, matched exercises reuse existing IDs, and retired exercise snapshots survive in templates, active workouts, and history. The generator check verifies the resource matches the pinned upstream dataset and reviewed compatibility mappings without accessing the network.
 
-The core suite passes 56 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
+The core suite contains 68 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
 
 Eleven import tests use `Tests/LiftLogCoreTests/Fixtures/strong_workouts.csv`, the supplied Strong export, to verify every exercise, weight, rep value, timestamp, duration, and excluded rest record. Synthetic cases cover quoted CSV, BOM/CRLF, malformed data, unsupported measurements, explicit units/time zones, exercise overrides, selected subsets, duplicate imports after reload, and atomic write failures. `WorkoutImportUITests` adds three UI tests covering cancellation, single/multiple selection, matching, unit preservation during navigation, saving, relaunch, and duplicate detection using a DEBUG-only synthetic fixture.
 
@@ -95,4 +95,19 @@ Seven core catalog tests cover merged identities, persisted personal entries, le
 
 ## Data isolation
 
-Use a simulator installation for acceptance testing. Its local JSON state is separate from a physical iPhone’s app data. Removing the app resets its stored state, so only reset an installation whose data can be discarded.
+Use a simulator installation for acceptance testing. Its local SQLite state is separate from a physical iPhone’s app data. Removing the app resets its stored state, so only reset an installation whose data can be discarded.
+
+
+### SQLite migration and iCloud Drive backups
+
+The SQLite and backup change passed all 68 core tests, a simulator build, and two targeted UI flows: template completion/relaunch and unit preference persistence with an active workout. Real iCloud transfers still require the signed-device checks below.
+
+The twelve `StorageAndBackupTests` use isolated databases, UserDefaults suites, and a local directory in place of the iCloud container. They exercise migration and backup/restore behavior without signing in to iCloud. They do not prove actual iCloud upload, remote discovery, account changes, signing, or downloads.
+
+- Upgrade an installation with version-1 JSON and check templates, personal exercises, weight preference, history, and active workout. Verify the JSON remains untouched and later launches use SQLite.
+- On a signed physical device with iCloud Drive enabled, turn on automatic backups, edit a workout, and leave the app. Confirm a backup appears in Files under Lift Log → Backups and eventually reports uploaded.
+- Use Back Up Now, then refresh the restore picker. Confirm dates, sizes, and upload state update.
+- On another signed device or a reinstall using the same Apple account, discover and download that backup, cancel the restore confirmation, then confirm restoration and verify all data.
+- Disable iCloud Drive or disconnect the network. Local saves must continue; backup errors must remain separate, and queued uploads must complete when connectivity returns.
+- Select a corrupt or unsupported backup and verify local data stays intact. Restore over a damaged local database and verify normal saving resumes.
+- Check that retention removes only older uploaded backups from the same installation. Pending uploads and other devices’ backups must remain.
