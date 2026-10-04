@@ -13,7 +13,7 @@ These tests exercise workout behavior and persistence through the `LiftLogCore` 
 
 Catalog coverage verifies all 876 bundled entries load, original starter identities and order remain stable, matched exercises reuse existing IDs, and retired exercise snapshots survive in templates, active workouts, and history. The generator check verifies the resource matches the pinned upstream dataset and reviewed compatibility mappings without accessing the network.
 
-The initial core verification passed 16 XCTest cases with no failures. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, active workout protection, unit conversion, atomic save failure rollback, and invalid saved-file protection.
+The core suite passes 38 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
 
 Generate and build the iOS project separately:
 
@@ -22,13 +22,13 @@ xcodegen generate
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, exercises template creation, set completion, resume after relaunch, finishing, and history navigation. Run it with an installed iPhone simulator, for example:
+The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, contains six simulator UI integration tests. They exercise template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, and unit preferences. Run it with an installed iPhone simulator, for example:
 
 ```sh
-xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test
+xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
 ```
 
-Replace `iPhone 17` with an available simulator name from `xcrun simctl list devices available`. The UI test uses a separate testing data file and resets that test file at the start of the flow. The end-to-end UI test passed on the iPhone 17 Pro simulator (iOS 26.5), covering template creation, weight entry, completion, relaunch recovery, finishing, and history detail navigation.
+Replace `iPhone 17` with an available simulator name from `xcrun simctl list devices available`. Each UI test uses a separate testing data file and resets that test file at the start of its flow. Run the UI tests serially because they share that testing file in the app sandbox (`-parallel-testing-enabled NO`). The end-to-end UI test passed on the iPhone 17 Pro simulator (iOS 26.5), covering template creation, weight entry, completion, relaunch recovery, finishing, and history detail navigation.
 
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
@@ -36,7 +36,7 @@ For interactive verification, open the project in Xcode and run it on an iPhone 
 
 ### Templates
 
-- Create a named template, add exercises, and configure multiple sets with weights and rep counts.
+- Create a named template, add exercises, and configure multiple sets with weights and target reps.
 - Save it, leave the screen, and confirm its entries remain intact.
 - Edit the template and verify the changes appear when starting a new workout.
 - Search for a catalog exercise, add a custom exercise by name, and remove an exercise or set from a template.
@@ -45,7 +45,7 @@ For interactive verification, open the project in Xcode and run it on an iPhone 
 ### Workout execution
 
 - Start a template and confirm its exercise order and planned sets are copied into the workout.
-- Change any set’s weight and reps and verify both values appear across all sets of that exercise. Confirm other exercises retain their values and each set keeps its own completion state.
+- Change any set’s weight and reps and verify both values appear across all sets of that exercise. Confirm original target reps remain visible and unchanged, other exercises retain their values, and each set keeps its own completion state.
 - Toggle a set back to incomplete and verify it can be completed again.
 - Add and remove exercises and sets in the active workout without changing the source template.
 - Close and reopen the app during a workout; confirm valid edits and completion flags resume.

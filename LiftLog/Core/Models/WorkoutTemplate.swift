@@ -42,6 +42,7 @@ struct TemplateSet: Codable, Equatable, Identifiable {
         self.weight = weight
         self.targetReps = targetReps
     }
+
     // Older saved templates called the planned count "reps".
     private enum CodingKeys: String, CodingKey {
         case id, weight, targetReps, reps

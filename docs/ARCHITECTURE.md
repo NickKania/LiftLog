@@ -20,19 +20,21 @@ The iOS target compiles the core sources alongside the app sources. The Swift pa
 
 ## Templates and sessions
 
-An exercise has an identifier, name, and category. A template contains an ordered list of exercise entries, each with planned sets. A planned set specifies a weight and repetition count.
+An exercise has an identifier, name, and category. A template contains an ordered list of exercise entries, each with planned sets. A planned set specifies a weight and `targetReps`.
 
 `ExerciseCatalog` loads 876 exercises from a bundled JSON resource generated from the public-domain free-exercise-db dataset. It is available offline on every launch, independently of saved workout data. Original starter identities and ordering are retained, and reviewed equivalent exercises reuse existing IDs. See [Exercise catalog](EXERCISE_CATALOG.md) for provenance, generation, and compatibility details.
 
-A workout session is a separate snapshot with its own exercise entries and sets. Session sets carry a completion flag, while the session records its starting time, optional finishing time, and weight unit. Starting a workout does not mutate the source template. A later template edit does not rewrite past workouts.
+A workout session is a separate snapshot with its own exercise entries and sets. Session sets store actual `reps` separately from an optional `targetReps` snapshot and carry a completion flag, while the session records its starting time, optional finishing time, and weight unit. Starting a workout copies target reps into the session and initially prefills actual reps with that target. Editing actual reps never changes the target. Starting a workout does not mutate the source template. A later template edit does not rewrite past workouts.
 
 Only one workout is active at a time. Completed sessions are kept in history. Finishing filters out uncompleted sets and exercise entries with no completed sets, so history represents work actually performed.
 
-Editing weight or reps in either editor applies both values to every set in that exercise entry. Set identifiers and completion flags remain independent. Other exercise entries, source templates, and past sessions are unaffected by active workout edits.
+Editing weight or target reps in the template editor, or weight or actual reps in the workout editor, applies both values to every set in that exercise entry. Set identifiers and completion flags remain independent. Other exercise entries, source templates, and past sessions are unaffected by active workout edits.
 
 ## Persistence
 
 The store saves a Codable JSON snapshot in `Application Support/LiftLog/workouts.json` inside the app sandbox. The snapshot carries schema version `1`, templates, unit preference, workout history, and the current active workout. Valid changes to the active workout are saved so that a user can resume after the app is closed.
+
+Legacy template `reps` fields decode as `targetReps` and are written using the new name on the next save. Older sessions retain their recorded reps with no target snapshot; targets are not inferred from templates that may have changed.
 
 Mutations validate and atomically write the next snapshot before publishing it to in-memory state. A failed write leaves the prior state intact and exposes an error. On first launch, the store seeds Upper Body and Lower Body templates and an exercise catalog.
 

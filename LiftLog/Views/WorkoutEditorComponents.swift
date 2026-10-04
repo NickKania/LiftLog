@@ -60,14 +60,10 @@ struct SetInputRow: View {
     @State private var initialized = false
 
     private var parsedWeight: Double? {
-        guard !weightText.isEmpty,
-              let value = Double(weightText.replacingOccurrences(of: ",", with: ".")),
-              value.isFinite, value >= 0 else { return nil }
-        return value
+        SetInputValidation.weight(from: weightText)
     }
     private var parsedReps: Int? {
-        guard let value = Int(repsText), value > 0 else { return nil }
-        return value
+        SetInputValidation.reps(from: repsText)
     }
     private var valid: Bool { parsedWeight != nil && parsedReps != nil }
 

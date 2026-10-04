@@ -62,6 +62,7 @@ final class LiftLogUITests: XCTestCase {
         weight.typeText(XCUIKeyboardKey.delete.rawValue + "135")
         app.buttons["Done"].tap()
         XCTAssertEqual(app.textFields["setWeight-2"].value as? String, "135")
+        XCTAssertTrue(app.staticTexts["TARGET REPS"].exists)
         let reps = app.textFields["setReps-2"]
         reps.tap()
         reps.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 2) + "6")
@@ -75,6 +76,12 @@ final class LiftLogUITests: XCTestCase {
         start.tap()
         let complete = app.buttons["completeSet-1"].firstMatch
         XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["setTargetReps-1"].firstMatch.label, "Target: 6")
+        let actualReps = app.textFields["setReps-1"].firstMatch
+        actualReps.tap()
+        actualReps.typeText(XCUIKeyboardKey.delete.rawValue + "5")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(app.staticTexts["setTargetReps-1"].firstMatch.label, "Target: 6")
         complete.tap()
         XCTAssertEqual(complete.label, "Mark set 1 incomplete")
         app.terminate()
@@ -85,6 +92,8 @@ final class LiftLogUITests: XCTestCase {
         XCTAssertTrue(app.buttons["completeSet-1"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons["completeSet-1"].firstMatch.label, "Mark set 1 incomplete")
         XCTAssertEqual(app.textFields["setWeight-1"].firstMatch.value as? String, "135")
+        XCTAssertEqual(app.textFields["setReps-1"].firstMatch.value as? String, "5")
+        XCTAssertEqual(app.staticTexts["setTargetReps-1"].firstMatch.label, "Target: 6")
         app.buttons["finishWorkoutButton"].tap()
         app.buttons["confirmFinishWorkoutButton"].firstMatch.tap()
         XCTAssertTrue(app.buttons["createTemplateButton"].waitForExistence(timeout: 5))

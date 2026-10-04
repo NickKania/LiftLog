@@ -99,6 +99,83 @@ final class WorkoutStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testTargetRepsStayIndependentOfActualRepsAndLaterTemplateEdits() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        var planned = template()
+        XCTAssertTrue(store.saveTemplate(planned))
+        XCTAssertTrue(store.startWorkout(template: planned))
+        var active = try XCTUnwrap(store.activeWorkout)
+        XCTAssertEqual(active.exercises[0].sets.map(\.targetReps), [8, 6])
+        active.exercises[0].updateSetValues(weight: 135, reps: 5)
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        planned.exercises[0].updateSetValues(weight: 135, targetReps: 12)
+        XCTAssertTrue(store.saveTemplate(planned))
+
+        let resumed = WorkoutStore(fileURL: file)
+        XCTAssertEqual(resumed.activeWorkout?.exercises[0].sets.map(\.targetReps), [8, 6])
+        XCTAssertEqual(resumed.activeWorkout?.exercises[0].sets.map(\.reps), [5, 5])
+        XCTAssertTrue(resumed.finishWorkout())
+        let reloaded = WorkoutStore(fileURL: file)
+        XCTAssertEqual(reloaded.history.first?.exercises[0].sets[0].targetReps, 8)
+        XCTAssertEqual(reloaded.history.first?.exercises[0].sets[0].reps, 5)
+        XCTAssertEqual(reloaded.templates.first { $0.id == planned.id }, planned)
+        XCTAssertTrue(reloaded.startWorkout(template: planned))
+        XCTAssertEqual(reloaded.activeWorkout?.exercises[0].sets.map(\.targetReps), [12, 12])
+    }
+
+    @MainActor
+    func testLegacyRepFieldsLoadAndSaveWithoutLosingRecordedValues() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        let planned = template()
+        XCTAssertTrue(store.saveTemplate(planned))
+        XCTAssertTrue(store.startWorkout(template: planned))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].reps = 5
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.finishWorkout())
+        XCTAssertTrue(store.startWorkout(template: planned))
+        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        func rewriteSets(_ entry: [String: Any], template: Bool) -> [String: Any] {
+            var entry = entry
+            entry["exercises"] = (entry["exercises"] as! [[String: Any]]).map { exercise in
+                var exercise = exercise
+                exercise["sets"] = (exercise["sets"] as! [[String: Any]]).map { set in
+                    var set = set
+                    if template { set["reps"] = set["targetReps"] }
+                    set.removeValue(forKey: "targetReps")
+                    return set
+                }
+                return exercise
+            }
+            return entry
+        }
+        snapshot["templates"] = (snapshot["templates"] as! [[String: Any]]).map { rewriteSets($0, template: true) }
+        snapshot["history"] = (snapshot["history"] as! [[String: Any]]).map { rewriteSets($0, template: false) }
+        snapshot["activeWorkout"] = rewriteSets(snapshot["activeWorkout"] as! [String: Any], template: false)
+        try JSONSerialization.data(withJSONObject: snapshot).write(to: file)
+
+        let migrated = WorkoutStore(fileURL: file)
+        XCTAssertNil(migrated.errorMessage)
+        XCTAssertEqual(migrated.templates.first { $0.id == planned.id }, planned)
+        XCTAssertEqual(migrated.history.first?.exercises[0].sets[0].reps, 5)
+        XCTAssertNil(migrated.history.first?.exercises[0].sets[0].targetReps)
+        XCTAssertEqual(migrated.activeWorkout?.exercises[0].sets.map(\.reps), [8, 6])
+        XCTAssertNil(migrated.activeWorkout?.exercises[0].sets[0].targetReps)
+        XCTAssertTrue(migrated.saveTemplate(planned))
+        let persisted = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        let templates = try XCTUnwrap(persisted["templates"] as? [[String: Any]])
+        let exercises = try XCTUnwrap(templates[0]["exercises"] as? [[String: Any]])
+        let sets = try XCTUnwrap(exercises[0]["sets"] as? [[String: Any]])
+        XCTAssertNotNil(sets[0]["targetReps"])
+        XCTAssertNil(sets[0]["reps"])
+        XCTAssertEqual(WorkoutStore(fileURL: file).history, migrated.history)
+    }
+
+    @MainActor
     func testTemplateCreateEditDeletePersists() async throws {
         let file = try temporaryFile()
         let store = WorkoutStore(fileURL: file)
@@ -308,6 +385,9 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertFalse(store.updateActiveWorkout(invalid))
         invalid = active
         invalid.exercises[0].sets[0].reps = -1
+        XCTAssertFalse(store.updateActiveWorkout(invalid))
+        invalid = active
+        invalid.exercises[0].sets[0].targetReps = 0
         XCTAssertFalse(store.updateActiveWorkout(invalid))
         invalid = active
         invalid.exercises[0].sets[0].weight = .infinity

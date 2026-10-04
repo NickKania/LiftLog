@@ -6,14 +6,17 @@ The first version focuses on templates, workout execution, and a local workout h
 
 ## Features
 
-- Create and edit templates with exercises, set weights, and repetition counts.
+- Create and edit templates with exercises, set weights, and target reps.
 - Find exercises in the searchable, offline catalog of 876 exercises or add an exercise by name.
-- Start a workout from a template and record the weight and reps for each set.
+- Start a workout from a template and record the weight and actual reps for each set, with the original target shown alongside.
 - Mark sets complete and save finished workouts to history.
 - Resume a saved active workout after reopening the app.
 - Choose pounds or kilograms.
+- Import completed workouts from Strong CSV exports, with exercise matching, session selection, and duplicate protection.
 
 The Workout tab holds templates and the current workout. The History tab shows finished sessions; settings are available from the Workout screen.
+
+Use **History → Import Workouts** to choose a Strong CSV, confirm its weight unit and time zone, and review the sessions before saving. See [workout import](docs/WORKOUT_IMPORT.md) for field mapping, unsupported data, and duplicate handling.
 
 The first launch includes Upper Body and Lower Body templates. Changing units converts planned template weights; active and finished workouts retain their recorded unit.
 
