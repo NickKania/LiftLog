@@ -1,0 +1,472 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		141A8FA4F70C64BD03FA09CB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6024B29CF57ADD9CD63AD4 /* RootView.swift */; };
+		197FC90DBE0A53A8CA1085EA /* WorkoutHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E340D7BEC3D5CD9C452727 /* WorkoutHistoryView.swift */; };
+		1F83DD23FDF095D24881B279 /* LiftLogUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */; };
+		32FFDBE40F7B764D3F2C628E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A7362A4BF1BBB49DF08484B /* Assets.xcassets */; };
+		729B7917B33319B426F22D3E /* LiftLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34EF9BEBC35DE75C1D1C8CA /* LiftLogApp.swift */; };
+		854529A35898BEE3CC7BF012 /* TemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307670086F599871C2ED930C /* TemplateEditorView.swift */; };
+		89A9BD1BB3563A9B2B5628F1 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BDAF94F72217272AB2AE94 /* Models.swift */; };
+		8D4753ADA28281DA43F77E59 /* WorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618856612FF2A6A825D3D784 /* WorkoutStore.swift */; };
+		9A4B4C584499C7A71EA4E8E9 /* WorkoutEditorComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255E8F29C0E21AEFE1638ED6 /* WorkoutEditorComponents.swift */; };
+		C1ED4A928558DC2F42D52BA2 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B30B05DC1F38F2CB4A53F40 /* ActiveWorkoutView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		185254257EBFBFD8DF4F25EE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5C8E0CDA7E8205AE56A29E85 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6201C61E7C5E34AC0A26B0BE;
+			remoteInfo = LiftLog;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		01E340D7BEC3D5CD9C452727 /* WorkoutHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryView.swift; sourceTree = "<group>"; };
+		1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftLogUITests.swift; sourceTree = "<group>"; };
+		255E8F29C0E21AEFE1638ED6 /* WorkoutEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEditorComponents.swift; sourceTree = "<group>"; };
+		2C6024B29CF57ADD9CD63AD4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		307670086F599871C2ED930C /* TemplateEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateEditorView.swift; sourceTree = "<group>"; };
+		5B30B05DC1F38F2CB4A53F40 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
+		5CE6A3627E5DD815C07C4AEC /* LiftLogUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiftLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		618856612FF2A6A825D3D784 /* WorkoutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStore.swift; sourceTree = "<group>"; };
+		85034D1B9231C25CDE0F365E /* LiftLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiftLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A7362A4BF1BBB49DF08484B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A6BDAF94F72217272AB2AE94 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		D34EF9BEBC35DE75C1D1C8CA /* LiftLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftLogApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1BAEC25459EC90BDCF7659F4 /* LiftLog */ = {
+			isa = PBXGroup;
+			children = (
+				8A7362A4BF1BBB49DF08484B /* Assets.xcassets */,
+				288EBF8C9BBA0F0A2CA29F6E /* App */,
+				993614B8D242444237EBD804 /* Core */,
+				60BC51F6BACF7826B627E0D0 /* Views */,
+			);
+			path = LiftLog;
+			sourceTree = "<group>";
+		};
+		288EBF8C9BBA0F0A2CA29F6E /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D34EF9BEBC35DE75C1D1C8CA /* LiftLogApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		60BC51F6BACF7826B627E0D0 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				5B30B05DC1F38F2CB4A53F40 /* ActiveWorkoutView.swift */,
+				2C6024B29CF57ADD9CD63AD4 /* RootView.swift */,
+				307670086F599871C2ED930C /* TemplateEditorView.swift */,
+				255E8F29C0E21AEFE1638ED6 /* WorkoutEditorComponents.swift */,
+				01E340D7BEC3D5CD9C452727 /* WorkoutHistoryView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		992BE1DBD1C3B59B273DC34C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				85034D1B9231C25CDE0F365E /* LiftLog.app */,
+				5CE6A3627E5DD815C07C4AEC /* LiftLogUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		993614B8D242444237EBD804 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A6BDAF94F72217272AB2AE94 /* Models.swift */,
+				618856612FF2A6A825D3D784 /* WorkoutStore.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		9C2C17BC7B722B0779799342 /* LiftLogUITests */ = {
+			isa = PBXGroup;
+			children = (
+				1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */,
+			);
+			name = LiftLogUITests;
+			path = Tests/LiftLogUITests;
+			sourceTree = "<group>";
+		};
+		A339F7F08EDC92F60394996C = {
+			isa = PBXGroup;
+			children = (
+				1BAEC25459EC90BDCF7659F4 /* LiftLog */,
+				9C2C17BC7B722B0779799342 /* LiftLogUITests */,
+				992BE1DBD1C3B59B273DC34C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6201C61E7C5E34AC0A26B0BE /* LiftLog */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1E63FA6BCFAC886F4643F39 /* Build configuration list for PBXNativeTarget "LiftLog" */;
+			buildPhases = (
+				BBF94EF372C03BFBB565C027 /* Sources */,
+				73CD732BEE3F0F01A97E36A3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LiftLog;
+			packageProductDependencies = (
+			);
+			productName = LiftLog;
+			productReference = 85034D1B9231C25CDE0F365E /* LiftLog.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D219CD0DBE184E2BCCD7B1BC /* LiftLogUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 781502C2507D277890240F94 /* Build configuration list for PBXNativeTarget "LiftLogUITests" */;
+			buildPhases = (
+				CE8001F39524A8A96F3EDC36 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DF4BDD5A589DE01B25C9E3BE /* PBXTargetDependency */,
+			);
+			name = LiftLogUITests;
+			packageProductDependencies = (
+			);
+			productName = LiftLogUITests;
+			productReference = 5CE6A3627E5DD815C07C4AEC /* LiftLogUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5C8E0CDA7E8205AE56A29E85 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					D219CD0DBE184E2BCCD7B1BC = {
+						TestTargetID = 6201C61E7C5E34AC0A26B0BE;
+					};
+				};
+			};
+			buildConfigurationList = CE28F7896F7D11D6069B920C /* Build configuration list for PBXProject "LiftLog" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = A339F7F08EDC92F60394996C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 992BE1DBD1C3B59B273DC34C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6201C61E7C5E34AC0A26B0BE /* LiftLog */,
+				D219CD0DBE184E2BCCD7B1BC /* LiftLogUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		73CD732BEE3F0F01A97E36A3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				32FFDBE40F7B764D3F2C628E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BBF94EF372C03BFBB565C027 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C1ED4A928558DC2F42D52BA2 /* ActiveWorkoutView.swift in Sources */,
+				729B7917B33319B426F22D3E /* LiftLogApp.swift in Sources */,
+				89A9BD1BB3563A9B2B5628F1 /* Models.swift in Sources */,
+				141A8FA4F70C64BD03FA09CB /* RootView.swift in Sources */,
+				854529A35898BEE3CC7BF012 /* TemplateEditorView.swift in Sources */,
+				9A4B4C584499C7A71EA4E8E9 /* WorkoutEditorComponents.swift in Sources */,
+				197FC90DBE0A53A8CA1085EA /* WorkoutHistoryView.swift in Sources */,
+				8D4753ADA28281DA43F77E59 /* WorkoutStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE8001F39524A8A96F3EDC36 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1F83DD23FDF095D24881B279 /* LiftLogUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DF4BDD5A589DE01B25C9E3BE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6201C61E7C5E34AC0A26B0BE /* LiftLog */;
+			targetProxy = 185254257EBFBFD8DF4F25EE /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		46A3784A8FDE7AB0E19E8FCC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftlog.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftLog;
+			};
+			name = Release;
+		};
+		745A41C00F32B2586AED1869 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Log";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftlog.app;
+				PRODUCT_NAME = LiftLog;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7DBD0A2D1A75796F94F952AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Log";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftlog.app;
+				PRODUCT_NAME = LiftLog;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A0B05A39E101352DC053B3BF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftlog.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftLog;
+			};
+			name = Debug;
+		};
+		BC2880609E3E51EFAEEE37FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BED41EF46E7AE6D9E9676BC3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		781502C2507D277890240F94 /* Build configuration list for PBXNativeTarget "LiftLogUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A0B05A39E101352DC053B3BF /* Debug */,
+				46A3784A8FDE7AB0E19E8FCC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A1E63FA6BCFAC886F4643F39 /* Build configuration list for PBXNativeTarget "LiftLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				745A41C00F32B2586AED1869 /* Debug */,
+				7DBD0A2D1A75796F94F952AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CE28F7896F7D11D6069B920C /* Build configuration list for PBXProject "LiftLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC2880609E3E51EFAEEE37FC /* Debug */,
+				BED41EF46E7AE6D9E9676BC3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5C8E0CDA7E8205AE56A29E85 /* Project object */;
+}
