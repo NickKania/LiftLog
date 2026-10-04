@@ -9,6 +9,7 @@ final class WorkflowUITests: XCTestCase {
     @MainActor
     func testTemplateRequiresValidNameExerciseAndRepsAndCancelDoesNotSave() {
         let app = launchFreshApp()
+        defer { app.terminate() }
         app.buttons["createTemplateButton"].tap()
         let save = app.buttons["saveTemplateButton"]
         XCTAssertTrue(save.waitForExistence(timeout: 5))
@@ -40,6 +41,7 @@ final class WorkflowUITests: XCTestCase {
     @MainActor
     func testSearchFiltersCatalogAndCustomExerciseSurvivesRelaunch() {
         let app = launchFreshApp()
+        defer { app.terminate() }
         app.buttons["startEmptyWorkoutButton"].tap()
         app.buttons["addExerciseButton"].tap()
         let search = app.searchFields.firstMatch
@@ -72,6 +74,7 @@ final class WorkflowUITests: XCTestCase {
     @MainActor
     func testDiscardRequiresConfirmationAndDoesNotCreateHistory() {
         let app = launchFreshApp()
+        defer { app.terminate() }
         app.buttons["startEmptyWorkoutButton"].tap()
         let finish = app.buttons["finishWorkoutButton"]
         XCTAssertTrue(finish.waitForExistence(timeout: 5))
@@ -86,8 +89,14 @@ final class WorkflowUITests: XCTestCase {
         app.buttons["discardWorkoutButton"].tap()
         let confirmDiscard = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Discard Workout", "discardWorkoutButton")).firstMatch
         XCTAssertTrue(confirmDiscard.waitForExistence(timeout: 5))
-        // iOS presents this confirmation as a popover; tapping outside cancels it.
-        app.navigationBars["Workout"].tap()
+        let cancel = app.buttons["Cancel"]
+        if cancel.exists && cancel.isHittable {
+            cancel.tap()
+        } else {
+            // Newer iOS versions expose a dedicated outside-tap dismissal region.
+            app.otherElements["PopoverDismissRegion"].tap()
+        }
+        XCTAssertTrue(confirmDiscard.waitForNonExistence(timeout: 5))
         XCTAssertEqual(complete.label, "Mark set 1 incomplete", "Cancel must preserve logged sets")
         app.buttons["discardWorkoutButton"].tap()
         XCTAssertTrue(confirmDiscard.waitForExistence(timeout: 5))
@@ -107,6 +116,7 @@ final class WorkflowUITests: XCTestCase {
     @MainActor
     func testUnitPreferencePersistsWhileActiveWorkoutKeepsRecordedUnit() {
         let app = launchFreshApp()
+        defer { app.terminate() }
         app.buttons["startEmptyWorkoutButton"].tap()
         addBenchPress(in: app)
         let weight = app.textFields["setWeight-1"]

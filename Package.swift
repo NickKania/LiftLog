@@ -7,6 +7,6 @@ let package = Package(
     products: [.library(name: "LiftLogCore", targets: ["LiftLogCore"])],
     targets: [
         .target(name: "LiftLogCore", path: "LiftLog/Core", resources: [.process("Resources")]),
-        .testTarget(name: "LiftLogCoreTests", dependencies: ["LiftLogCore"], path: "Tests/LiftLogCoreTests")
+        .testTarget(name: "LiftLogCoreTests", dependencies: ["LiftLogCore"], path: "Tests/LiftLogCoreTests", resources: [.copy("Fixtures")])
     ]
 )

@@ -8,8 +8,9 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
     var finishedAt: Date?
     var unit: WeightUnit
     var exercises: [WorkoutExercise]
+    var importSourceKey: String?
 
-    init(id: UUID = UUID(), templateID: UUID? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, exercises: [WorkoutExercise] = []) {
+    init(id: UUID = UUID(), templateID: UUID? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = []) {
         self.id = id
         self.templateID = templateID
         self.name = name
@@ -17,6 +18,7 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         self.finishedAt = finishedAt
         self.unit = unit
         self.exercises = exercises
+        self.importSourceKey = importSourceKey
     }
 }
 

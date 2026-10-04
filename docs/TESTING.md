@@ -13,7 +13,9 @@ These tests exercise workout behavior and persistence through the `LiftLogCore` 
 
 Catalog coverage verifies all 876 bundled entries load, original starter identities and order remain stable, matched exercises reuse existing IDs, and retired exercise snapshots survive in templates, active workouts, and history. The generator check verifies the resource matches the pinned upstream dataset and reviewed compatibility mappings without accessing the network.
 
-The core suite passes 38 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
+The core suite passes 49 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
+
+Eleven import tests use `Tests/LiftLogCoreTests/Fixtures/strong_workouts.csv`, the supplied Strong export, to verify every exercise, weight, rep value, timestamp, duration, and excluded rest record. Synthetic cases cover quoted CSV, BOM/CRLF, malformed data, unsupported measurements, explicit units/time zones, exercise overrides, selected subsets, duplicate imports after reload, and atomic write failures. `WorkoutImportUITests` adds three UI tests covering cancellation, single/multiple selection, matching, unit preservation during navigation, saving, relaunch, and duplicate detection using a DEBUG-only synthetic fixture.
 
 Generate and build the iOS project separately:
 
@@ -22,13 +24,13 @@ xcodegen generate
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, contains six simulator UI integration tests. They exercise template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, and unit preferences. Run it with an installed iPhone simulator, for example:
+The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, contains nine simulator UI integration tests. They exercise template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, unit preferences, and workout imports. Run it with an installed iPhone simulator, for example:
 
 ```sh
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
 ```
 
-Replace `iPhone 17` with an available simulator name from `xcrun simctl list devices available`. Each UI test uses a separate testing data file and resets that test file at the start of its flow. Run the UI tests serially because they share that testing file in the app sandbox (`-parallel-testing-enabled NO`). The end-to-end UI test passed on the iPhone 17 Pro simulator (iOS 26.5), covering template creation, weight entry, completion, relaunch recovery, finishing, and history detail navigation.
+Replace `iPhone 17` with an available simulator name from `xcrun simctl list devices available`. The UI suite uses a data file separate from normal app data and resets it at the start of each test. Run the UI tests serially because they share that testing file in the app sandbox (`-parallel-testing-enabled NO`). The two existing UI tests and four workflow tests each passed on the iPhone 17 Pro simulator (iOS 26.5) across separate runs. A clean combined run was blocked by intermittent test-runner exits and a final simulator launch failure (`FBSOpenApplicationErrorDomain Code=6`, preflight reason `Busy`). The final per-test app cleanup change remains unverified because that launch failed before tests began; rerun the suite on an idle simulator.
 
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
@@ -60,6 +62,15 @@ For interactive verification, open the project in Xcode and run it on an iPhone 
 - Change pounds to kilograms and verify template weights convert. Confirm an already active or finished workout retains its original values and unit.
 - Reopen the app and verify templates, history, settings, and any active workout persist.
 - Confirm an active workout cannot be silently overwritten by starting another one.
+
+### Workout imports
+
+- Open History → Import Workouts and choose a Strong CSV from Files. Confirm units and the time zone used by the original export.
+- Review the supplied example: one 55-minute workout, five exercises, 20 sets, and 20 excluded rest-timer rows. Inspect actual reps and weights before import.
+- Change an exercise match, inspect its workout details, select a subset of a multi-session export, and verify only selected sessions are saved.
+- Cancel during review and verify History is unchanged. Import successfully, relaunch, and verify the sessions persist; choosing the same export again must identify duplicates.
+- Try malformed CSV, invalid numeric values, and timed/distance sets. Verify the flow displays errors or skipped-data warnings before saving.
+- Check Files selection on a device or simulator with a CSV available. The synthetic UI-test fixture exercises review and saving without automating the system document provider.
 
 ### iPhone interface
 

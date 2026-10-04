@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WorkoutHistoryView: View {
     @Environment(WorkoutStore.self) private var store
+    @State private var importing = false
 
     var body: some View {
         Group {
@@ -29,6 +30,13 @@ struct WorkoutHistoryView: View {
             }
         }
         .navigationTitle("History")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Import Workouts", systemImage: "square.and.arrow.down") { importing = true }
+                    .accessibilityIdentifier("importWorkoutsButton")
+            }
+        }
+        .sheet(isPresented: $importing) { WorkoutImportView() }
     }
 }
 
@@ -61,7 +69,9 @@ struct WorkoutDetailView: View {
     }
 
     private var duration: String {
-        let seconds = max(0, Int((workout.finishedAt ?? workout.startedAt).timeIntervalSince(workout.startedAt)))
+        let interval = (workout.finishedAt ?? workout.startedAt).timeIntervalSince(workout.startedAt)
+        guard interval.isFinite, interval >= 0, interval < Double(Int.max) else { return "Unavailable" }
+        let seconds = Int(interval)
         return seconds < 60 ? "\(seconds) sec" : "\(seconds / 60) min \(seconds % 60) sec"
     }
 }

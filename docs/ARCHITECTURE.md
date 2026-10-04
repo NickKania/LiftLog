@@ -28,6 +28,8 @@ A workout session is a separate snapshot with its own exercise entries and sets.
 
 Only one workout is active at a time. Completed sessions are kept in history. Finishing filters out uncompleted sets and exercise entries with no completed sets, so history represents work actually performed.
 
+Strong CSV imports create completed history sessions through a separate preview and batch-save flow. Import provenance is optional so existing snapshots remain compatible. Source units and time zones are explicitly confirmed, and exercise mappings are reviewed before saving. See [workout import](WORKOUT_IMPORT.md) for the adapter boundary, mapping rules, duplicate identity, and unsupported measurements.
+
 Editing weight or target reps in the template editor, or weight or actual reps in the workout editor, applies both values to every set in that exercise entry. Set identifiers and completion flags remain independent. Other exercise entries, source templates, and past sessions are unaffected by active workout edits.
 
 ## Persistence

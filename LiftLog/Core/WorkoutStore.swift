@@ -152,6 +152,33 @@ final class WorkoutStore {
         return commit(next)
     }
 
+    /// Imports finished sessions as a single disk commit. Source identity survives reloads.
+    func importWorkouts(_ sessions: [WorkoutSession]) -> WorkoutImportResult? {
+        var next = snapshot
+        var keys = Set(next.history.compactMap(\.importSourceKey))
+        var imported = 0
+        var duplicates = 0
+        for session in sessions {
+            guard let key = session.importSourceKey, !key.isEmpty else {
+                _ = fail(StoreError.invalid("An imported workout is missing its source identity."))
+                return nil
+            }
+            guard session.startedAt.timeIntervalSince1970.isFinite,
+                  let finished = session.finishedAt, finished.timeIntervalSince1970.isFinite,
+                  finished >= session.startedAt,
+                  finished.timeIntervalSince(session.startedAt) <= 7 * 24 * 3600 else {
+                _ = fail(StoreError.invalid("An imported workout has an invalid start time or duration."))
+                return nil
+            }
+            if !keys.insert(key).inserted { duplicates += 1; continue }
+            next.history.append(session)
+            imported += 1
+        }
+        next.history.sort { $0.startedAt > $1.startedAt }
+        guard commit(next) else { return nil }
+        return WorkoutImportResult(importedCount: imported, skippedDuplicateCount: duplicates)
+    }
+
     private var snapshot: Snapshot {
         Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit)
     }

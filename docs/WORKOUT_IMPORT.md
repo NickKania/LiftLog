@@ -19,6 +19,8 @@ Imported sets have no target reps, and sessions have no template reference. Impo
 
 The supplied example has one 55-minute session, five exercises, 20 completed sets, and 20 rest-timer rows. Strong's example header contains neither weight units nor a time zone. Both need user confirmation; current app/device preferences are only initial selections, not inferred source facts.
 
+The file picker accepts UTF-8 CSV files up to 5 MB. Durations must be positive and no longer than seven days. Warning record numbers count parsed CSV records, including the header, rather than physical lines inside quoted fields.
+
 ## Flow
 
 1. Open History and choose Import Workouts.
