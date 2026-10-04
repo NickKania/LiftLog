@@ -108,7 +108,7 @@ final class WorkoutImportTests: XCTestCase {
     @MainActor func testAtomicImportPersistsSkipsDuplicatesAndKeepsActiveWorkout() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("workouts.json")
+        let url = directory.appendingPathComponent("workouts.sqlite")
         let store = WorkoutStore(fileURL: url)
         XCTAssertTrue(store.startWorkout())
         let active = store.activeWorkout
@@ -145,7 +145,7 @@ final class WorkoutImportTests: XCTestCase {
     @MainActor func testFailedDiskWriteDoesNotPublishImport() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("workouts.json")
+        let url = directory.appendingPathComponent("workouts.sqlite")
         let store = WorkoutStore(fileURL: url)
         let templates = store.templates
         try FileManager.default.removeItem(at: url)

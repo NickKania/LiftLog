@@ -17,7 +17,7 @@ final class WorkoutStoreFlowTests: XCTestCase {
             .appendingPathComponent("LiftLogFlowTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
-        return directory.appendingPathComponent("workouts.json")
+        return directory.appendingPathComponent("workouts.sqlite")
     }
 
     private func template(name: String = "Strength", weight: Double = 100) -> WorkoutTemplate {
@@ -235,7 +235,8 @@ final class WorkoutStoreFlowTests: XCTestCase {
         for (name, snapshot) in cases {
             let file = try temporaryFile()
             let original = try JSONEncoder().encode(snapshot)
-            try original.write(to: file)
+            let legacy = file.deletingPathExtension().appendingPathExtension("json")
+            try original.write(to: legacy)
             let store = WorkoutStore(fileURL: file)
             XCTAssertNotNil(store.errorMessage, name)
             XCTAssertTrue(store.templates.isEmpty, name)
@@ -246,7 +247,7 @@ final class WorkoutStoreFlowTests: XCTestCase {
             XCTAssertFalse(store.startWorkout(), name)
             XCTAssertFalse(store.discardWorkout(), name)
             XCTAssertFalse(store.setUnit(.kg), name)
-            XCTAssertEqual(try Data(contentsOf: file), original, name)
+            XCTAssertEqual(try Data(contentsOf: legacy), original, name)
         }
     }
 }

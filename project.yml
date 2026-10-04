@@ -14,8 +14,21 @@ targets:
     platform: iOS
     sources:
       - path: LiftLog
+    dependencies:
+      - sdk: libsqlite3.tbd
+    entitlements:
+      path: LiftLog/LiftLog.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.liftlog.app
+        com.apple.developer.icloud-services:
+          - CloudDocuments
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.com.liftlog.app
     settings:
       base:
+        CODE_SIGN_ENTITLEMENTS: LiftLog/LiftLog.entitlements
+        INFOPLIST_FILE: LiftLog/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.liftlog.app
         PRODUCT_NAME: LiftLog
         GENERATE_INFOPLIST_FILE: YES

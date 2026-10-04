@@ -1,58 +1,46 @@
 import SwiftUI
 
 struct RootView: View {
-    @Environment(WorkoutStore.self) private var store
     @State private var showWorkout = false
-    @State private var showSettings = false
 
     var body: some View {
         TabView {
             NavigationStack {
                 WorkoutHomeView(showWorkout: $showWorkout)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Settings", systemImage: "gearshape") { showSettings = true }
-                                .labelStyle(.iconOnly)
-                                .accessibilityIdentifier("settingsButton")
-                        }
-                    }
             }
             .tabItem { Label("Workout", systemImage: "dumbbell.fill") }
             NavigationStack { WorkoutHistoryView() }
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
+            NavigationStack { SettingsView() }
+                .tabItem { Label("Settings", systemImage: "gearshape") }
         }
-        .sheet(isPresented: $showSettings) { SettingsView() }
         .fullScreenCover(isPresented: $showWorkout) {
             NavigationStack { ActiveWorkoutView() }
         }
-
     }
 }
 
 struct SettingsView: View {
     @Environment(WorkoutStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Picker("Unit", selection: Binding(get: { store.unit }, set: { store.setUnit($0) })) {
-                        Text("Pounds (lb)").tag(WeightUnit.lb)
-                        Text("Kilograms (kg)").tag(WeightUnit.kg)
-                    }
-                    .accessibilityIdentifier("weightUnitPicker")
-                } header: {
-                    Text("Weight")
-                } footer: {
-                    Text("Template weights convert to this unit. Active workouts and history keep their recorded unit.")
+        Form {
+            Section {
+                Picker("Unit", selection: Binding(get: { store.unit }, set: { store.setUnit($0) })) {
+                    Text("Pounds (lb)").tag(WeightUnit.lb)
+                    Text("Kilograms (kg)").tag(WeightUnit.kg)
                 }
+                .accessibilityIdentifier("weightUnitPicker")
+            } header: {
+                Text("Weight")
+            } footer: {
+                Text("Template weights convert to this unit. Active workouts and history keep their recorded unit.")
             }
-            .workoutErrorAlert()
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            CloudBackupSettingsView()
         }
+        .workoutErrorAlert()
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

@@ -9,7 +9,7 @@ final class PersonalExerciseCatalogTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("PersonalCatalog-\(UUID())")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
-        return directory.appendingPathComponent("workouts.json")
+        return directory.appendingPathComponent("workouts.sqlite")
     }
 
     private func preview(_ exercise: String, day: Int = 1, catalog: [Exercise] = []) throws -> WorkoutImportPreview {
@@ -70,17 +70,19 @@ final class PersonalExerciseCatalogTests: XCTestCase {
         XCTAssertTrue(store.updateActiveWorkout(active))
         let history = store.history
         let templates = store.templates
-        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: legacyJSON(from: store)) as? [String: Any])
         json.removeValue(forKey: "personalExercises")
         let legacyData = try JSONSerialization.data(withJSONObject: json)
-        try legacyData.write(to: file)
+        let legacy = file.deletingPathExtension().appendingPathExtension("json")
+        try legacyData.write(to: legacy)
+        try FileManager.default.removeItem(at: file)
         let reloaded = WorkoutStore(fileURL: file)
         XCTAssertNil(reloaded.errorMessage)
         XCTAssertEqual(Set(reloaded.personalExercises.map(\.name)), ["Legacy Lift", "Retired Template Lift", "Retired Active Lift"])
         XCTAssertEqual(reloaded.history, history)
         XCTAssertEqual(reloaded.templates, templates)
         XCTAssertEqual(reloaded.activeWorkout, active)
-        XCTAssertEqual(try Data(contentsOf: file), legacyData)
+        XCTAssertEqual(try Data(contentsOf: legacy), legacyData)
         XCTAssertTrue(reloaded.setUnit(.lb))
         let persisted = WorkoutStore(fileURL: file)
         XCTAssertEqual(persisted.personalExercises, reloaded.personalExercises)
@@ -95,17 +97,19 @@ final class PersonalExerciseCatalogTests: XCTestCase {
         let collision = Exercise(name: "BENCH   press", category: "Custom")
         var originalHistory = store.history
         originalHistory[0].exercises[0].exercise = collision
-        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: legacyJSON(from: store)) as? [String: Any])
         json["history"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(originalHistory))
         json["personalExercises"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode([collision]))
         let saved = try JSONSerialization.data(withJSONObject: json)
-        try saved.write(to: file)
+        let legacy = file.deletingPathExtension().appendingPathExtension("json")
+        try saved.write(to: legacy)
+        try FileManager.default.removeItem(at: file)
         let reloaded = WorkoutStore(fileURL: file)
         XCTAssertNil(reloaded.errorMessage)
         XCTAssertTrue(reloaded.personalExercises.isEmpty)
         XCTAssertEqual(reloaded.exercises, ExerciseCatalog.all)
         XCTAssertEqual(reloaded.history, originalHistory)
-        XCTAssertEqual(try Data(contentsOf: file), saved)
+        XCTAssertEqual(try Data(contentsOf: legacy), saved)
         XCTAssertTrue(reloaded.setUnit(.lb))
         XCTAssertEqual(WorkoutStore(fileURL: file).history, originalHistory)
     }
