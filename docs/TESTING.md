@@ -143,3 +143,11 @@ The twelve `StorageAndBackupTests` use isolated databases, UserDefaults suites, 
 - Disable iCloud Drive or disconnect the network. Local saves must continue; backup errors must remain separate, and queued uploads must complete when connectivity returns.
 - Select a corrupt or unsupported backup and verify local data stays intact. Restore over a damaged local database and verify normal saving resumes.
 - Check that retention removes only older uploaded backups from the same installation. Pending uploads and other devices’ backups must remain.
+
+### Saved assistant chats
+
+`AssistantChatPersistenceTests` covers exact message identities, Markdown, chart data, reference snapshots, applied/stale proposal cards, canonical continuation items, independent concurrent streams and cancellation, account changes, interrupted relaunch, rename/title races, and corrupt or unwritable archives. `AssistantChatTitleGeneratorTests` checks numeric Luna version selection, absence of unrelated-model fallback, bounded prompts, and title cleanup. These tests use synthetic transports and temporary archives.
+
+`AssistantChatUITests` uses `--assistant-chat-ui-fixture` with the existing required fixture flags to expose a local Luna model. It verifies generated titles, renaming, chart/Markdown restoration after relaunch, saved proposal status, two simultaneous row spinners, and cancelling only the selected chat. `--assistant-concurrent-ui-fixture` delays response requests while keeping title requests fast. UI archives are isolated from normal app chats and reset only with `--reset-ui-testing`.
+
+Verification: all 180 core tests passed, the simulator build succeeded, and all six selected UI tests passed on LiftLog Rendering Verification (iOS 26.5): the three saved-chat flows plus default-model preference/relaunch, response cancellation, and new-chat tag cleanup. Luna calls were mocked; this run did not consume live subscription usage.

@@ -81,10 +81,12 @@ final class WorkoutStore {
                 }
                 // Drafts may reference the current version but never replace saved archives.
                 trimmed.versions = saved.versions
-                if trimmed.name == saved.name, Self.samePrescription(trimmed.exercises, saved.exercises) {
-                    return commit(next)
+                if !Self.samePrescription(trimmed.exercises, saved.exercises) {
+                    trimmed.versions.append(WorkoutTemplateVersion(number: saved.versions.count + 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit))
+                } else {
+                    // Renaming changes template metadata, not its immutable prescription.
+                    trimmed.exercises = saved.exercises
                 }
-                trimmed.versions.append(WorkoutTemplateVersion(number: saved.versions.count + 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit))
                 next.templates[index] = trimmed
             } else {
                 guard template.versions.isEmpty else { throw StoreError.invalid("This template was deleted. Create a new template to save this plan.") }
@@ -114,7 +116,7 @@ final class WorkoutStore {
                 source = saved
                 version = versionID.flatMap { id in saved.versions.first(where: { $0.id == id }) } ?? (versionID == nil ? saved.currentVersion : nil)
                 guard let version else { throw StoreError.invalid("This template version is no longer available.") }
-                source?.name = version.name
+                if versionID != nil { source?.name = version.name }
                 source?.exercises = version.exercises(in: unit)
             } else if versionID != nil {
                 throw StoreError.invalid("Choose a saved template before selecting a version.")
@@ -477,8 +479,7 @@ final class WorkoutStore {
                 try validate(WorkoutTemplate(name: version.name, exercises: version.exercises))
             }
             if let version = template.currentVersion {
-                guard template.name == version.name,
-                      samePrescription(template.exercises, version.exercises(in: snapshot.unit)) else {
+                guard samePrescription(template.exercises, version.exercises(in: snapshot.unit)) else {
                     throw StoreError.invalid("A template's current plan does not match its saved version.")
                 }
             }

@@ -41,6 +41,38 @@ final class TemplateVersionTests: XCTestCase {
     }
 
     @MainActor
+    func testRenameKeepsVersionsAndRecordedWorkoutsAndPersists() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let initial = template()
+        XCTAssertTrue(store.saveTemplate(initial))
+        var draft = try XCTUnwrap(store.templates.first { $0.id == initial.id })
+        let versions = draft.versions
+        XCTAssertTrue(store.startWorkout(template: draft))
+        let active = store.activeWorkout
+        draft.name = "  Upper Body  "
+        XCTAssertTrue(store.saveTemplate(draft))
+        let renamed = try XCTUnwrap(store.templates.first { $0.id == initial.id })
+        XCTAssertEqual(renamed.name, "Upper Body")
+        XCTAssertEqual(renamed.versions, versions)
+        XCTAssertEqual(store.activeWorkout, active)
+        XCTAssertEqual(WorkoutStore(fileURL: url).templates.first { $0.id == initial.id }, renamed)
+        var completed = try XCTUnwrap(store.activeWorkout)
+        completed.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(completed))
+        XCTAssertTrue(store.finishWorkout())
+        XCTAssertEqual(store.history.first?.name, initial.name)
+        XCTAssertTrue(store.startWorkout(template: renamed))
+        XCTAssertEqual(store.activeWorkout?.name, "Upper Body")
+        XCTAssertEqual(store.activeWorkout?.templateVersionID, versions.last?.id)
+        draft = renamed
+        draft.exercises[0].sets[0].targetReps += 1
+        XCTAssertTrue(store.saveTemplate(draft))
+        XCTAssertEqual(store.templates.first { $0.id == initial.id }?.versions.count, 2)
+        XCTAssertEqual(store.templates.first { $0.id == initial.id }?.currentVersion?.name, "Upper Body")
+    }
+
+    @MainActor
     func testStaleAndDeletedDraftsCannotReplacePlansAndArchivesCannotBeForged() async throws {
         let store = WorkoutStore(fileURL: try file())
         let initial = template()

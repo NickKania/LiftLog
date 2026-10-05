@@ -23,7 +23,15 @@ Tap **@** beside the question field, or type a standalone `@`, to choose specifi
 
 Send a question with the tags, for example, “Compare these workouts” or “Adjust this template based on this session.” Tags remain visible with the sent question. They identify exact records, independently of their names, and share those records’ exercise and set details with OpenAI. The app resolves the current record when you send, so a renamed template or a workout that has just finished still refers to the same item. If a selected record was deleted or the selected data exceeds the request limit, sending shows an error and preserves your draft.
 
-Tagging a completed workout does not make history editable. Proposed changes still require Apply. Starting a new chat or changing accounts clears the draft tags along with the conversation context.
+Tagging a completed workout does not make history editable. Proposed changes still require Apply. Each chat has its own conversation context and draft tags; starting a new chat leaves the earlier conversation available in Chats.
+
+### Saved chats
+
+Open **Chats** in the Assistant toolbar to browse conversations, select one to reopen it, or rename it. **New chat** starts a separate conversation even while another is responding. A spinner beside each working chat shows which conversations are still active; switching chats does not cancel a response. Stop cancels the selected chat only.
+
+Chats save locally with their Markdown, chart data, reference labels, model selection, and proposal snapshots. Reopening renders those saved messages through the same native components without rerunning tools or recalculating charts from newer workouts. Completed conversation context is retained for follow-up questions. If the app closes during a response, its saved partial text remains available and the request is marked interrupted; network work does not automatically resume after relaunch. Unreviewed proposals from a previous app session become stale and require a fresh proposal.
+
+The app generates a short title using the newest Luna version in the connected account's available model catalog. This separate request uses ChatGPT plan usage. A temporary title remains if Luna is unavailable or title generation fails. A manual rename always takes precedence over a title request already in progress.
 
 The picker uses native searchable SwiftUI content and separate tags to support iOS 17. Apple’s [`TextSelection`](https://developer.apple.com/documentation/swiftui/textselection) requires iOS 18, while [`textInputSuggestions`](https://developer.apple.com/documentation/swiftui/view/textinputsuggestions(_:)) is a macOS API. See Apple’s [search guidance](https://developer.apple.com/documentation/swiftui/performing-a-search-operation) for the native search behavior used here.
 
@@ -37,7 +45,7 @@ Charts show one point per workout with evenly spaced sessions and date labels ta
 
 ## Data and security
 
-Only using the assistant sends questions and tool-selected workout data to OpenAI. Connecting an account alone does not upload workout history. Treat workout names and exercise notes as data rather than model instructions. Conversations and pending proposals are transient; resetting a conversation or changing the selected connection clears them. Workouts saved through an accepted proposal use the existing atomic local persistence path.
+Only using the assistant sends questions and tool-selected workout data to OpenAI. Connecting an account alone does not upload workout history. Treat workout names and exercise notes as data rather than model instructions. Conversations are saved on this device and separated by account registration; changing accounts cancels active requests and opens that account's saved chats. Workouts saved through an accepted proposal use the existing atomic local persistence path. The separate local chat archive is not included in workout SQLite/iCloud backups.
 
 Account credentials are separate from `workouts.json` and stored in the iOS Keychain. Each registration retains its issued client ID and verified account identity. Tokens never belong in source control, application logs, or the chat transcript. Sign-out clears local tokens and attempts to revoke the renewable session; use ChatGPT settings if remote revocation cannot be confirmed.
 

@@ -2,6 +2,12 @@
 
 Workouts are stored on the device in `Application Support/LiftLog/workouts.sqlite`. The app uses the system SQLite library, with no additional package dependencies. Templates, exercise snapshots, sets, history, personal exercises, and the current workout save in one transaction. A failed save leaves both the database and published state unchanged.
 
+## Assistant chats
+
+Assistant conversations are saved separately in `Application Support/LiftLog/assistant-chats.json`, using versioned JSON and atomic replacement. The archive retains rich message snapshots, titles, and successful conversation context under each account registration. It contains no account credentials. Streaming replies save periodically and on app backgrounding; interrupted replies remain readable after relaunch. An unreadable archive is preserved and reported instead of overwritten.
+
+Workout SQLite backups and restores do not include or replace this local chat archive. Deleting the app removes locally saved chats.
+
 ## Upgrade from JSON
 
 When no SQLite database exists, the app reads an existing `workouts.json`, validates it, and builds the database in a staging file before installing it. The original JSON remains untouched. Legacy template `reps` fields and snapshots without personal exercises or target reps are supported. Once SQLite exists, the legacy JSON never replaces it. Damaged data blocks writes and displays an error rather than resetting workouts.

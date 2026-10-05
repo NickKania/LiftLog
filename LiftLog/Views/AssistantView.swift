@@ -15,7 +15,14 @@ struct AssistantView: View {
     @State private var showReferencePicker = false
     @State private var referenceMentionDraft: String?
     @State private var restoreComposerAfterReferencePicker = false
+    @State private var showChats = false
+    @State private var drafts: [UUID: ChatDraft] = [:]
     @FocusState private var composerFocused: Bool
+
+    private struct ChatDraft {
+        let text: String
+        let references: [AssistantWorkoutReference]
+    }
 
     private var accountIdentity: String {
         "\(accounts.currentAccount?.id ?? "none"):\(accounts.currentAccount?.isConnected ?? false):\(accounts.canUsePlan)"
@@ -26,31 +33,49 @@ struct AssistantView: View {
             if accounts.canUsePlan {
                 modelBar
                 transcript
+                    .id(assistant.selectedChatID)
                 composerBar
+            } else if !assistant.messages.isEmpty {
+                transcript
+                    .id(assistant.selectedChatID)
+                ChatGPTSignInButton().padding()
             } else {
                 connectionView
             }
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Assistant")
+        .navigationTitle(assistant.selectedChat?.title ?? "Assistant")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Chats", systemImage: "bubble.left.and.bubble.right") {
+                    composerFocused = false
+                    showChats = true
+                }
+                .labelStyle(.iconOnly)
+                .accessibilityIdentifier("assistantChatsButton")
+            }
+            if accounts.canUsePlan {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("New chat", systemImage: "square.and.pencil") { startNewChat() }
+                        .labelStyle(.iconOnly)
+                        .accessibilityIdentifier("assistantNewChatButton")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("ChatGPT Account", systemImage: "person.crop.circle") { showAccountSettings = true }
                     .labelStyle(.iconOnly)
                     .accessibilityIdentifier("assistantAccountButton")
             }
-            if !assistant.messages.isEmpty {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("New chat", systemImage: "square.and.pencil") {
-                        assistant.reset()
-                        clearDraft()
-                        Task { await assistant.refreshModels() }
-                    }
-                    .labelStyle(.iconOnly)
-                    .accessibilityIdentifier("assistantNewChatButton")
-                }
-            }
+        }
+        .sheet(isPresented: $showChats) {
+            AssistantChatListView(onSelect: { id in
+                assistant.selectChat(id)
+                showChats = false
+            }, onCreate: {
+                startNewChat()
+                showChats = false
+            })
         }
         .sheet(isPresented: $showAccountSettings) {
             NavigationStack {
@@ -98,12 +123,26 @@ struct AssistantView: View {
             )
         }
         .task(id: accountIdentity) {
-            if let previousAccountIdentity, previousAccountIdentity != accountIdentity { clearDraft() }
+            assistant.reconcileAccount()
+            if let previousAccountIdentity, previousAccountIdentity != accountIdentity {
+                clearDraft()
+                drafts = [:]
+            }
             previousAccountIdentity = accountIdentity
             presentWelcomeIfNeeded()
         }
         .onChange(of: showAccountSettings) { _, isPresented in
             if !isPresented { presentWelcomeIfNeeded() }
+        }
+        .onChange(of: assistant.selectedChatID) { oldID, newID in
+            if let oldID { drafts[oldID] = ChatDraft(text: composer, references: selectedReferences) }
+            composerFocused = false
+            clearDraft()
+            if let newID, let draft = drafts[newID] {
+                composer = draft.text
+                selectedReferences = draft.references
+            }
+            proposalError = nil
         }
         .onChange(of: composer) { oldValue, newValue in
             // Only a newly appended standalone @ opens the picker. Email addresses,
@@ -133,6 +172,11 @@ struct AssistantView: View {
         referenceMentionDraft = nil
         restoreComposerAfterReferencePicker = false
         showReferencePicker = false
+    }
+
+    private func startNewChat() {
+        assistant.createChat()
+        if assistant.models.isEmpty { Task { await assistant.refreshModels() } }
     }
 
     private func currentReference(_ reference: AssistantWorkoutReference) -> AssistantWorkoutReference {
@@ -226,6 +270,9 @@ struct AssistantView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
+                    if let error = assistant.storageErrorMessage {
+                        AssistantNotice(title: "Chats could not be saved", message: error, systemImage: "externaldrive.badge.exclamationmark")
+                    }
                     if assistant.messages.isEmpty {
                         emptyTranscript
                     }
@@ -291,7 +338,7 @@ struct AssistantView: View {
             }
             if let chart = message.chart { AssistantChartView(chart: chart) }
             if let proposal = message.proposal {
-                AssistantProposalView(proposal: proposal, isWorking: assistant.isWorking, apply: {
+                AssistantProposalView(proposal: proposal, isWorking: assistant.isWorking || !accounts.canUsePlan, apply: {
                     do { try assistant.applyProposal(proposal.id) }
                     catch { proposalError = error.localizedDescription }
                 }, discard: {
@@ -319,7 +366,9 @@ struct AssistantView: View {
                         ForEach(selectedReferences, id: \.key) { reference in
                             HStack(spacing: 8) {
                                 AssistantReferenceLabel(reference: currentReference(reference))
-                                    .frame(maxWidth: 240, alignment: .leading)
+                                    .frame(width: 240, alignment: .leading)
+                                    // Measure wrapped text at the constrained width before sizing the tag.
+                                    .fixedSize(horizontal: false, vertical: true)
                                     .accessibilityIdentifier("assistantSelectedReference.\(reference.key)")
                                 Button {
                                     selectedReferences.removeAll { $0.key == reference.key }
@@ -334,10 +383,12 @@ struct AssistantView: View {
                                 .accessibilityIdentifier("assistantRemoveReference.\(reference.key)")
                             }
                             .padding(.leading, 10).padding(.trailing, 4)
+                            .padding(.vertical, 8)
                             .background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                         }
                     }
                 }
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 .accessibilityIdentifier("assistantSelectedReferences")
             }
             HStack(alignment: .bottom, spacing: 12) {
