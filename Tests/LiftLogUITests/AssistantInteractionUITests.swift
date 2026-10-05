@@ -132,7 +132,7 @@ final class AssistantInteractionUITests: XCTestCase {
         reveal(range, in: app)
         range.buttons["30 days"].tap()
         let source = app.staticTexts["Source: completed sets in 2 recorded workouts."]
-        reveal(source, in: app)
+        XCTAssertTrue(source.waitForExistence(timeout: 5))
         range.buttons["90 days"].tap()
         XCTAssertTrue(app.staticTexts["Source: completed sets in 5 recorded workouts."].exists)
         range.buttons["All"].tap()
@@ -234,15 +234,15 @@ final class AssistantInteractionUITests: XCTestCase {
         // Scroll using the target's position. Large-text replies can span several
         // pages in either direction, and a lazy card may not yet be realized.
         for _ in 0..<20 {
-            if element.exists {
-                let viewport = transcript.frame
-                if element.frame.midY < viewport.minY { transcript.swipeDown() }
-                else if element.frame.midY > viewport.maxY { transcript.swipeUp() }
-                else if element.isHittable { return }
-                else { transcript.swipeUp() }
-            } else {
-                transcript.swipeDown()
-            }
+            if element.exists && element.isHittable { return }
+            let viewport = transcript.frame
+            let delta = element.exists ? viewport.midY - element.frame.midY : viewport.height
+            let distance = min(max(abs(delta), 44), viewport.height * 0.35)
+            let start = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.5))
+            let end = start.withOffset(CGVector(dx: 0, dy: delta >= 0 ? distance : -distance))
+            // Short drags in the transcript gutter avoid overshooting a control
+            // or hitting chart gestures. Holding at the end suppresses inertia.
+            start.press(forDuration: 0.01, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
         }
         XCTAssertTrue(element.isHittable)
     }

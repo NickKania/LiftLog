@@ -27,16 +27,9 @@ struct AssistantChartView: View {
                 AssistantChartPlot(presentation: presentation, style: style, selectedID: selectedPoint?.id)
                     .chartOverlay { proxy in
                         GeometryReader { geometry in
-                            Rectangle().fill(.clear).contentShape(Rectangle())
-                                .onTapGesture { location in
-                                    selectPoint(at: location, proxy: proxy, geometry: geometry)
-                                }
-                                .simultaneousGesture(DragGesture(minimumDistance: 10).onChanged { value in
-                                    // Vertical swipes belong to the conversation. A horizontal
-                                    // scrub can inspect points without capturing its scroll gesture.
-                                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                                    selectPoint(at: value.location, proxy: proxy, geometry: geometry)
-                                })
+                            AssistantChartSelectionOverlay { location in
+                                selectPoint(at: location, proxy: proxy, geometry: geometry)
+                            }
                                 .accessibilityHidden(true)
                         }
                     }
@@ -44,6 +37,7 @@ struct AssistantChartView: View {
                     Image(systemName: "hand.draw").accessibilityHidden(true)
                     Text("Tap or drag sideways · One point per workout")
                 }.font(.caption2).foregroundStyle(.secondary)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 Divider()
                 footer
                 workoutList
@@ -183,6 +177,7 @@ struct AssistantChartView: View {
                 }.accessibilityIdentifier("assistantShareChartButton")
             }
         }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
     private var workoutList: some View {
@@ -213,6 +208,7 @@ struct AssistantChartView: View {
                 }
             }.padding(.top, 6)
         }.font(.subheadline)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .accessibilityIdentifier("assistantChartWorkoutsDisclosure")
     }
 
@@ -232,5 +228,48 @@ struct AssistantChartView: View {
         let renderer = ImageRenderer(content: export)
         renderer.scale = 2
         shareImage = renderer.uiImage
+    }
+}
+
+/// Reject vertical pans before recognition so the enclosing transcript can scroll.
+/// UIKit's direction check avoids SwiftUI drag recognizers capturing those swipes.
+private struct AssistantChartSelectionOverlay: UIViewRepresentable {
+    let select: (CGPoint) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(select: select) }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.inspect(_:)))
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.inspect(_:)))
+        for gesture in [tap, pan] {
+            gesture.delegate = context.coordinator
+            gesture.cancelsTouchesInView = false
+            view.addGestureRecognizer(gesture)
+        }
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) { context.coordinator.select = select }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var select: (CGPoint) -> Void
+        init(select: @escaping (CGPoint) -> Void) { self.select = select }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y)
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
+
+        @objc func inspect(_ gesture: UIGestureRecognizer) {
+            guard [.began, .changed, .ended].contains(gesture.state) else { return }
+            select(gesture.location(in: gesture.view))
+        }
     }
 }
