@@ -553,3 +553,123 @@ extension AssistantChatPersistenceTests {
         XCTAssertEqual(transport.held.count, 2, "A successful title is generated once per chat")
     }
 }
+
+extension AssistantChatPersistenceTests {
+    @MainActor
+    func testOfflineRelaunchRestoresLastAccountHistoryAndSigningInAnotherAccountUsesItsOwnChats() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("chats.json")
+        let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+        let signedInTransport = ChatPersistenceTransport()
+        signedInTransport.replies = [chatCompleted(chatAnswer("Account A saved answer"))]
+        let signedIn = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: signedInTransport,
+                                        accountIdentity: { "account-a-revision-1" }, storageURL: archive,
+                                        archiveAccountIdentity: { "account-a" })
+        await signedIn.refreshModels()
+        XCTAssertTrue(signedIn.send("Account A saved question"))
+        await waitUntil { !signedIn.isWorking }
+        let accountAChat = try XCTUnwrap(signedIn.selectedChatID)
+        let originalIDs = signedIn.messages.map(\.id)
+
+        var account: String?
+        var credentialRevision: String?
+        let offlineTransport = ChatPersistenceTransport()
+        var tokenReads = 0
+        let offline = WorkoutAssistant(store: store, accessToken: {
+            tokenReads += 1
+            return "mock"
+        }, transport: offlineTransport, accountIdentity: { credentialRevision }, storageURL: archive,
+           archiveAccountIdentity: { account })
+        XCTAssertEqual(offline.selectedChatID, accountAChat)
+        XCTAssertEqual(offline.messages.map(\.id), originalIDs)
+        XCTAssertEqual(offline.messages.map(\.text), ["Account A saved question", "Account A saved answer"])
+        XCTAssertTrue(offline.models.isEmpty)
+        XCTAssertFalse(offline.send("Cannot infer while disconnected"))
+        XCTAssertEqual(tokenReads, 0)
+        XCTAssertTrue(offlineTransport.requests.isEmpty)
+        XCTAssertTrue(offline.renameChat(accountAChat, title: "Reviewed while offline"))
+
+        offline.accountWillChange()
+        account = "account-b"
+        credentialRevision = "account-b-revision-1"
+        offline.reconcileAccount()
+        XCTAssertTrue(offline.messages.isEmpty)
+        XCTAssertFalse(offline.chats.contains { $0.id == accountAChat })
+        await offline.refreshModels()
+        offlineTransport.replies = [chatCompleted(chatAnswer("Account B saved answer"))]
+        XCTAssertTrue(offline.send("Account B saved question"))
+        await waitUntil { !offline.isWorking }
+        let accountBChat = try XCTUnwrap(offline.selectedChatID)
+        XCTAssertNotEqual(accountBChat, accountAChat)
+        let accountBIDs = offline.messages.map(\.id)
+        let requestCount = offlineTransport.requests.count
+        let tokenCount = tokenReads
+        offline.accountWillChange()
+        account = nil
+        credentialRevision = nil
+        offline.reconcileAccount()
+        XCTAssertEqual(offline.selectedChatID, accountBChat)
+        XCTAssertEqual(offline.messages.map(\.id), accountBIDs)
+        XCTAssertFalse(offline.send("Disconnected follow-up"))
+        XCTAssertEqual(offlineTransport.requests.count, requestCount)
+        XCTAssertEqual(tokenReads, tokenCount)
+
+        let reopenedOffline = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: ChatPersistenceTransport(),
+                                               accountIdentity: { nil }, storageURL: archive,
+                                               archiveAccountIdentity: { nil })
+        XCTAssertEqual(reopenedOffline.selectedChatID, accountBChat)
+        XCTAssertEqual(reopenedOffline.messages.map(\.text), ["Account B saved question", "Account B saved answer"])
+        let reopenedA = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: ChatPersistenceTransport(),
+                                         accountIdentity: { "account-a-revision-2" }, storageURL: archive,
+                                         archiveAccountIdentity: { "account-a" })
+        XCTAssertEqual(reopenedA.selectedChatID, accountAChat)
+        XCTAssertEqual(reopenedA.selectedChat?.title, "Reviewed while offline")
+        XCTAssertEqual(reopenedA.messages.map(\.id), originalIDs)
+        XCTAssertFalse(reopenedA.chats.contains { $0.id == accountBChat })
+        let saved = try AssistantChatArchive.load(from: archive)
+        XCTAssertEqual(Set(saved.accounts.keys), Set(["account-a", "account-b"]))
+        XCTAssertEqual(saved.lastAccount, "account-b")
+    }
+
+    @MainActor
+    func testAccountSwitchingRetainsChatsAndHistoryWhenDiskPersistenceIsDisabled() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let transport = ChatPersistenceTransport()
+        var account = "account-a"
+        let assistant = WorkoutAssistant(store: WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite")),
+                                         accessToken: { "mock" }, transport: transport,
+                                         accountIdentity: { account }, storageURL: nil)
+        await assistant.refreshModels()
+        transport.replies = [chatCompleted(chatAnswer("Memory answer A"))]
+        XCTAssertTrue(assistant.send("Memory question A"))
+        await waitUntil { !assistant.isWorking }
+        let firstID = try XCTUnwrap(assistant.selectedChatID)
+        assistant.accountWillChange()
+        account = "account-b"
+        assistant.reconcileAccount()
+        await assistant.refreshModels()
+        transport.replies = [chatCompleted(chatAnswer("Memory answer B"))]
+        XCTAssertTrue(assistant.send("Memory question B"))
+        await waitUntil { !assistant.isWorking }
+        let secondID = try XCTUnwrap(assistant.selectedChatID)
+        assistant.accountWillChange()
+        account = "account-a"
+        assistant.reconcileAccount()
+        XCTAssertEqual(assistant.selectedChatID, firstID)
+        XCTAssertEqual(assistant.messages.map(\.text), ["Memory question A", "Memory answer A"])
+        await assistant.refreshModels()
+        transport.replies = [chatCompleted(chatAnswer("Memory follow-up answer A"))]
+        XCTAssertTrue(assistant.send("Memory follow-up A"))
+        await waitUntil { !assistant.isWorking }
+        let users = try input(XCTUnwrap(transport.inferenceRequests.last)).filter { $0["role"] as? String == "user" }.compactMap { $0["content"] as? String }
+        XCTAssertEqual(users, ["Memory question A", "Memory follow-up A"])
+        assistant.accountWillChange()
+        account = "account-b"
+        assistant.reconcileAccount()
+        XCTAssertEqual(assistant.selectedChatID, secondID)
+        XCTAssertEqual(assistant.messages.map(\.text), ["Memory question B", "Memory answer B"])
+        XCTAssertNil(assistant.storageErrorMessage)
+    }
+}
