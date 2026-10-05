@@ -9,10 +9,12 @@ final class WorkoutStore {
     private(set) var activeWorkout: WorkoutSession?
     private(set) var unit: WeightUnit = .lb
     private(set) var personalExercises: [Exercise] = []
+    private(set) var defaultAssistantModel: String?
     var exercises: [Exercise] { ExerciseCatalog.all + personalExercises }
     var errorMessage: String?
 
     @ObservationIgnored private let fileURL: URL
+    @ObservationIgnored private var defaultAssistantModelKey = ""
     @ObservationIgnored private var loadFailure: String?
     /// Advances only after a successful atomic save; review drafts bind to this revision.
     @ObservationIgnored private(set) var revision: UInt64 = 0
@@ -23,6 +25,8 @@ final class WorkoutStore {
 
     init(fileURL: URL? = nil, legacyFileURL: URL? = nil, cloudBackup: CloudBackupManager? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL
+        self.defaultAssistantModelKey = "defaultAssistantModel.\(self.fileURL.standardizedFileURL.path)"
+        self.defaultAssistantModel = UserDefaults.standard.string(forKey: defaultAssistantModelKey)
         self.cloudBackup = cloudBackup ?? CloudBackupManager(databaseURL: self.fileURL, available: fileURL == nil)
         let legacyURL = legacyFileURL ?? self.fileURL.deletingPathExtension().appendingPathExtension("json")
         do {
@@ -193,6 +197,15 @@ final class WorkoutStore {
         }
         next.unit = unit
         return commit(next)
+    }
+
+    @discardableResult
+    func setDefaultAssistantModel(_ model: String?) -> Bool {
+        let normalized = model.flatMap { $0.isEmpty ? nil : $0 }
+        defaultAssistantModel = normalized
+        if let normalized { UserDefaults.standard.set(normalized, forKey: defaultAssistantModelKey) }
+        else { UserDefaults.standard.removeObject(forKey: defaultAssistantModelKey) }
+        return true
     }
 
     /// Imports finished sessions as a single disk commit. Source identity survives reloads.

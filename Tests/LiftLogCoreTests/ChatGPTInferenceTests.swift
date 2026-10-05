@@ -47,6 +47,54 @@ private func call(_ name: String = "get_workout_data", id: String = "call_1", ar
 
 final class ChatGPTInferenceTests: XCTestCase {
     @MainActor
+    func testDefaultModelAppliesAtCreationAndResetWithoutChangingCurrentChat() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("DefaultModelTests-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = WorkoutStore(fileURL: url)
+        let transport = InferenceMockTransport()
+        transport.catalog = Data("{\"models\":[{\"slug\":\"gpt-6.1-sol\",\"display_name\":\"Sol\",\"visibility\":\"list\"},{\"slug\":\"preferred\",\"display_name\":\"Preferred\",\"visibility\":\"list\"}]}".utf8)
+        XCTAssertTrue(store.setDefaultAssistantModel("preferred"))
+        let assistant = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: transport)
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "preferred")
+        XCTAssertTrue(store.setDefaultAssistantModel("gpt-6.1-sol"))
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "preferred")
+        assistant.reset()
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "gpt-6.1-sol")
+        assistant.selectedModel = "preferred"
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "preferred")
+        assistant.reset()
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "gpt-6.1-sol")
+        XCTAssertEqual(store.defaultAssistantModel, "gpt-6.1-sol")
+    }
+
+    @MainActor
+    func testUnavailableDefaultFallsBackWithoutOverwritingPreference() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("DefaultModelTests-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = WorkoutStore(fileURL: url)
+        XCTAssertTrue(store.setDefaultAssistantModel("preferred"))
+        let transport = InferenceMockTransport()
+        let assistant = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: transport)
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "gpt-6.1-sol")
+        XCTAssertEqual(store.defaultAssistantModel, "preferred")
+        transport.catalog = Data("{\"models\":[{\"slug\":\"other\",\"display_name\":\"Other\",\"visibility\":\"list\"}]}".utf8)
+        assistant.reset()
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "other")
+        transport.catalog = Data("{\"models\":[]}".utf8)
+        assistant.reset()
+        await assistant.refreshModels()
+        XCTAssertEqual(assistant.selectedModel, "")
+        XCTAssertEqual(store.defaultAssistantModel, "preferred")
+    }
+
+    @MainActor
     func testModelCatalogFiltersVisibilityAndPreservesAccountOrder() async throws {
         let transport = InferenceMockTransport()
         transport.catalog = Data("{\"models\":[{\"slug\":\"hidden\",\"display_name\":\"Hidden\",\"visibility\":\"hidden\"},{\"slug\":\"second\",\"display_name\":\"Second\",\"visibility\":\"list\"},{\"slug\":\"first\",\"display_name\":\"First\",\"visibility\":\"list\"}]}".utf8)

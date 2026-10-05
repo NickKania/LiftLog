@@ -24,8 +24,10 @@ enum AssistantUITestFixture {
 
     static func seedWorkouts(in store: WorkoutStore) {
         guard let bench = store.exercises.first(where: { $0.name == "Bench Press" }) else { return }
-        let sessions = [135.0, 145.0].enumerated().map { index, weight in
-            let date = Date(timeIntervalSince1970: 1_750_000_000 + Double(index) * 86_400)
+        let dense = ProcessInfo.processInfo.arguments.contains("--assistant-dense-chart-ui-fixture")
+        let weights = dense ? (0..<10).map { 135.0 + Double($0) * 10 } : [135.0, 145.0]
+        let sessions = weights.enumerated().map { index, weight in
+            let date = Date(timeIntervalSince1970: 1_750_000_000 + Double(index) * 86_400 * (dense ? 20 : 1))
             return WorkoutSession(name: "Recorded Fixture Workout \(index + 1)", startedAt: date,
                 finishedAt: date.addingTimeInterval(1800), unit: .lb,
                 importSourceKey: "assistant-ui-fixture-\(index)",
@@ -56,6 +58,8 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let data = try JSONSerialization.data(withJSONObject: ["models": [[
             "slug": "fixture-model", "display_name": "Fixture Model", "visibility": "list"
+        ], [
+            "slug": "fixture-alternate", "display_name": "Alternate Model", "visibility": "list"
         ]]])
         return (data, response(for: request))
     }
@@ -69,8 +73,45 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
         let isContinuation = input.last?["type"] as? String == "function_call_output"
         let question = input.last?["content"] as? String ?? ""
         let output: [[String: Any]]
-        if isContinuation {
-            output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": "Here is the result from your recorded workout data. Review any proposed changes before applying them."]]]]
+        if ProcessInfo.processInfo.arguments.contains("--assistant-reference-ui-fixture") {
+            let text = try referenceAcknowledgment(for: question)
+            output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": text]]]]
+        } else if question.localizedCaseInsensitiveContains("formatting") {
+            output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": """
+            ## Your training, in perspective
+
+            Your **completed volume** is measured in *lb × reps*.
+
+            - **Morning workout:** 1,080 lb × reps
+              - 135 lb × 8 completed reps
+            - **Upper body:** 1,160 lb × reps
+
+            | Workout | Volume |
+            | --- | ---: |
+            | Morning workout | 1,080 |
+            | Upper body | 1,160 |
+
+            > Only completed sets count toward your recorded volume.
+
+            ```text
+            volume = weight × completed reps
+            ```
+
+            [Training reference](https://example.com/training)
+            """]]]]
+        } else if isContinuation {
+            var text = "Here is the result from your recorded workout data. Review any proposed changes before applying them."
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            if let json = input.last?["output"] as? String,
+               let chart = try? decoder.decode(WorkoutAgentChart.self, from: Data(json.utf8)) {
+                let presentation = AssistantChartPresentation(chart: chart)
+                text += "\n\n" + chart.points.map {
+                    "- **\($0.workoutName):** \(presentation.formattedValue($0.value)) \(presentation.valueUnit)"
+                }.joined(separator: "\n")
+                text += "\n\nTotal completed volume: **\(presentation.formattedValue(chart.points.reduce(0) { $0 + $1.value })) \(presentation.valueUnit)**."
+            }
+            output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": text]]]]
         } else {
             let chartRequest = question.localizedCaseInsensitiveContains("chart")
             let arguments: [String: Any] = chartRequest ? [
@@ -94,6 +135,48 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
             continuation.finish()
         }
         return ChatGPTHTTPStream(response: response(for: request), lines: lines)
+    }
+
+    /// Echo only the data actually present in the submitted user message. This lets
+    /// UI tests verify record selection without making any real inference request.
+    private func referenceAcknowledgment(for content: String) throws -> String {
+        let marker = "\n\nSelected workout references (JSON record data):\n"
+        guard let range = content.range(of: marker) else { return "Received 0 selected records." }
+        let json = Data(content[range.upperBound...].utf8)
+        let context = try JSONSerialization.jsonObject(with: json) as? [String: Any] ?? [:]
+        guard let records = context["selectedRecords"] as? [[String: Any]] else {
+            return "Selected record data was missing."
+        }
+        var paragraphs = ["Received \(records.count) selected records."]
+        for reference in records {
+            let kind = reference["kind"] as? String ?? "missing"
+            let record = reference[kind == "template" ? "template" : "workout"] as? [String: Any] ?? [:]
+            let exercises = record["exercises"] as? [[String: Any]] ?? []
+            let name = record["name"] as? String ?? "missing"
+            let id = reference["id"] as? String ?? "missing"
+            let recordID = record["id"] as? String ?? "missing"
+            let status = reference["status"] as? String ?? "missing"
+            let unit = reference["unit"] as? String ?? "missing"
+            paragraphs.append("Received \(kind) \(name); id: \(id); record id: \(recordID); status: \(status); unit: \(unit); exercises: \(exercises.count).")
+            if kind == "workout" {
+                paragraphs.append("Workout source: \(record["importSourceKey"] as? String ?? "missing").")
+            }
+            if let entry = exercises.first,
+               let exercise = entry["exercise"] as? [String: Any],
+               let exerciseName = exercise["name"] as? String,
+               let sets = entry["sets"] as? [[String: Any]], let firstSet = sets.first {
+                let weight = (firstSet["weight"] as? NSNumber)?.stringValue ?? "missing"
+                if kind == "template" {
+                    let reps = (firstSet["targetReps"] as? NSNumber)?.stringValue ?? "missing"
+                    paragraphs.append("Template set \(exerciseName): \(weight) \(unit) × \(reps) target reps; \(sets.count) sets.")
+                } else {
+                    let reps = (firstSet["reps"] as? NSNumber)?.stringValue ?? "missing"
+                    let completed = (firstSet["isCompleted"] as? Bool).map { $0 ? "true" : "false" } ?? "missing"
+                    paragraphs.append("Workout set \(exerciseName): \(weight) \(unit) × \(reps) reps; completed \(completed); \(sets.count) sets.")
+                }
+            }
+        }
+        return paragraphs.joined(separator: "\n\n")
     }
 
     private func response(for request: URLRequest) -> HTTPURLResponse {

@@ -22,7 +22,7 @@ final class AssistantUITests: XCTestCase {
     @MainActor
     func testChatGPTConnectionIsAvailableInSettings() {
         let app = launchApp()
-        app.buttons["settingsButton"].tap()
+        app.tabBars.buttons["Settings"].tap()
         app.buttons["chatGPTSettingsLink"].tap()
         XCTAssertTrue(app.buttons["continueWithChatGPTButton"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["chatGPTManageUsageLink"].exists || app.links["chatGPTManageUsageLink"].exists)

@@ -11,6 +11,9 @@ struct AssistantView: View {
     @State private var showWelcome = false
     @State private var proposalError: String?
     @State private var previousAccountIdentity: String?
+    @State private var selectedReferences: [AssistantWorkoutReference] = []
+    @State private var showReferencePicker = false
+    @State private var referenceMentionDraft: String?
     @FocusState private var composerFocused: Bool
 
     private var accountIdentity: String {
@@ -40,6 +43,7 @@ struct AssistantView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("New chat", systemImage: "square.and.pencil") {
                         assistant.reset()
+                        clearDraft()
                         Task { await assistant.refreshModels() }
                     }
                     .labelStyle(.iconOnly)
@@ -71,13 +75,38 @@ struct AssistantView: View {
                     .accessibilityIdentifier("assistantWelcomeGotItButton")
             }.padding(24).presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showReferencePicker, onDismiss: { referenceMentionDraft = nil }) {
+            AssistantReferencePicker(
+                references: assistant.availableReferences,
+                selectedReferences: selectedReferences,
+                isDisabled: assistant.isWorking,
+                onSelect: { references in
+                    selectedReferences = references
+                    if !references.isEmpty, referenceMentionDraft == composer, composer.hasSuffix("@") {
+                        composer.removeLast()
+                    }
+                    showReferencePicker = false
+                },
+                onCancel: { showReferencePicker = false }
+            )
+        }
         .task(id: accountIdentity) {
-            if let previousAccountIdentity, previousAccountIdentity != accountIdentity { composer = "" }
+            if let previousAccountIdentity, previousAccountIdentity != accountIdentity { clearDraft() }
             previousAccountIdentity = accountIdentity
             presentWelcomeIfNeeded()
         }
         .onChange(of: showAccountSettings) { _, isPresented in
             if !isPresented { presentWelcomeIfNeeded() }
+        }
+        .onChange(of: composer) { oldValue, newValue in
+            // Only a newly appended standalone @ opens the picker. Email addresses,
+            // pasted text, and canceled mention drafts remain ordinary text.
+            guard composerFocused, !assistant.isWorking, !showReferencePicker,
+                  newValue == oldValue + "@",
+                  oldValue.isEmpty || oldValue.last?.isWhitespace == true else { return }
+            referenceMentionDraft = newValue
+            composerFocused = false
+            showReferencePicker = true
         }
         .alert("Could not update workout", isPresented: Binding(get: { proposalError != nil }, set: { if !$0 { proposalError = nil } })) {
             Button("OK") { proposalError = nil }
@@ -88,6 +117,13 @@ struct AssistantView: View {
         guard accounts.canUsePlan, !welcomeShown, !showAccountSettings else { return }
         showWelcome = true
         welcomeShown = true
+    }
+
+    private func clearDraft() {
+        composer = ""
+        selectedReferences = []
+        referenceMentionDraft = nil
+        showReferencePicker = false
     }
 
     private var connectionView: some View {
@@ -120,9 +156,26 @@ struct AssistantView: View {
     }
 
     private var modelBar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                planStatus
+                Spacer(minLength: 8)
+                modelPicker
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                planStatus
+                modelPicker
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 20).padding(.vertical, 10)
+        .background(Color(.secondarySystemGroupedBackground))
+    }
+
+    private var planStatus: some View {
         HStack(spacing: 12) {
             Label("ChatGPT plan", systemImage: "checkmark.seal.fill")
                 .font(.caption.weight(.semibold)).foregroundStyle(.blue)
+                .fixedSize()
                 .accessibilityIdentifier("assistantPlanBadge")
             Link(destination: chatGPTUsageURL) {
                 Image(systemName: "gauge.with.dots.needle.33percent")
@@ -130,7 +183,11 @@ struct AssistantView: View {
             }
             .accessibilityLabel("Manage usage in ChatGPT")
             .accessibilityIdentifier("assistantPlanManageUsageLink")
-            Spacer(minLength: 8)
+        }
+    }
+
+    private var modelPicker: some View {
+        Group {
             if assistant.isLoadingModels {
                 ProgressView().accessibilityLabel("Loading available models")
             } else if !assistant.models.isEmpty {
@@ -149,8 +206,6 @@ struct AssistantView: View {
                     .font(.caption).accessibilityIdentifier("assistantReloadModelsButton")
             }
         }
-        .padding(.horizontal, 20).padding(.vertical, 10)
-        .background(Color(.secondarySystemGroupedBackground))
     }
 
     private var transcript: some View {
@@ -217,15 +272,8 @@ struct AssistantView: View {
 
     @ViewBuilder private func messageView(_ message: WorkoutAssistantMessage) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !message.text.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(message.role == .user ? "You" : (message.isPartial ? (assistant.isWorking ? "Assistant · In progress" : "Assistant · Partial response") : "Assistant"))
-                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Text(message.text).textSelection(.enabled)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(message.role == .user ? Color.blue.opacity(0.09) : Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            if !message.text.isEmpty || !message.references.isEmpty, message.chart == nil, message.proposal == nil {
+                AssistantMessageView(message: message, isWorking: assistant.isWorking)
             }
             if let chart = message.chart { AssistantChartView(chart: chart) }
             if let proposal = message.proposal {
@@ -251,7 +299,44 @@ struct AssistantView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("assistantWorkingIndicator")
             }
+            if !selectedReferences.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(selectedReferences, id: \.key) { reference in
+                            HStack(spacing: 8) {
+                                AssistantReferenceLabel(reference: reference)
+                                    .accessibilityIdentifier("assistantSelectedReference.\(reference.key)")
+                                Button {
+                                    selectedReferences.removeAll { $0.key == reference.key }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 32, height: 44)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(assistant.isWorking)
+                                .accessibilityLabel("Remove \(reference.name), \(reference.subtitle)")
+                                .accessibilityIdentifier("assistantRemoveReference.\(reference.key)")
+                            }
+                            .padding(.leading, 10).padding(.trailing, 4)
+                            .background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                }
+                .accessibilityIdentifier("assistantSelectedReferences")
+            }
             HStack(alignment: .bottom, spacing: 12) {
+                Button {
+                    referenceMentionDraft = nil
+                    composerFocused = false
+                    showReferencePicker = true
+                } label: {
+                    Image(systemName: "at").font(.headline).frame(width: 44, height: 44)
+                }
+                .buttonStyle(.bordered).clipShape(Circle())
+                .disabled(assistant.isWorking)
+                .accessibilityLabel("Tag a workout or template")
+                .accessibilityIdentifier("assistantAddReferenceButton")
                 TextField("Ask about your workouts", text: $composer, axis: .vertical)
                     .lineLimit(1...5).padding(12)
                     .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
@@ -268,9 +353,10 @@ struct AssistantView: View {
                     Button {
                         let question = composer.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !question.isEmpty else { return }
-                        assistant.send(question)
-                        composer = ""
-                        composerFocused = false
+                        if assistant.send(question, references: selectedReferences) {
+                            clearDraft()
+                            composerFocused = false
+                        }
                     } label: {
                         Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44)
                     }

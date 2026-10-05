@@ -17,7 +17,21 @@ OpenAI's [current preview limitations](https://developers.openai.com/siwc/token-
 
 The assistant can inspect templates, the current session, exercise definitions, and completed workout history. It can propose new templates and active workouts, or add, edit, and remove exercises in existing templates and the active session. Completed history remains a record of performed exercise; the assistant cannot invent completed workouts or mark sets completed. The assistant cannot rewrite an active exercise entry containing completed sets, but it can propose removing that entry; the review shows the recorded sets before removal.
 
+### Tagging templates and workouts
+
+Tap **@** beside the question field to choose specific templates or workout instances. Search by name or the displayed workout date, select up to ten items, and tap **Done**. Workout dates and active/completed labels distinguish sessions with the same name. Selected tags appear above the question; remove a tag before sending with its remove button. Cancel closes the picker without changing your draft selection.
+
+Send a question with the tags, for example, “Compare these workouts” or “Adjust this template based on this session.” Tags remain visible with the sent question. They identify exact records, independently of their names, and share those records’ exercise and set details with OpenAI. The app resolves the current record when you send, so a renamed template or a workout that has just finished still refers to the same item. If a selected record was deleted or the selected data exceeds the request limit, sending shows an error and preserves your draft.
+
+Tagging a completed workout does not make history editable. Proposed changes still require Apply. Starting a new chat or changing accounts clears the draft tags along with the conversation context.
+
+The picker uses native searchable SwiftUI content and separate tags to support iOS 17. Apple’s [`TextSelection`](https://developer.apple.com/documentation/swiftui/textselection) requires iOS 18, while [`textInputSuggestions`](https://developer.apple.com/documentation/swiftui/view/textinputsuggestions(_:)) is a macOS API. See Apple’s [search guidance](https://developer.apple.com/documentation/swiftui/performing-a-search-operation) for the native search behavior used here.
+
 Graph values are computed locally from recorded data, with explicit units. This avoids relying on model-written plotting code or model-invented measurements. Graphs are snapshots of the data when requested.
+
+Assistant replies render native Markdown: headings, emphasis, nested lists, links, tables, quotes, and fenced code. Tables and code scroll horizontally when needed; replies remain selectable and offer Copy response, and code blocks offer Copy code. Streaming replies use the same renderer, including unfinished code fences. User questions retain their literal text.
+
+Charts show one point per workout with evenly spaced sessions and date labels taken from actual records. Tap a point or hold and drag to inspect its exact value, workout name, date, and time. Previous/Next workout controls and **View workouts** provide alternative ways to select records. Use the style menu to switch between a line and bars. **All**, **30 days**, and **90 days** filter the snapshot relative to its latest recorded workout, rather than today's date. **Share chart** exports the current range and style as a light-background image without chat or interactive controls.
 
 **Manage usage** opens [ChatGPT usage settings](https://chatgpt.com/settings/usage). Usage restrictions stop requests and retain the local workout data. There is no automatic fallback to paid API usage.
 
@@ -40,3 +54,5 @@ A model call can prepare a change but cannot approve it. Proposal application ch
 Run `swift test` for authentication, streaming, tool execution, analytics, mutation, and persistence tests. Build the iOS target and run the Assistant UI tests for native integration. Tests use synthetic credentials and mocked network responses; they do not spend a subscription allowance.
 
 Before distribution, manually verify browser sign-in, consent denial and reauthorization, token renewal, account switching, disconnect, and one real streamed request with an eligible account on a physical iPhone. Native loopback interoperability and live account entitlement cannot be established by mocked tests. Do not include credentials or callback URLs in bug reports.
+
+Choose **Settings → Assistant → Default model** to set the model for future chats. The preference survives relaunch; changing it leaves the current chat’s model unchanged. **Automatic** uses the app’s available-model fallback. If a saved model is unavailable for the connected account, a new chat uses an available fallback while retaining the saved preference. The model picker in Assistant overrides only the current chat.

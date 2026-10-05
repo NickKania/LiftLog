@@ -24,6 +24,38 @@ final class WorkoutStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testDefaultAssistantModelPersistsAndOlderFilesUseAutomatic() throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        XCTAssertNil(store.defaultAssistantModel)
+        XCTAssertTrue(store.setDefaultAssistantModel("preferred"))
+        XCTAssertTrue(store.setUnit(.kg))
+        XCTAssertEqual(WorkoutStore(fileURL: file).defaultAssistantModel, "preferred")
+        XCTAssertTrue(store.setDefaultAssistantModel(""))
+        XCTAssertNil(WorkoutStore(fileURL: file).defaultAssistantModel)
+
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        legacy.removeValue(forKey: "defaultAssistantModel")
+        try JSONSerialization.data(withJSONObject: legacy).write(to: file)
+        let reloaded = WorkoutStore(fileURL: file)
+        XCTAssertNil(reloaded.defaultAssistantModel)
+        XCTAssertNil(reloaded.errorMessage)
+        XCTAssertEqual(reloaded.unit, .kg)
+    }
+
+    @MainActor
+    func testDefaultAssistantModelDoesNotChangeWhenSavingFails() throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        XCTAssertTrue(store.setDefaultAssistantModel("preferred"))
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        XCTAssertFalse(store.setDefaultAssistantModel("other"))
+        XCTAssertEqual(store.defaultAssistantModel, "preferred")
+        XCTAssertNotNil(store.errorMessage)
+    }
+
+    @MainActor
     func testExpandedCatalogPreservesOriginalIdentitiesAndStarterTemplates() async throws {
         let store = WorkoutStore(fileURL: try temporaryFile())
         let originalNames = ["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row",

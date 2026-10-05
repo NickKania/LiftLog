@@ -30,6 +30,8 @@ struct RootView: View {
 
 struct SettingsView: View {
     @Environment(WorkoutStore.self) private var store
+    @Environment(WorkoutAssistant.self) private var assistant
+    @Environment(ChatGPTAccountStore.self) private var accounts
 
     var body: some View {
         Form {
@@ -43,6 +45,32 @@ struct SettingsView: View {
                 Text("Weight")
             } footer: {
                 Text("Template weights convert to this unit. Active workouts and history keep their recorded unit.")
+            }
+            Section {
+                Picker("Default model", selection: Binding(
+                    get: { store.defaultAssistantModel ?? "" },
+                    set: { store.setDefaultAssistantModel($0) }
+                )) {
+                    Text("Automatic").tag("")
+                    ForEach(assistant.models) { model in Text(model.displayName).tag(model.slug) }
+                    if let saved = store.defaultAssistantModel, !assistant.models.contains(where: { $0.slug == saved }) {
+                        Text("\(saved) (unavailable)").tag(saved)
+                    }
+                }
+                .accessibilityIdentifier("assistantDefaultModelPicker")
+                .disabled(assistant.isLoadingModels)
+                if assistant.isLoadingModels {
+                    ProgressView("Loading available models")
+                } else if accounts.canUsePlan && assistant.models.isEmpty {
+                    Button("Reload models") { Task { await assistant.refreshModels() } }
+                    if let error = assistant.errorMessage { Text(error).font(.footnote).foregroundStyle(.secondary) }
+                }
+            } header: {
+                Text("Assistant")
+            } footer: {
+                Text(accounts.canUsePlan
+                     ? "Used for new chats. Automatic chooses an available model. If your default is unavailable, new chats use Automatic."
+                     : "Connect an eligible ChatGPT account to choose a default for new chats.")
             }
             Section("ChatGPT") {
                 NavigationLink("ChatGPT Account") {
