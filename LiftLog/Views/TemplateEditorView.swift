@@ -29,7 +29,7 @@ struct TemplateEditorView: View {
                 if let original {
                     Section {
                         LabeledContent("Based on", value: "Version \(original.currentVersion?.number ?? 1)")
-                        Text("Save your changes as a new version for your next workout.")
+                        Text("Exercise and set changes save a new version. Renaming keeps the current version.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     if let lastWorkout {
@@ -104,9 +104,9 @@ struct TemplateEditorView: View {
                             }
                         }
                     } header: {
-                        Text("Changes for version \((original?.currentVersion?.number ?? 1) + 1)")
+                        Text(createsVersion ? "Changes for version \((original?.currentVersion?.number ?? 1) + 1)" : "Template changes")
                     } footer: {
-                        Text("This becomes the default for future workouts. Previous versions remain available in Version History.")
+                        Text(createsVersion ? "This becomes the default for future workouts. Previous versions remain available in Version History." : "Renaming does not create a new version. Saved versions and recorded workouts keep their original names.")
                     }
                     .accessibilityIdentifier("templateVersionChangeSummary")
                 }
@@ -117,7 +117,7 @@ struct TemplateEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isNew ? "Save" : "Save Version") {
+                    Button(createsVersion ? "Save Version" : "Save") {
                         hideKeyboard()
                         if store.saveTemplate(draft, expectedUnit: unit) { dismiss() }
                     }
@@ -145,6 +145,11 @@ struct TemplateEditorView: View {
     private func comparisonWeight(_ weight: Double, from recordedUnit: WeightUnit) -> String {
         let converted = recordedUnit == unit ? weight : weight * (unit == .kg ? 0.45359237 : 1 / 0.45359237)
         return converted.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    private var createsVersion: Bool {
+        guard let original else { return false }
+        return !WorkoutStore.samePrescription(draft.exercises, original.exercises)
     }
 
     private var changes: [String] {

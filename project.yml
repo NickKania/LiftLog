@@ -23,6 +23,8 @@ targets:
           NSAllowsLocalNetworking: true
     sources:
       - path: LiftLog
+        excludes:
+          - App/Info.plist
     dependencies:
       - sdk: libsqlite3.tbd
       - package: swift-markdown

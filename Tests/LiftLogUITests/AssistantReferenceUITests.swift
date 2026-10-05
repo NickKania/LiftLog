@@ -4,6 +4,41 @@ final class AssistantReferenceUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testSelectedWorkoutTagContainsWrappedLabel() throws {
+        try assertSelectedWorkoutTagLayout(largeText: false)
+    }
+
+    @MainActor
+    func testSelectedWorkoutTagContainsWrappedLabelWithLargeText() throws {
+        try assertSelectedWorkoutTagLayout(largeText: true)
+    }
+
+    @MainActor
+    private func assertSelectedWorkoutTagLayout(largeText: Bool) throws {
+        let app = launchFixture(largeText: largeText)
+        enterDraft("Based on my morning workout, what should be my new target rep counts/weights for my next workout?", in: app)
+        openPicker(in: app)
+        search("Recorded Fixture Workout 1", in: app)
+        let key = selectRow(named: "Recorded Fixture Workout 1", kind: "workout", in: app)
+        finishPicker(in: app)
+
+        let tags = app.scrollViews["assistantSelectedReferences"]
+        let label = element("assistantSelectedReference.\(key)", in: app)
+        let remove = app.buttons["assistantRemoveReference.\(key)"]
+        XCTAssertTrue(label.waitForExistence(timeout: 5))
+        keepScreenshot(of: app, named: largeText ? "Wrapped workout tag with large text" : "Wrapped workout tag")
+        XCTAssertGreaterThanOrEqual(label.frame.minY - tags.frame.minY, 6, "The tag must leave space above its wrapped label")
+        XCTAssertGreaterThanOrEqual(tags.frame.maxY - label.frame.maxY, 6, "The tag must contain the complete date subtitle with bottom padding")
+        XCTAssertTrue(app.frame.contains(label.frame), "The complete tag label must remain onscreen")
+        XCTAssertGreaterThanOrEqual(label.frame.minY, app.navigationBars.firstMatch.frame.maxY, "The tag must stay below navigation")
+        XCTAssertLessThanOrEqual(label.frame.maxY + 6, app.textFields["assistantComposer"].frame.minY, "The tag must leave the question field visible")
+        XCTAssertTrue(remove.isHittable)
+        remove.tap()
+        XCTAssertFalse(label.exists)
+        XCTAssertTrue(app.textFields["assistantComposer"].isHittable)
+    }
+
+    @MainActor
     func testSearchAndSendIncludesTemplateAndExactCompletedWorkoutData() throws {
         let app = launchFixture()
         enterDraft("Compare these selected records", in: app)
@@ -116,9 +151,12 @@ final class AssistantReferenceUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchFixture() -> XCUIApplication {
+    private func launchFixture(largeText: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--assistant-ui-fixture", "--assistant-reference-ui-fixture"]
+        if largeText {
+            app.launchArguments += ["--assistant-dark-ui-fixture", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
         app.launch()
         XCTAssertTrue(app.tabBars.buttons["Assistant"].waitForExistence(timeout: 10))
         app.tabBars.buttons["Assistant"].tap()

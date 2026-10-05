@@ -36,7 +36,7 @@ struct AssistantProposalView: View {
             case .applied: Label("Applied", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             case .rejected: Label("Discarded", systemImage: "xmark.circle").foregroundStyle(.secondary)
             case .stale:
-                Label("Your workout changed since this suggestion. Ask for a new proposal.", systemImage: "exclamationmark.circle")
+                Label("This suggestion is no longer available to apply. Ask for a new proposal.", systemImage: "exclamationmark.circle")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }.assistantCard()

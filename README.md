@@ -17,11 +17,11 @@ Templates, workout execution, and history work locally without an account. The o
 - Choose pounds or kilograms.
 - Import completed workouts from Strong CSV exports, with exercise matching, session selection, and duplicate protection.
 - Connect a ChatGPT account, select an available model, and ask questions about your workout data.
+- Keep saved assistant chats with editable Luna-generated titles, and run several conversations at once.
 - Generate graphs from recorded workouts and share them as images.
 - Review and apply assistant proposals to create workouts or templates and add, change, or remove their exercises.
 
-The Workout tab holds templates and the current workout. The History tab shows finished sessions. The Settings tab holds weight units and iCloud Drive backups.
-The Workout tab holds templates and the current workout. The History tab shows finished sessions, and the Assistant tab contains the ChatGPT conversation. Settings are available from the Workout screen.
+The Workout tab holds templates and the current workout. The History tab shows finished sessions, and the Assistant tab contains saved ChatGPT conversations. The Settings tab holds weight units, assistant preferences, and iCloud Drive backups.
 
 See [ChatGPT integration](docs/CHATGPT_ASSISTANT.md) for eligibility, sign-in, data sharing, and current image-generation limitations. The integration uses the documented subscription OAuth flow and does not require an API key.
 

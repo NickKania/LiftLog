@@ -1,8 +1,8 @@
 import Foundation
 import Observation
 
-struct WorkoutAssistantMessage: Identifiable {
-    enum Role { case user, assistant, tool }
+struct WorkoutAssistantMessage: Identifiable, Codable {
+    enum Role: String, Codable { case user, assistant, tool }
     let id: UUID
     let role: Role
     var text: String
@@ -26,43 +26,139 @@ struct WorkoutAssistantMessage: Identifiable {
 
 @Observable @MainActor
 final class WorkoutAssistant {
-    private(set) var messages: [WorkoutAssistantMessage] = []
+    private(set) var chats: [WorkoutAssistantChat] = []
+    private(set) var selectedChatID: UUID?
+    var selectedChat: WorkoutAssistantChat? { chats.first { $0.id == selectedChatID } }
+    private var currentChat: WorkoutAssistantChat { selectedChat ?? chats[0] }
+    var messages: [WorkoutAssistantMessage] { currentChat.messages }
+    var selectedModel: String {
+        get { currentChat.selectedModel }
+        set { currentChat.selectedModel = newValue; persist() }
+    }
+    var isWorking: Bool { currentChat.isWorking }
+    var errorMessage: String? {
+        get { currentChat.errorMessage }
+        set { currentChat.errorMessage = newValue }
+    }
     private(set) var models: [ChatGPTModel] = []
-    var selectedModel = ""
-    private(set) var isWorking = false
     private(set) var isLoadingModels = false
-    private(set) var errorMessage: String?
     private(set) var usageLimitReached = false
+    private(set) var storageErrorMessage: String?
 
     @ObservationIgnored private let store: WorkoutStore
     @ObservationIgnored private let client: ChatGPTInferenceClient
-    @ObservationIgnored private var tools: WorkoutAgentTools
-    @ObservationIgnored private var history: [[String: Any]] = []
-    @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var modelLoadID = UUID()
-    @ObservationIgnored private var activeProposalIDs: [UUID] = []
     @ObservationIgnored private let accountIdentity: () -> String?
+    @ObservationIgnored private let archiveAccountIdentity: () -> String?
     @ObservationIgnored private var contextAccount: String?
+    @ObservationIgnored private var archiveAccount: String
     @ObservationIgnored private let maximumRounds: Int
     @ObservationIgnored private let maximumToolCalls: Int
+    @ObservationIgnored private let storageURL: URL?
+    @ObservationIgnored private var archive = AssistantChatArchive()
+    @ObservationIgnored private var loadFailure: String?
+    @ObservationIgnored private var persistenceTask: Task<Void, Never>?
+    @ObservationIgnored private var lastPartialSave = Date.distantPast
 
     init(store: WorkoutStore, accessToken: @escaping () async throws -> String,
          transport: any ChatGPTInferenceTransport = URLSessionChatGPTTransport(),
          maximumRounds: Int = 6, maximumToolCalls: Int = 24,
-         accountIdentity: @escaping () -> String? = { nil }) {
+         accountIdentity: @escaping () -> String? = { nil },
+         storageURL: URL? = nil,
+         archiveAccountIdentity: (() -> String?)? = nil) {
         self.store = store
-        self.selectedModel = store.defaultAssistantModel ?? ""
         self.client = ChatGPTInferenceClient(accessToken: accessToken, transport: transport, accountIdentity: accountIdentity)
-        self.tools = WorkoutAgentTools(store: store)
         self.accountIdentity = accountIdentity
+        self.archiveAccountIdentity = archiveAccountIdentity ?? accountIdentity
         self.contextAccount = accountIdentity()
+        self.archiveAccount = (archiveAccountIdentity ?? accountIdentity)() ?? "__local__"
         self.maximumRounds = max(1, maximumRounds)
         self.maximumToolCalls = max(1, maximumToolCalls)
+        self.storageURL = storageURL
+        if let storageURL, FileManager.default.fileExists(atPath: storageURL.path) {
+            do { archive = try AssistantChatArchive.load(from: storageURL) }
+            catch {
+                loadFailure = "Could not load saved chats: \(error.localizedDescription). The existing file was preserved."
+                storageErrorMessage = loadFailure
+            }
+        }
+        if self.archiveAccountIdentity() == nil { self.archiveAccount = archive.lastAccount ?? "__local__" }
+        loadAccountChats()
+    }
+
+    static var defaultStorageURL: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("LiftLog", isDirectory: true).appendingPathComponent("assistant-chats.json")
+    }
+
+    @discardableResult
+    func createChat() -> UUID {
+        let preferred = store.defaultAssistantModel ?? ""
+        let model = models.isEmpty || models.contains(where: { $0.slug == preferred }) ? preferred
+            : models.first(where: { $0.slug == "gpt-6.1-sol" })?.slug ?? models.first?.slug ?? ""
+        let chat = WorkoutAssistantChat(store: store, selectedModel: model)
+        chats.insert(chat, at: 0)
+        selectedChatID = chat.id
+        persist()
+        return chat.id
+    }
+
+    func selectChat(_ id: UUID) {
+        guard chats.contains(where: { $0.id == id }) else { return }
+        selectedChatID = id
+        persist()
+    }
+
+    @discardableResult
+    func renameChat(_ id: UUID, title: String) -> Bool {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, title.count <= 120, let chat = chats.first(where: { $0.id == id }) else { return false }
+        let oldTitle = chat.title
+        let oldManual = chat.hasCustomTitle
+        chat.title = title
+        chat.hasCustomTitle = true
+        chat.titleTask?.cancel()
+        chat.titleTask = nil
+        chat.titleGeneration = UUID()
+        chat.isGeneratingTitle = false
+        chat.titleError = nil
+        if !persist() { chat.title = oldTitle; chat.hasCustomTitle = oldManual; return false }
+        return true
+    }
+
+    /// Also used on backgrounding so the current rendered partial reply is durable.
+    func saveChats() { persist() }
+
+    private func loadAccountChats() {
+        let saved = archive.accounts[archiveAccount]
+        chats = saved?.chats.map { WorkoutAssistantChat(record: $0, store: store) } ?? []
+        if chats.isEmpty { chats = [WorkoutAssistantChat(store: store, selectedModel: store.defaultAssistantModel ?? "")] }
+        selectedChatID = saved?.selectedChatID.flatMap { id in chats.contains(where: { $0.id == id }) ? id : nil } ?? chats[0].id
+    }
+
+    @discardableResult
+    private func persist() -> Bool {
+        persistenceTask?.cancel()
+        persistenceTask = nil
+        guard loadFailure == nil else { storageErrorMessage = loadFailure; return false }
+        do {
+            var next = archive
+            if archiveAccount != "__local__" { next.lastAccount = archiveAccount }
+            next.accounts[archiveAccount] = AssistantChatAccountRecord(chats: try chats.map { try $0.record() }, selectedChatID: selectedChatID)
+            if let storageURL { try next.save(to: storageURL) }
+            archive = next
+            storageErrorMessage = nil
+            return true
+        } catch {
+            storageErrorMessage = "Could not save your chats: \(error.localizedDescription). Keep the app open and try again."
+            return false
+        }
     }
 
     func refreshModels() async {
-        if accountIdentity() != contextAccount { reset() }
+        reconcileAccount()
         let expectedAccount = contextAccount
         let currentGeneration = generation
         let loadID = UUID()
@@ -76,7 +172,7 @@ final class WorkoutAssistant {
             if !catalog.contains(where: { $0.slug == selectedModel }) {
                 selectedModel = catalog.first(where: { $0.slug == "gpt-6.1-sol" })?.slug ?? catalog.first?.slug ?? ""
             }
-            errorMessage = catalog.isEmpty ? "This ChatGPT account has no available models for plan usage." : nil
+            if catalog.isEmpty { errorMessage = "This ChatGPT account has no available models for plan usage." }
         } catch {
             guard generation == currentGeneration, modelLoadID == loadID, accountIdentity() == expectedAccount, !Task.isCancelled else { return }
             record(error)
@@ -94,7 +190,7 @@ final class WorkoutAssistant {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isWorking else { return false }
         guard accountIdentity() == contextAccount else {
-            reset()
+            reconcileAccount()
             errorMessage = "Your ChatGPT account changed. Load the new account’s models before sending."
             return false
         }
@@ -110,13 +206,22 @@ final class WorkoutAssistant {
         let context: (content: String, references: [AssistantWorkoutReference])
         do { context = try referenceContext(text: text, references: references) }
         catch { record(error); return false }
+        let chat = currentChat
         errorMessage = nil
-        isWorking = true
-        activeProposalIDs = []
-        messages.append(WorkoutAssistantMessage(role: .user, text: text, references: context.references))
-        let currentGeneration = generation
+        chat.isWorking = true
+        chat.activeProposalIDs = []
+        chat.updatedAt = Date()
+        if chat.messages.isEmpty, !chat.hasCustomTitle { chat.title = String(text.prefix(80)) }
+        chat.messages.append(WorkoutAssistantMessage(role: .user, text: text, references: context.references))
+        let currentGeneration = chat.generation
         let model = selectedModel
-        task = Task { await run(text: context.content, model: model, generation: currentGeneration) }
+        guard persist() else {
+            chat.isWorking = false
+            chat.messages.removeLast()
+            chat.errorMessage = storageErrorMessage
+            return false
+        }
+        chat.task = Task { await run(text: context.content, model: model, chat: chat, generation: currentGeneration) }
         return true
     }
 
@@ -174,90 +279,132 @@ final class WorkoutAssistant {
         return (content, snapshots)
     }
 
-    func cancel() {
-        task?.cancel()
-        task = nil
-        generation = UUID()
-        invalidateActiveProposals()
-        isWorking = false
-        isLoadingModels = false
-        if let index = messages.lastIndex(where: { $0.role == .assistant && $0.isPartial }), messages[index].text.isEmpty {
-            messages[index].text = "Response cancelled."
+    func cancel() { cancel(currentChat); persist() }
+
+    private func cancel(_ chat: WorkoutAssistantChat) {
+        chat.task?.cancel()
+        chat.task = nil
+        chat.generation = UUID()
+        chat.titleTask?.cancel()
+        chat.titleTask = nil
+        chat.titleGeneration = UUID()
+        chat.isGeneratingTitle = false
+        invalidateActiveProposals(chat)
+        chat.isWorking = false
+        for index in chat.messages.indices where chat.messages[index].isPartial {
+            if chat.messages[index].text.isEmpty { chat.messages[index].text = "Response cancelled." }
         }
     }
 
-    /// Account switching calls reset so contexts and proposals never cross account boundaries.
-    func reset() {
-        cancel()
-        messages = []
-        history = []
-        tools = WorkoutAgentTools(store: store)
+    /// The account store calls this before changing identity, closing every old stream immediately.
+    func accountWillChange() {
+        for chat in chats { cancel(chat) }
+        persist()
+        generation = UUID()
+        modelLoadID = UUID()
         models = []
-        selectedModel = store.defaultAssistantModel ?? ""
-        errorMessage = nil
+        isLoadingModels = false
         usageLimitReached = false
+    }
+
+    /// Reconcile after the account mutation, including while disconnected, without creating a chat.
+    func reconcileAccount() {
+        let nextAccount = archiveAccountIdentity() ?? archiveAccount
+        guard accountIdentity() != contextAccount || nextAccount != archiveAccount else { return }
+        accountWillChange()
         contextAccount = accountIdentity()
+        if nextAccount != archiveAccount {
+            archiveAccount = nextAccount
+            loadAccountChats()
+        }
+    }
+
+    /// Cancels every account-bound operation before loading the selected account's archive.
+    func reset() {
+        for chat in chats { cancel(chat) }
+        persist()
+        generation = UUID()
+        modelLoadID = UUID()
+        isLoadingModels = false
+        models = []
+        usageLimitReached = false
+        let nextAccount = archiveAccountIdentity() ?? archiveAccount
+        let switched = nextAccount != archiveAccount
+        contextAccount = accountIdentity()
+        archiveAccount = nextAccount
+        if switched { loadAccountChats() }
+        else { createChat(); selectedModel = store.defaultAssistantModel ?? "" }
+        errorMessage = nil
     }
 
     func applyProposal(_ id: UUID) throws {
         try checkProposalAccount()
         guard !isWorking else { throw ChatGPTInferenceError("Wait for the assistant to finish before applying a change.") }
+        let chat = currentChat
         let proposal: WorkoutAgentProposal
-        do { proposal = try tools.applyProposal(id) }
+        do { proposal = try chat.tools.applyProposal(id) }
         catch {
-            if let current = tools.proposal(id) { updateProposal(current) }
+            if let current = chat.tools.proposal(id) { updateProposal(current, in: chat); persist() }
             throw error
         }
-        updateProposal(proposal)
-        history.append(["role": "developer", "content": "The user approved and applied workout proposal \(id.uuidString). Read current workout data before proposing further changes."])
+        updateProposal(proposal, in: chat)
+        chat.history.append(["role": "developer", "content": "The user approved and applied workout proposal \(id.uuidString). Read current workout data before proposing further changes."])
+        persist()
     }
 
     func rejectProposal(_ id: UUID) throws {
         try checkProposalAccount()
         guard !isWorking else { throw ChatGPTInferenceError("Wait for the assistant to finish before reviewing a change.") }
-        let proposal = try tools.rejectProposal(id)
-        updateProposal(proposal)
-        history.append(["role": "developer", "content": "The user rejected workout proposal \(id.uuidString). No workout data was changed."])
+        let chat = currentChat
+        let proposal = try chat.tools.rejectProposal(id)
+        updateProposal(proposal, in: chat)
+        chat.history.append(["role": "developer", "content": "The user rejected workout proposal \(id.uuidString). No workout data was changed."])
+        persist()
     }
 
     func discardProposal(_ id: UUID) throws { try rejectProposal(id) }
 
-    private func run(text: String, model: String, generation currentGeneration: UUID) async {
-        // Commit context only when every round completes; failed calls cannot poison future history.
-        var input = history + [["role": "user", "content": text]]
+    private func run(text: String, model: String, chat: WorkoutAssistantChat, generation currentGeneration: UUID) async {
+        // Commit context only when every round completes; failed calls cannot poison future chat.history.
+        var input = chat.history + [["role": "user", "content": text]]
         var callCount = 0
         var seenCallIDs = Set<String>()
         do {
             for round in 0..<maximumRounds {
-                try checkGeneration(currentGeneration)
+                try checkGeneration(currentGeneration, chat: chat)
                 let reply = WorkoutAssistantMessage(role: .assistant, text: "", isPartial: true)
                 let replyID = reply.id
-                messages.append(reply)
-                let response = try await client.respond(model: model, input: input, tools: tools.definitions,
+                chat.messages.append(reply)
+                persist()
+                let response = try await client.respond(model: model, input: input, tools: chat.tools.definitions,
                     instructions: Self.instructions) { [weak self] delta in
-                    guard let self, self.generation == currentGeneration,
-                          let index = self.messages.firstIndex(where: { $0.id == replyID }) else { return }
-                    self.messages[index].text += delta
+                    guard let self, chat.generation == currentGeneration, self.accountIdentity() == self.contextAccount,
+                          let index = chat.messages.firstIndex(where: { $0.id == replyID }) else { return }
+                    chat.messages[index].text += delta
+                    self.schedulePersistence()
                 }
-                try checkGeneration(currentGeneration)
-                if let index = messages.firstIndex(where: { $0.id == replyID }) {
-                    messages[index].text = response.text
-                    messages[index].isPartial = false
-                    if response.text.isEmpty { messages.remove(at: index) }
+                try checkGeneration(currentGeneration, chat: chat)
+                if let index = chat.messages.firstIndex(where: { $0.id == replyID }) {
+                    chat.messages[index].text = response.text
+                    chat.messages[index].isPartial = false
+                    if response.text.isEmpty { chat.messages.remove(at: index) }
                 }
                 input.append(contentsOf: response.output)
                 if response.calls.isEmpty {
-                    history = input
-                    activeProposalIDs = []
-                    isWorking = false
-                    task = nil
+                    chat.history = input
+                    chat.activeProposalIDs = []
+                    chat.isWorking = false
+                    chat.task = nil
+                    chat.updatedAt = Date()
+                    persist()
+                    generateTitle(for: chat)
                     return
                 }
                 guard round + 1 < maximumRounds, callCount + response.calls.count <= maximumToolCalls else {
                     throw ChatGPTInferenceError("The assistant reached its tool limit. No proposed changes from this request were applied. Try a smaller request.")
                 }
                 for call in response.calls {
-                    try checkGeneration(currentGeneration)
+                    try checkGeneration(currentGeneration, chat: chat)
                     guard seenCallIDs.insert(call.callID).inserted,
                           call.namespace == nil || call.namespace == "liftlog",
                           !call.name.contains(".") || call.name.hasPrefix("liftlog.") else {
@@ -266,11 +413,11 @@ final class WorkoutAssistant {
                     callCount += 1
                     let output: String
                     do {
-                        let result = try tools.execute(name: call.name, argumentsJSONString: call.arguments)
+                        let result = try chat.tools.execute(name: call.name, argumentsJSONString: call.arguments)
                         output = result.outputJSONString
-                        if let proposal = result.proposal { activeProposalIDs.append(proposal.id) }
+                        if let proposal = result.proposal { chat.activeProposalIDs.append(proposal.id) }
                         if result.proposal != nil || result.chart != nil {
-                            messages.append(WorkoutAssistantMessage(role: .tool,
+                            chat.messages.append(WorkoutAssistantMessage(role: .tool,
                                 text: result.proposal?.summary ?? result.chart?.title ?? "Workout data",
                                 chart: result.chart, proposal: result.proposal))
                         }
@@ -279,43 +426,93 @@ final class WorkoutAssistant {
                         output = String(decoding: data, as: UTF8.self)
                     }
                     input.append(["type": "function_call_output", "call_id": call.callID, "output": output])
+                    persist()
                 }
             }
         } catch {
-            guard generation == currentGeneration else { return }
-            invalidateActiveProposals()
-            isWorking = false
-            task = nil
-            if !(error is CancellationError) { record(error) }
+            guard chat.generation == currentGeneration else { return }
+            invalidateActiveProposals(chat)
+            chat.isWorking = false
+            chat.task = nil
+            if !(error is CancellationError) { record(error, in: chat) }
+            persist()
         }
     }
 
-    private func checkGeneration(_ expected: UUID) throws {
+    private func checkGeneration(_ expected: UUID, chat: WorkoutAssistantChat) throws {
         try Task.checkCancellation()
-        guard generation == expected, accountIdentity() == contextAccount else { throw CancellationError() }
+        guard chat.generation == expected, accountIdentity() == contextAccount else { throw CancellationError() }
     }
 
     private func checkProposalAccount() throws {
         guard accountIdentity() == contextAccount else {
-            reset()
+            reconcileAccount()
             throw ChatGPTInferenceError("Your ChatGPT account changed. Request a fresh proposal.")
         }
     }
 
-    private func invalidateActiveProposals() {
-        for id in activeProposalIDs {
-            if let proposal = try? tools.rejectProposal(id) { updateProposal(proposal) }
+    private func invalidateActiveProposals(_ chat: WorkoutAssistantChat) {
+        for id in chat.activeProposalIDs {
+            if let proposal = try? chat.tools.rejectProposal(id) { updateProposal(proposal, in: chat) }
         }
-        activeProposalIDs = []
+        chat.activeProposalIDs = []
     }
 
-    private func updateProposal(_ proposal: WorkoutAgentProposal) {
-        for index in messages.indices where messages[index].proposal?.id == proposal.id { messages[index].proposal = proposal }
+    private func updateProposal(_ proposal: WorkoutAgentProposal, in chat: WorkoutAssistantChat) {
+        for index in chat.messages.indices where chat.messages[index].proposal?.id == proposal.id { chat.messages[index].proposal = proposal }
     }
 
-    private func record(_ error: Error) {
-        errorMessage = error.localizedDescription
+    private func record(_ error: Error, in chat: WorkoutAssistantChat? = nil) {
+        (chat ?? currentChat).errorMessage = error.localizedDescription
         if (error as? ChatGPTInferenceError)?.code == "subscription_sharing_usage_limit_exceeded" { usageLimitReached = true }
+    }
+
+    private func schedulePersistence() {
+        guard storageURL != nil else { return }
+        if Date().timeIntervalSince(lastPartialSave) >= 0.5 {
+            lastPartialSave = Date()
+            persist()
+            return
+        }
+        guard persistenceTask == nil else { return }
+        persistenceTask = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(500)) }
+            catch { return }
+            self?.lastPartialSave = Date()
+            self?.persist()
+        }
+    }
+
+    private func generateTitle(for chat: WorkoutAssistantChat) {
+        guard !chat.hasCustomTitle, !chat.hasGeneratedTitle, !chat.isGeneratingTitle else { return }
+        guard AssistantChatTitleGenerator.latestLunaModel(in: models) != nil else {
+            chat.titleError = "Automatic titles require an available Luna model. You can rename this chat."
+            persist()
+            return
+        }
+        let titleGeneration = UUID()
+        chat.titleGeneration = titleGeneration
+        chat.isGeneratingTitle = true
+        let expectedAccount = contextAccount
+        let catalog = models
+        chat.titleTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let title = try await AssistantChatTitleGenerator.generate(client: self.client, models: catalog, messages: chat.messages)
+                guard !Task.isCancelled, chat.titleGeneration == titleGeneration,
+                      !chat.hasCustomTitle, self.accountIdentity() == expectedAccount else { return }
+                chat.title = title
+                chat.hasGeneratedTitle = true
+                chat.titleError = nil
+            } catch {
+                guard !Task.isCancelled, chat.titleGeneration == titleGeneration,
+                      self.accountIdentity() == expectedAccount else { return }
+                chat.titleError = "Could not generate a chat title: \(error.localizedDescription). You can rename this chat."
+            }
+            chat.isGeneratingTitle = false
+            chat.titleTask = nil
+            self.persist()
+        }
     }
 
     private static let instructions = """

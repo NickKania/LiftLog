@@ -20,7 +20,7 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 ## Core flows
 
 1. **Launch:** load and validate SQLite, migrate preserved legacy JSON if no database exists, or seed starter templates for a new installation. Corrupt, unsupported, or inconsistent saved files remain untouched and block mutations.
-2. **Template mutation:** validate names, set values, and item IDs; trim the template name; create a template, append a changed version, or delete a template; atomically persist before updating published state.
+2. **Template mutation:** validate names, set values, and item IDs; trim the template name; create a template, rename without changing saved versions, append a version for prescription changes, or delete a template; atomically persist before updating published state.
 3. **Start:** reject an invalid template or an existing active session; resolve the chosen saved version and copy the plan with fresh item IDs, version attribution, and weight/rep target snapshots; persist one active session.
 4. **Update:** validate the active session identity and editable data; retain its original start time, template reference, and unit; persist edits without changing templates or history.
 5. **Finish:** require completed work; filter incomplete sets and empty exercises; prepend the finished snapshot to history and clear the active session in the same commit.

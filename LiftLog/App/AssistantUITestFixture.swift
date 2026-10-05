@@ -40,8 +40,13 @@ enum AssistantUITestFixture {
         precondition(isEnabled, "Assistant fixtures require an explicit UI test launch.")
         seedWorkouts(in: store)
         let exerciseID = store.exercises.first(where: { $0.name == "Bench Press" })!.id
+        let archiveURL = FileManager.default.temporaryDirectory.appendingPathComponent("LiftLogAssistantUITests.json")
+        if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
+            try? FileManager.default.removeItem(at: archiveURL)
+        }
         return WorkoutAssistant(store: store, accessToken: { "local-ui-fixture-token" },
-            transport: AssistantFixtureTransport(exerciseID: exerciseID))
+            transport: AssistantFixtureTransport(exerciseID: exerciseID), storageURL: archiveURL,
+            archiveAccountIdentity: { "local-ui-fixture-account" })
     }
 }
 
@@ -56,24 +61,40 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
     let exerciseID: UUID
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let data = try JSONSerialization.data(withJSONObject: ["models": [[
+        var models: [[String: Any]] = [[
             "slug": "fixture-model", "display_name": "Fixture Model", "visibility": "list"
         ], [
             "slug": "fixture-alternate", "display_name": "Alternate Model", "visibility": "list"
-        ]]])
+        ]]
+        if ProcessInfo.processInfo.arguments.contains("--assistant-chat-ui-fixture") {
+            models.append(["slug": "gpt-6-luna", "display_name": "Luna", "visibility": "list"])
+        }
+        let data = try JSONSerialization.data(withJSONObject: ["models": models])
         return (data, response(for: request))
     }
 
     func stream(for request: URLRequest) async throws -> ChatGPTHTTPStream {
-        if ProcessInfo.processInfo.arguments.contains("--assistant-delayed-ui-fixture") {
-            try await Task.sleep(for: .seconds(4))
-        }
         let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any] ?? [:]
         let input = body["input"] as? [[String: Any]] ?? []
         let isContinuation = input.last?["type"] as? String == "function_call_output"
-        let question = input.last?["content"] as? String ?? ""
+        let question = input.last?["content"] as? String
+            ?? (input.last?["content"] as? [[String: Any]])?.compactMap { $0["text"] as? String }.joined(separator: "\n")
+            ?? ""
+        let isTitleRequest = (body["model"] as? String)?.contains("luna") == true
+        if !isTitleRequest {
+            if ProcessInfo.processInfo.arguments.contains("--assistant-concurrent-ui-fixture") {
+                try await Task.sleep(for: .seconds(20))
+            } else if ProcessInfo.processInfo.arguments.contains("--assistant-delayed-ui-fixture") {
+                try await Task.sleep(for: .seconds(4))
+            }
+        }
         let output: [[String: Any]]
-        if ProcessInfo.processInfo.arguments.contains("--assistant-reference-ui-fixture") {
+        if isTitleRequest {
+            let title = question.localizedCaseInsensitiveContains("chart") ? "Training volume history"
+                : question.localizedCaseInsensitiveContains("formatting") ? "Training summary"
+                : "Workout planning"
+            output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": title]]]]
+        } else if ProcessInfo.processInfo.arguments.contains("--assistant-reference-ui-fixture") {
             let text = try referenceAcknowledgment(for: question)
             output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": text]]]]
         } else if question.localizedCaseInsensitiveContains("formatting") {

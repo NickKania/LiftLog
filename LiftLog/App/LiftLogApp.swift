@@ -41,7 +41,7 @@ struct LiftLogApp: App {
         #else
         workoutAssistant = Self.makeAssistant(store: workoutStore, accounts: accountStore)
         #endif
-        accountStore.onConnectionChange = { [weak workoutAssistant] in workoutAssistant?.reset() }
+        accountStore.onConnectionChange = { [weak workoutAssistant] in workoutAssistant?.accountWillChange() }
         _assistant = State(initialValue: workoutAssistant)
     }
 
@@ -50,7 +50,21 @@ struct LiftLogApp: App {
             try await accounts.accessToken()
         }, accountIdentity: {
             "\(accounts.currentAccount?.id ?? "none"):\(accounts.revision):\(accounts.canUsePlan)"
-        })
+        }, storageURL: assistantStorageURL,
+        archiveAccountIdentity: { accounts.currentAccount?.id })
+    }
+
+    private static var assistantStorageURL: URL {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("LiftLogAssistantUITests.json")
+            if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
+                try? FileManager.default.removeItem(at: url)
+            }
+            return url
+        }
+        #endif
+        return WorkoutAssistant.defaultStorageURL
     }
 
     var body: some Scene {
@@ -64,6 +78,7 @@ struct LiftLogApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { store.cloudBackup.scheduleBackup() }
                     else if phase == .background {
+                        assistant.saveChats()
                         backgroundBackup.run(store.cloudBackup)
                     }
                 }
