@@ -49,6 +49,12 @@ The client discovers the selected account's model catalog and sends streaming re
 
 A model call can prepare a change but cannot approve it. Proposal application checks that the relevant workout state still matches the reviewed version, then validates and persists it. Invalid, stale, discarded, or previously applied proposals cannot overwrite current data. A failed disk write leaves the original workout intact.
 
+## Template progression
+
+Ask the assistant to plan the next workout, such as “Add one rep to bench in Upper Body.” `get_templates` exposes the current prescription and version identity; `get_template_versions` reads saved prescriptions with their original units. `propose_template_version` proposes atomic changes against an explicit base version. Existing template edit tools also save a new version when the prescription changes.
+
+Review displays the before/after weights and reps and explains that Apply makes the new version the default. Apply preserves earlier versions. A changed base version, changed unit, or deleted template invalidates a pending proposal. Template tags include the current version identity; workout tags include their source version and original planned targets where available.
+
 ## Verification
 
 Run `swift test` for authentication, streaming, tool execution, analytics, mutation, and persistence tests. Build the iOS target and run the Assistant UI tests for native integration. Tests use synthetic credentials and mocked network responses; they do not spend a subscription allowance.

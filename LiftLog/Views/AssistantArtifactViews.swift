@@ -9,8 +9,14 @@ struct AssistantProposalView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Suggested workout change", systemImage: "pencil.and.list.clipboard").font(.headline)
+            Label(proposal.beforeTemplate != nil ? "Suggested template version" : "Suggested workout change", systemImage: "pencil.and.list.clipboard").font(.headline)
             Text(proposal.summary)
+            if proposal.beforeTemplate != nil {
+                Text(proposal.status == .applied
+                     ? "Saved as the default for future workouts. Earlier versions stay available."
+                     : "This version becomes the default for future workouts. Earlier versions stay available.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             DisclosureGroup("Before and after", isExpanded: $showDetails) {
                 VStack(alignment: .leading, spacing: 16) {
                     snapshot(title: "Before", template: proposal.beforeTemplate, workout: proposal.beforeWorkout)
@@ -41,6 +47,9 @@ struct AssistantProposalView: View {
             Text(title.uppercased()).font(.caption.weight(.bold)).foregroundStyle(.secondary)
             if let template {
                 Text(template.name).font(.subheadline.bold())
+                let number = (template.currentVersion?.number ?? 0) + (title == "After" ? 1 : 0)
+                Text("Version \(number)\(title == "After" ? (proposal.status == .applied ? " · saved default" : " · proposed default") : " · previous default")")
+                    .font(.caption).foregroundStyle(.secondary)
                 ForEach(template.exercises) { item in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(item.exercise.name).font(.subheadline.weight(.medium))
@@ -59,6 +68,10 @@ struct AssistantProposalView: View {
                             Text("Set \(index + 1): \(set.weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue) × \(set.reps) reps\(set.isCompleted ? " · completed" : "")")
                                 .font(.caption).foregroundStyle(.secondary)
                             if let target = set.targetReps { Text("Target: \(target) reps").font(.caption).foregroundStyle(.secondary) }
+                            if let weight = set.targetWeight {
+                                Text("Target weight: \(weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue)")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

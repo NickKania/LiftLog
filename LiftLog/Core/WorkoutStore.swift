@@ -34,12 +34,14 @@ final class WorkoutStore {
             if FileManager.default.fileExists(atPath: self.fileURL.path) {
                 let saved = try database.load(recoverInterruptedWrite: true)
                 try Self.validate(saved)
-                apply(Self.backfillingCatalog(saved))
+                let migrated = Self.backfillingVersions(Self.backfillingCatalog(saved))
+                if migrated.templates != saved.templates { try database.save(migrated) }
+                apply(migrated)
             } else if FileManager.default.fileExists(atPath: legacyURL.path) {
                 let saved = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: legacyURL))
-                guard saved.version == 1 else { throw StoreError.invalid("This workout file uses an unsupported version.") }
+                guard (1...2).contains(saved.version) else { throw StoreError.invalid("This workout file uses an unsupported version.") }
                 try Self.validate(saved)
-                let migrated = Self.backfillingCatalog(saved)
+                let migrated = Self.backfillingVersions(Self.backfillingCatalog(saved))
                 // Publish a complete database only after migration succeeds. Keep the original JSON.
                 let staging = self.fileURL.deletingLastPathComponent().appendingPathComponent("migration-\(UUID().uuidString).sqlite")
                 defer { try? FileManager.default.removeItem(at: staging) }
@@ -47,8 +49,10 @@ final class WorkoutStore {
                 try FileManager.default.moveItem(at: staging, to: self.fileURL)
                 apply(migrated)
             } else {
-                templates = Self.starterTemplates(catalog: exercises)
-                _ = commit(snapshot)
+                let initial = Snapshot(templates: Self.starterTemplates(catalog: exercises), history: [], activeWorkout: nil, unit: unit)
+                let seeded = Self.backfillingVersions(initial)
+                apply(seeded)
+                _ = commit(seeded)
             }
         } catch {
             let message = "Could not load your workouts: \(error.localizedDescription) Your saved data was preserved. Restore a backup in Settings or restore the saved file and relaunch."
@@ -58,8 +62,11 @@ final class WorkoutStore {
     }
 
     @discardableResult
-    func saveTemplate(_ template: WorkoutTemplate) -> Bool {
+    func saveTemplate(_ template: WorkoutTemplate, expectedUnit: WeightUnit? = nil) -> Bool {
         do {
+            guard expectedUnit == nil || expectedUnit == unit else {
+                throw StoreError.invalid("Your weight unit changed after you opened this plan. Reopen it before saving.")
+            }
             try Self.validate(template)
             var next = snapshot
             var trimmed = template
@@ -68,8 +75,20 @@ final class WorkoutStore {
                 trimmed.exercises[index].exercise = Self.register(trimmed.exercises[index].exercise, in: &next)
             }
             if let index = next.templates.firstIndex(where: { $0.id == trimmed.id }) {
+                let saved = next.templates[index]
+                guard trimmed.currentVersion?.id == saved.currentVersion?.id else {
+                    throw StoreError.invalid("This template changed after you opened it. Reopen it before saving a new version.")
+                }
+                // Drafts may reference the current version but never replace saved archives.
+                trimmed.versions = saved.versions
+                if trimmed.name == saved.name, Self.samePrescription(trimmed.exercises, saved.exercises) {
+                    return commit(next)
+                }
+                trimmed.versions.append(WorkoutTemplateVersion(number: saved.versions.count + 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit))
                 next.templates[index] = trimmed
             } else {
+                guard template.versions.isEmpty else { throw StoreError.invalid("This template was deleted. Create a new template to save this plan.") }
+                trimmed.versions = [WorkoutTemplateVersion(number: 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit)]
                 next.templates.append(trimmed)
             }
             return commit(next)
@@ -84,20 +103,31 @@ final class WorkoutStore {
     }
 
     @discardableResult
-    func startWorkout(template: WorkoutTemplate? = nil) -> Bool {
+    func startWorkout(template: WorkoutTemplate? = nil, versionID: UUID? = nil) -> Bool {
         guard activeWorkout == nil else {
             return fail(StoreError.invalid("Finish or discard your current workout before starting another."))
         }
         do {
-            if let template { try Self.validate(template) }
+            var source = template
+            var version: WorkoutTemplateVersion?
+            if let template, let saved = templates.first(where: { $0.id == template.id }) {
+                source = saved
+                version = versionID.flatMap { id in saved.versions.first(where: { $0.id == id }) } ?? (versionID == nil ? saved.currentVersion : nil)
+                guard let version else { throw StoreError.invalid("This template version is no longer available.") }
+                source?.name = version.name
+                source?.exercises = version.exercises(in: unit)
+            } else if versionID != nil {
+                throw StoreError.invalid("Choose a saved template before selecting a version.")
+            }
+            if let source { try Self.validate(source) }
             var next = snapshot
             var workout = WorkoutSession(
-                templateID: template?.id,
-                name: template?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Workout",
+                templateID: source?.id, templateVersionID: version?.id, templateVersionNumber: version?.number,
+                name: source?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Workout",
                 unit: unit,
-                exercises: template?.exercises.map { item in
+                exercises: source?.exercises.map { item in
                     WorkoutExercise(exercise: item.exercise, sets: item.sets.map {
-                        WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps)
+                        WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
                     })
                 } ?? []
             )
@@ -115,13 +145,24 @@ final class WorkoutStore {
             return fail(StoreError.invalid("This workout is no longer active."))
         }
         do {
-            try Self.validate(workout)
             var updated = workout
             // Session identity, start time, template reference, and recorded unit are fixed.
             updated.startedAt = activeWorkout.startedAt
             updated.templateID = activeWorkout.templateID
+            updated.templateVersionID = activeWorkout.templateVersionID
+            updated.templateVersionNumber = activeWorkout.templateVersionNumber
             updated.unit = activeWorkout.unit
             updated.finishedAt = nil
+            try Self.validate(updated)
+            // Logged values may change; targets remain the prescription originally started.
+            for exerciseIndex in updated.exercises.indices {
+                guard let original = activeWorkout.exercises.first(where: { $0.id == updated.exercises[exerciseIndex].id }) else { continue }
+                for setIndex in updated.exercises[exerciseIndex].sets.indices {
+                    guard let set = original.sets.first(where: { $0.id == updated.exercises[exerciseIndex].sets[setIndex].id }) else { continue }
+                    updated.exercises[exerciseIndex].sets[setIndex].targetReps = set.targetReps
+                    updated.exercises[exerciseIndex].sets[setIndex].targetWeight = set.targetWeight
+                }
+            }
             var next = snapshot
             for index in updated.exercises.indices {
                 updated.exercises[index].exercise = Self.register(updated.exercises[index].exercise, in: &next)
@@ -139,6 +180,7 @@ final class WorkoutStore {
         }
         guard workout.finishedAt == nil, workout.importSourceKey == nil,
               workout.unit == unit, workout.templateID == nil,
+              workout.templateVersionID == nil, workout.templateVersionNumber == nil,
               !history.contains(where: { $0.id == workout.id }),
               workout.exercises.allSatisfy({ !$0.sets.isEmpty && $0.sets.allSatisfy { !$0.isCompleted } }) else {
             return fail(StoreError.invalid("The proposed workout must contain only planned, uncompleted sets in your current unit."))
@@ -284,6 +326,16 @@ final class WorkoutStore {
         return next
     }
 
+    /// Legacy sessions retain unknown provenance and targets. Only template plans gain a baseline.
+    private static func backfillingVersions(_ snapshot: Snapshot) -> Snapshot {
+        var next = snapshot
+        for index in next.templates.indices where next.templates[index].versions.isEmpty {
+            let template = next.templates[index]
+            next.templates[index].versions = [WorkoutTemplateVersion(number: 1, name: template.name, exercises: template.exercises, unit: snapshot.unit)]
+        }
+        return next
+    }
+
     private func commit(_ next: Snapshot) -> Bool {
         guard loadFailure == nil else {
             errorMessage = loadFailure
@@ -311,7 +363,7 @@ final class WorkoutStore {
     func restoreDatabase(from source: URL) throws {
         let saved = try WorkoutDatabase(url: source).load()
         try Self.validate(saved)
-        let restored = Self.backfillingCatalog(saved)
+        let restored = Self.backfillingVersions(Self.backfillingCatalog(saved))
         let folder = fileURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let staging = folder.appendingPathComponent("restoring-\(UUID().uuidString).sqlite")
@@ -328,6 +380,7 @@ final class WorkoutStore {
         }
         try Data(contentsOf: staging).write(to: fileURL, options: .atomic)
         apply(restored)
+        revision &+= 1
         loadFailure = nil
         errorMessage = nil
         cloudBackup.scheduleBackup()
@@ -383,6 +436,10 @@ final class WorkoutStore {
             throw StoreError.invalid("A workout contains invalid dates.")
         }
         try validateIDs(workout.exercises.map(\.id))
+        guard (workout.templateVersionID == nil) == (workout.templateVersionNumber == nil),
+              workout.templateVersionNumber.map({ $0 > 0 && workout.templateID != nil }) ?? true else {
+            throw StoreError.invalid("A workout has an invalid template version reference.")
+        }
         for item in workout.exercises {
             try validateName(item.exercise.name)
             try validateIDs(item.sets.map(\.id))
@@ -390,6 +447,9 @@ final class WorkoutStore {
                 try validateSet(weight: set.weight, reps: set.reps)
                 if let targetReps = set.targetReps, targetReps <= 0 {
                     throw StoreError.invalid("Target reps must be greater than zero.")
+                }
+                if let targetWeight = set.targetWeight, !targetWeight.isFinite || targetWeight < 0 {
+                    throw StoreError.invalid("Target weight must be a finite number of zero or more.")
                 }
             }
         }
@@ -405,8 +465,24 @@ final class WorkoutStore {
         try validateIDs(snapshot.personalExercises.map(\.id))
         for exercise in snapshot.personalExercises { try validateName(exercise.name) }
         try validateIDs(snapshot.templates.map(\.id))
+        try validateIDs(snapshot.templates.flatMap { $0.versions.map(\.id) })
         try validateIDs(snapshot.history.map(\.id))
-        for template in snapshot.templates { try validate(template) }
+        for template in snapshot.templates {
+            try validate(template)
+            try validateIDs(template.versions.map(\.id))
+            for (index, version) in template.versions.enumerated() {
+                guard version.number == index + 1, version.createdAt.timeIntervalSinceReferenceDate.isFinite else {
+                    throw StoreError.invalid("A template contains invalid saved versions.")
+                }
+                try validate(WorkoutTemplate(name: version.name, exercises: version.exercises))
+            }
+            if let version = template.currentVersion {
+                guard template.name == version.name,
+                      samePrescription(template.exercises, version.exercises(in: snapshot.unit)) else {
+                    throw StoreError.invalid("A template's current plan does not match its saved version.")
+                }
+            }
+        }
         for workout in snapshot.history {
             try validate(workout)
             guard workout.finishedAt != nil, !workout.exercises.isEmpty,
@@ -418,6 +494,15 @@ final class WorkoutStore {
             try validate(workout)
             guard workout.finishedAt == nil, !snapshot.history.contains(where: { $0.id == workout.id }) else {
                 throw StoreError.invalid("The active workout is already finished.")
+            }
+        }
+    }
+
+    nonisolated static func samePrescription(_ left: [TemplateExercise], _ right: [TemplateExercise]) -> Bool {
+        guard left.count == right.count else { return false }
+        return zip(left, right).allSatisfy { lhs, rhs in
+            lhs.exercise == rhs.exercise && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
+                abs(a.weight - b.weight) <= max(1, abs(a.weight), abs(b.weight)) * 1e-12 && a.targetReps == b.targetReps
             }
         }
     }

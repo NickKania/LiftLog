@@ -147,6 +147,53 @@ final class WorkflowUITests: XCTestCase {
     }
 
     @MainActor
+    func testTemplateVersionsPreserveOldPlanAndWorkoutTargets() {
+        let app = launchFreshApp()
+        defer { app.terminate() }
+        let plan = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "planTemplate-")).firstMatch
+        XCTAssertTrue(plan.waitForExistence(timeout: 5))
+        plan.tap()
+        XCTAssertTrue(app.navigationBars["Plan Next Workout"].waitForExistence(timeout: 5))
+        let save = app.buttons["saveTemplateButton"]
+        XCTAssertFalse(save.isEnabled, "A version must contain a change")
+        replaceText(in: app.textFields["setReps-1"].firstMatch, with: "9", app: app)
+        app.navigationBars["Plan Next Workout"].buttons["Cancel"].tap()
+        XCTAssertTrue(plan.waitForExistence(timeout: 5))
+        let currentVersion = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "currentTemplateVersion-")).firstMatch
+        XCTAssertEqual(currentVersion.label, "Version 1 · Default", "Cancelling must not save a version")
+
+        plan.tap()
+        replaceText(in: app.textFields["setWeight-1"].firstMatch, with: "140", app: app)
+        replaceText(in: app.textFields["setReps-1"].firstMatch, with: "9", app: app)
+        XCTAssertTrue(save.isEnabled)
+        save.tap()
+        XCTAssertTrue(plan.waitForExistence(timeout: 5))
+        XCTAssertEqual(currentVersion.label, "Version 2 · Default")
+        let versions = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "templateVersions-")).firstMatch
+        versions.tap()
+        XCTAssertTrue(app.buttons["templateVersion-2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["templateVersion-1"].exists)
+        app.buttons["templateVersion-1"].tap()
+        app.buttons["startTemplateVersion-1"].tap()
+        XCTAssertTrue(app.staticTexts["activeWorkoutTemplateVersion"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["activeWorkoutTemplateVersion"].label, "Template version 1")
+        XCTAssertEqual(app.staticTexts["setTargetWeight-1"].firstMatch.label, "Target: 0 lb")
+        XCTAssertEqual(app.staticTexts["setTargetReps-1"].firstMatch.label, "Target: 8")
+        replaceText(in: app.textFields["setWeight-1"].firstMatch, with: "135", app: app)
+        replaceText(in: app.textFields["setReps-1"].firstMatch, with: "7", app: app)
+        XCTAssertEqual(app.staticTexts["setTargetWeight-1"].firstMatch.label, "Target: 0 lb")
+        XCTAssertEqual(app.staticTexts["setTargetReps-1"].firstMatch.label, "Target: 8")
+        app.buttons["completeSet-1"].firstMatch.tap()
+        app.buttons["finishWorkoutButton"].tap()
+        app.buttons["confirmFinishWorkoutButton"].firstMatch.tap()
+        app.tabBars.buttons["History"].tap()
+        app.buttons["historyWorkout-Upper Body"].tap()
+        XCTAssertTrue(app.staticTexts["historySetPlan-1"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["historySetPlan-1"].label, "Planned: 0 lb × 8")
+        XCTAssertTrue(app.staticTexts["135 lb × 7"].exists)
+    }
+
+    @MainActor
     private func launchFreshApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing"]

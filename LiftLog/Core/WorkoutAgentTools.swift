@@ -36,7 +36,16 @@ final class WorkoutAgentTools {
                                        templateCount: store.templates.count, completedWorkoutCount: store.history.count))
         case "get_templates":
             try keys(args, allowed: [])
-            return try result(store.templates)
+            return try result(store.templates.map { WorkoutAgentTemplateSnapshot(template: $0, unit: store.unit) })
+        case "get_template_versions":
+            try keys(args, allowed: ["template_id", "limit", "offset"])
+            let templateID = try uuid(args, "template_id")
+            guard let template = store.templates.first(where: { $0.id == templateID }) else { throw WorkoutAgentToolError.missingTarget }
+            let limit = try integer(args, "limit", default: 5, range: 1...20)
+            let offset = try integer(args, "offset", default: 0, range: 0...Int.max)
+            return try result(TemplateVersionsPage(templateID: template.id, currentVersionID: template.currentVersion?.id,
+                                                  versions: Array(template.versions.reversed().dropFirst(offset).prefix(limit)),
+                                                  total: template.versions.count, offset: offset))
         case "get_history":
             try keys(args, allowed: ["limit", "offset"])
             let limit = try integer(args, "limit", default: 20, range: 1...100)
@@ -63,11 +72,19 @@ final class WorkoutAgentTools {
             }
             guard store.activeWorkout == nil else { throw WorkoutAgentToolError.activeWorkoutExists }
             let workout = WorkoutSession(name: name, unit: store.unit, exercises: entries.map {
-                WorkoutExercise(exercise: $0.exercise, sets: $0.sets.map { WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps) })
+                workoutEntry($0)
             })
             return try propose(summary: "Start workout “\(name)”", afterWorkout: workout)
         case "propose_edit_exercise": return try register(editedProposal(args))
         case "propose_edit_workout_exercises": return try editExercises(args)
+        case "propose_template_version":
+            try keys(args, allowed: ["template_id", "base_version_id", "unit", "operations"])
+            let templateID = try uuid(args, "template_id")
+            let baseVersionID = try uuid(args, "base_version_id")
+            guard let template = store.templates.first(where: { $0.id == templateID }) else { throw WorkoutAgentToolError.missingTarget }
+            guard template.currentVersion?.id == baseVersionID else { throw WorkoutAgentToolError.staleProposal }
+            return try editExercises(["target": "template", "target_id": templateID.uuidString,
+                                      "unit": args["unit"] ?? NSNull(), "operations": args["operations"] ?? NSNull()])
         default: throw WorkoutAgentToolError.unknownTool
         }
     }
@@ -84,7 +101,7 @@ final class WorkoutAgentTools {
         }
         let saved: Bool
         if let template = proposal.afterTemplate {
-            saved = store.saveTemplate(template)
+            saved = store.saveTemplate(template, expectedUnit: proposal.unit)
         } else if let workout = proposal.afterWorkout {
             saved = proposal.beforeWorkout == nil ? store.startReviewedWorkout(workout) : store.updateActiveWorkout(workout)
         } else { throw WorkoutAgentToolError.unknownProposal }
@@ -128,11 +145,14 @@ final class WorkoutAgentTools {
                 else {
                     var entry = try templateEntry(args, inputUnit: inputUnit, outputUnit: store.unit)
                     entry.id = after.exercises[index].id
+                    for setIndex in entry.sets.indices where after.exercises[index].sets.indices.contains(setIndex) {
+                        entry.sets[setIndex].id = after.exercises[index].sets[setIndex].id
+                    }
                     after.exercises[index] = entry
                 }
             }
             guard !after.exercises.isEmpty, after.exercises.count <= 100 else { throw invalid("A template needs between 1 and 100 exercise entries.") }
-            return draft(summary: "\(operation.capitalized) exercise in “\(before.name)”", beforeTemplate: before, afterTemplate: after)
+            return draft(summary: templateVersionSummary(before), beforeTemplate: before, afterTemplate: after)
         }
         guard target == "active_workout" else { throw invalid("Target must be template or active_workout.") }
         guard let before = workoutDraft ?? store.activeWorkout, before.id == targetID else { throw WorkoutAgentToolError.missingTarget }
@@ -148,6 +168,14 @@ final class WorkoutAgentTools {
                 let entry = try templateEntry(args, inputUnit: inputUnit, outputUnit: before.unit)
                 var replacement = workoutEntry(entry)
                 replacement.id = after.exercises[index].id
+                let existing = after.exercises[index]
+                if existing.exercise.id == replacement.exercise.id {
+                    for setIndex in replacement.sets.indices where existing.sets.indices.contains(setIndex) {
+                        replacement.sets[setIndex].id = existing.sets[setIndex].id
+                        replacement.sets[setIndex].targetReps = existing.sets[setIndex].targetReps
+                        replacement.sets[setIndex].targetWeight = existing.sets[setIndex].targetWeight
+                    }
+                }
                 after.exercises[index] = replacement
             }
         }
@@ -156,7 +184,9 @@ final class WorkoutAgentTools {
     }
 
     private func workoutEntry(_ entry: TemplateExercise) -> WorkoutExercise {
-        WorkoutExercise(exercise: entry.exercise, sets: entry.sets.map { WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps) })
+        WorkoutExercise(exercise: entry.exercise, sets: entry.sets.map {
+            WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
+        })
     }
 
     private func exerciseEntries(_ args: [String: Any], inputUnit: WeightUnit, outputUnit: WeightUnit) throws -> [TemplateExercise] {
@@ -198,9 +228,13 @@ final class WorkoutAgentTools {
             edited = next
         }
         guard let original, let edited else { throw invalid("No exercise edits were provided.") }
-        return try propose(summary: "Apply \(operations.count) exercise edits",
+        return try propose(summary: original.beforeTemplate.map(templateVersionSummary) ?? "Apply \(operations.count) exercise edits",
                            beforeTemplate: original.beforeTemplate, afterTemplate: edited.afterTemplate,
                            beforeWorkout: original.beforeWorkout, afterWorkout: edited.afterWorkout, displayUnit: edited.unit)
+    }
+
+    private func templateVersionSummary(_ template: WorkoutTemplate) -> String {
+        "Save version \((template.currentVersion?.number ?? 0) + 1) of “\(template.name)” for future workouts"
     }
 
     private func draft(summary: String, beforeTemplate: WorkoutTemplate? = nil, afterTemplate: WorkoutTemplate? = nil,
@@ -217,6 +251,10 @@ final class WorkoutAgentTools {
     }
 
     private func register(_ proposal: WorkoutAgentProposal) throws -> WorkoutAgentToolResult {
+        if let before = proposal.beforeTemplate, let after = proposal.afterTemplate,
+           before.name == after.name, WorkoutStore.samePrescription(before.exercises, after.exercises) {
+            throw invalid("The proposed template prescription is unchanged. Change reps, weight, or exercises to save a new version.")
+        }
         guard pendingProposals.count < 20 else { throw invalid("Review or dismiss the pending proposals before creating more.") }
         proposals[proposal.id] = proposal
         revisions[proposal.id] = store.revision
@@ -265,6 +303,13 @@ final class WorkoutAgentTools {
     private struct Overview: Encodable { let unit: WeightUnit; let activeWorkout: WorkoutSession?; let templateCount: Int; let completedWorkoutCount: Int }
     private struct HistoryPage: Encodable { let workouts: [WorkoutSession]; let total: Int; let offset: Int }
     private struct CatalogPage: Encodable { let exercises: [Exercise]; let total: Int; let offset: Int }
+    private struct TemplateVersionsPage: Encodable {
+        let templateID: UUID
+        let currentVersionID: UUID?
+        let versions: [WorkoutTemplateVersion]
+        let total: Int
+        let offset: Int
+    }
     private struct ProposalReceipt: Encodable { let proposalID: UUID; let status: String; let summary: String }
 
     private func invalid(_ message: String) -> WorkoutAgentToolError { .invalidArguments(message) }

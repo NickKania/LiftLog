@@ -3,6 +3,8 @@ import Foundation
 struct WorkoutSession: Codable, Equatable, Identifiable {
     var id: UUID
     var templateID: UUID?
+    var templateVersionID: UUID?
+    var templateVersionNumber: Int?
     var name: String
     var startedAt: Date
     var finishedAt: Date?
@@ -10,9 +12,11 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
     var exercises: [WorkoutExercise]
     var importSourceKey: String?
 
-    init(id: UUID = UUID(), templateID: UUID? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = []) {
+    init(id: UUID = UUID(), templateID: UUID? = nil, templateVersionID: UUID? = nil, templateVersionNumber: Int? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = []) {
         self.id = id
         self.templateID = templateID
+        self.templateVersionID = templateVersionID
+        self.templateVersionNumber = templateVersionNumber
         self.name = name
         self.startedAt = startedAt
         self.finishedAt = finishedAt
@@ -47,13 +51,15 @@ struct WorkoutSet: Codable, Equatable, Identifiable {
     var weight: Double
     var reps: Int
     var targetReps: Int?
+    var targetWeight: Double?
     var isCompleted: Bool
 
-    init(id: UUID = UUID(), weight: Double = 0, reps: Int = 8, targetReps: Int? = nil, isCompleted: Bool = false) {
+    init(id: UUID = UUID(), weight: Double = 0, reps: Int = 8, targetReps: Int? = nil, targetWeight: Double? = nil, isCompleted: Bool = false) {
         self.id = id
         self.weight = weight
         self.reps = reps
         self.targetReps = targetReps
+        self.targetWeight = targetWeight
         self.isCompleted = isCompleted
     }
 }

@@ -6,6 +6,12 @@ Workouts are stored on the device in `Application Support/LiftLog/workouts.sqlit
 
 When no SQLite database exists, the app reads an existing `workouts.json`, validates it, and builds the database in a staging file before installing it. The original JSON remains untouched. Legacy template `reps` fields and snapshots without personal exercises or target reps are supported. Once SQLite exists, the legacy JSON never replaces it. Damaged data blocks writes and displays an error rather than resetting workouts.
 
+## Template version migration
+
+Schema version 2 stores template revision history, session version attribution, and planned set weights. Version-1 SQLite files and backups remain readable. On launch, templates without revisions gain a baseline version in one migration transaction; later saves also upgrade older database schemas transactionally. An unsuccessful write leaves the original schema and data intact. Restore reads the source backup without modifying it and writes the upgraded working database through staging.
+
+Existing templates receive an initial version from their saved prescription. Existing sessions retain their recorded values; missing version references or planned weights are left unknown rather than inferred from a template that may have changed. Versions preserve their original weight units, including in backups.
+
 ## Enable iCloud for a signed app
 
 1. Open `LiftLog.xcodeproj` after running `xcodegen generate`.

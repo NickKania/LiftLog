@@ -2,7 +2,7 @@ import Foundation
 
 /// Also decodes version-1 JSON files during the one-time migration to SQLite.
 struct WorkoutSnapshot: Codable {
-    var version = 1
+    var version = 2
     var templates: [WorkoutTemplate]
     var history: [WorkoutSession]
     var activeWorkout: WorkoutSession?

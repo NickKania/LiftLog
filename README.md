@@ -7,9 +7,10 @@ Templates, workout execution, and history work locally without an account. The o
 
 ## Features
 
-- Create and edit templates with exercises, set weights, and target reps.
+- Plan your next workout by saving a new template version with increased weight or reps; the newest version becomes the default.
+- Browse earlier template versions and start a workout from any saved prescription.
 - Find exercises in the searchable, offline catalog of 876 bundled exercises plus your saved personal exercises, or add an exercise by name.
-- Start a workout from a template and record the weight and actual reps for each set, with the original target shown alongside.
+- Start a workout from a template and record the weight and actual reps for each set, with the original planned weight and reps shown alongside.
 - Mark sets complete and save finished workouts to history.
 - Resume a saved active workout after reopening the app.
 - Back up to iCloud Drive automatically or on demand, and restore a selected backup from Settings.

@@ -51,6 +51,7 @@ struct SetInputRow: View {
     let reps: Int
     var repsTitle = "Reps"
     var targetReps: Int? = nil
+    var targetWeight: Double? = nil
     var completed: Bool? = nil
     let onChange: (Double, Int) -> Void
     var onCompletion: (() -> Void)? = nil
@@ -71,11 +72,18 @@ struct SetInputRow: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 12) {
                 Text("\(number)").font(.subheadline.bold()).foregroundStyle(.secondary).frame(width: 26)
-                TextField("0", text: $weightText)
-                    .keyboardType(.decimalPad)
-                    .accessibilityLabel("Weight for set \(number), \(unit.rawValue)")
-                    .accessibilityIdentifier("setWeight-\(number)")
-                    .frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 3) {
+                    TextField("0", text: $weightText)
+                        .keyboardType(.decimalPad)
+                        .accessibilityLabel("Weight for set \(number), \(unit.rawValue)")
+                        .accessibilityIdentifier("setWeight-\(number)")
+                    if let targetWeight {
+                        Text("Target: \(targetWeight.formatted(.number.precision(.fractionLength(0...2)))) \(unit.rawValue)")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("setTargetWeight-\(number)")
+                    }
+                }
+                .frame(maxWidth: .infinity)
                 VStack(alignment: .leading, spacing: 3) {
                     TextField(repsTitle, text: $repsText)
                         .keyboardType(.numberPad)

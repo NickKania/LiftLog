@@ -4,11 +4,53 @@ struct WorkoutTemplate: Codable, Equatable, Identifiable {
     var id: UUID
     var name: String
     var exercises: [TemplateExercise]
+    var versions: [WorkoutTemplateVersion]
+    var currentVersion: WorkoutTemplateVersion? { versions.last }
 
-    init(id: UUID = UUID(), name: String = "", exercises: [TemplateExercise] = []) {
+    init(id: UUID = UUID(), name: String = "", exercises: [TemplateExercise] = [], versions: [WorkoutTemplateVersion] = []) {
         self.id = id
         self.name = name
         self.exercises = exercises
+        self.versions = versions
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, exercises, versions }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        exercises = try values.decode([TemplateExercise].self, forKey: .exercises)
+        versions = try values.decodeIfPresent([WorkoutTemplateVersion].self, forKey: .versions) ?? []
+    }
+}
+
+/// A saved prescription. Its loads always retain the unit used when it was saved.
+struct WorkoutTemplateVersion: Codable, Equatable, Identifiable {
+    let id: UUID
+    let number: Int
+    let createdAt: Date
+    let name: String
+    let exercises: [TemplateExercise]
+    let unit: WeightUnit
+
+    init(id: UUID = UUID(), number: Int, createdAt: Date = Date(), name: String, exercises: [TemplateExercise], unit: WeightUnit) {
+        self.id = id
+        self.number = number
+        self.createdAt = createdAt
+        self.name = name
+        self.exercises = exercises
+        self.unit = unit
+    }
+
+    func exercises(in unit: WeightUnit) -> [TemplateExercise] {
+        guard unit != self.unit else { return exercises }
+        let factor = unit == .kg ? 0.45359237 : 1 / 0.45359237
+        return exercises.map { exercise in
+            var converted = exercise
+            for index in converted.sets.indices { converted.sets[index].weight *= factor }
+            return converted
+        }
     }
 }
 

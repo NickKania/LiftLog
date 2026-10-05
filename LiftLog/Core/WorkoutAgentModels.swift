@@ -6,6 +6,25 @@ struct WorkoutAgentToolResult {
     let chart: WorkoutAgentChart?
 }
 
+/// The current prescription, without copying the entire saved version history into every tool call.
+struct WorkoutAgentTemplateSnapshot: Encodable {
+    let id: UUID
+    let name: String
+    let exercises: [TemplateExercise]
+    let unit: WeightUnit
+    let currentVersionID: UUID?
+    let currentVersionNumber: Int?
+
+    init(template: WorkoutTemplate, unit: WeightUnit) {
+        id = template.id
+        name = template.name
+        exercises = template.exercises
+        self.unit = unit
+        currentVersionID = template.currentVersion?.id
+        currentVersionNumber = template.currentVersion?.number
+    }
+}
+
 struct WorkoutAgentProposal: Codable, Equatable, Identifiable {
     enum Status: String, Codable { case pending, applied, rejected, stale }
     let id: UUID

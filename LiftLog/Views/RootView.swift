@@ -44,7 +44,7 @@ struct SettingsView: View {
             } header: {
                 Text("Weight")
             } footer: {
-                Text("Template weights convert to this unit. Active workouts and history keep their recorded unit.")
+                Text("Current template weights convert to this unit. Saved versions, active workouts, and history keep their recorded unit.")
             }
             Section {
                 Picker("Default model", selection: Binding(
@@ -93,6 +93,7 @@ struct WorkoutHomeView: View {
     @Environment(WorkoutStore.self) private var store
     @Binding var showWorkout: Bool
     @State private var editingTemplate: WorkoutTemplate?
+    @State private var planningTemplate: WorkoutTemplate?
     @State private var creatingTemplate = false
     @State private var deletingTemplate: WorkoutTemplate?
 
@@ -148,11 +149,17 @@ struct WorkoutHomeView: View {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(template.name).font(.headline)
+                                if let version = template.currentVersion {
+                                    Text("Version \(version.number) · Default")
+                                        .font(.caption.bold()).foregroundStyle(.blue)
+                                        .accessibilityIdentifier("currentTemplateVersion-\(template.id)")
+                                }
                                 Text("\(template.exercises.count) exercises · \(template.exercises.reduce(0) { $0 + $1.sets.count }) sets")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Menu {
+                                Button("Plan Next Workout", systemImage: "arrow.up.right") { planningTemplate = template }
                                 Button("Edit Template", systemImage: "pencil") { editingTemplate = template }
                                 Button("Delete Template", systemImage: "trash", role: .destructive) { deletingTemplate = template }
                             } label: { Image(systemName: "ellipsis").padding(8) }
@@ -160,6 +167,18 @@ struct WorkoutHomeView: View {
                         }
                         Text(template.exercises.map { $0.exercise.name }.joined(separator: " · "))
                             .font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                        HStack {
+                            Button("Plan Next Workout", systemImage: "arrow.up.right") { planningTemplate = template }
+                                .accessibilityIdentifier("planTemplate-\(template.id)")
+                            Spacer()
+                            NavigationLink {
+                                TemplateVersionHistoryView(templateID: template.id, showWorkout: $showWorkout)
+                            } label: {
+                                Label("Versions", systemImage: "clock.arrow.circlepath")
+                            }
+                            .accessibilityIdentifier("templateVersions-\(template.id)")
+                        }
+                        .font(.subheadline)
                         Button {
                             store.startWorkout(template: template)
                             if store.activeWorkout != nil { showWorkout = true }
@@ -177,10 +196,11 @@ struct WorkoutHomeView: View {
             .padding(20)
         }
         .background(Color(.systemGroupedBackground))
-        .workoutErrorAlert(enabled: !creatingTemplate && editingTemplate == nil && !showWorkout)
+        .workoutErrorAlert(enabled: !creatingTemplate && editingTemplate == nil && planningTemplate == nil && !showWorkout)
         .navigationTitle("Workout")
-        .sheet(isPresented: $creatingTemplate) { TemplateEditorView(template: nil) }
-        .sheet(item: $editingTemplate) { TemplateEditorView(template: $0) }
+        .sheet(isPresented: $creatingTemplate) { TemplateEditorView(template: nil, unit: store.unit) }
+        .sheet(item: $editingTemplate) { TemplateEditorView(template: $0, unit: store.unit) }
+        .sheet(item: $planningTemplate) { TemplateEditorView(template: $0, planningNextWorkout: true, unit: store.unit) }
         .confirmationDialog("Delete template?", isPresented: Binding(get: { deletingTemplate != nil }, set: { if !$0 { deletingTemplate = nil } }), titleVisibility: .visible) {
             Button("Delete Template", role: .destructive) {
                 if let template = deletingTemplate { store.deleteTemplate(id: template.id) }
