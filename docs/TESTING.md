@@ -14,6 +14,7 @@ These tests exercise workout behavior and persistence through the `LiftLogCore` 
 Catalog coverage verifies all 876 bundled entries load, original starter identities and order remain stable, matched exercises reuse existing IDs, and retired exercise snapshots survive in templates, active workouts, and history. The generator check verifies the resource matches the pinned upstream dataset and reviewed compatibility mappings without accessing the network.
 
 The core suite contains 68 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
+The original workout core has 56 XCTest cases, including six unit tests for the numeric parsing used by the SwiftUI set editor and ten additional backend flow tests. Coverage includes template validation and persistence, independent session snapshots, relaunch recovery, completion filtering, stale session edits, history ordering, unit conversion and overflow, atomic save failure recovery, and invalid saved-file protection. The assistant adds authentication, streaming, tool execution, and chart tests. See the [workflow coverage map](WORKFLOWS.md) for the user and backend flows.
 
 Eleven import tests use `Tests/LiftLogCoreTests/Fixtures/strong_workouts.csv`, the supplied Strong export, to verify every exercise, weight, rep value, timestamp, duration, and excluded rest record. Synthetic cases cover quoted CSV, BOM/CRLF, malformed data, unsupported measurements, explicit units/time zones, exercise overrides, selected subsets, duplicate imports after reload, and atomic write failures. `WorkoutImportUITests` adds three UI tests covering cancellation, single/multiple selection, matching, unit preservation during navigation, saving, relaunch, and duplicate detection using a DEBUG-only synthetic fixture.
 
@@ -26,7 +27,7 @@ xcodegen generate
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, contains ten simulator UI integration tests. They exercise template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, unit preferences, and workout imports. Run it with an installed iPhone simulator, for example:
+The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, exercises template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, unit preferences, workout imports, and the assistant. Run it with an installed iPhone simulator, for example:
 
 ```sh
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
@@ -37,6 +38,25 @@ Replace `iPhone 17` with an available simulator name from `xcrun simctl list dev
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
 ## Manual acceptance checklist
+
+### ChatGPT assistant
+
+The core tests use synthetic signed ID tokens and mocked HTTP/SSE responses. They cover callback binding, signature/claim checks, grant permissions, model discovery, raw SSE framing, interrupted/failed streams, account changes, tool limits, proposal approval/discard/staleness, batch edit atomicity, and chart unit conversion.
+
+Subscription streaming regression: the live service can emit canonical `response.output_item.done` events followed by `response.completed` with `output: []`. Native URLSession tests verify those completed items survive, tools continue only after successful completion, and genuinely empty responses produce a visible error. The delayed chart UI tests guard against scrolling/layout stalls during tool results and progress disappearing below the transcript.
+
+`AssistantUITests` checks signed-out access and continued offline workout logging. `AssistantInteractionUITests` uses a DEBUG-only connection and local transport to check proposal review, Apply persistence, Discard, chart rendering, and chart image sharing. Its delayed fixture also checks visible progress across a chart tool round and cancellation. Both launch flags `--ui-testing` and `--assistant-ui-fixture` are required to activate that fixture; `--assistant-delayed-ui-fixture` adds a four-second delay per model request. UI tests use memory credential storage, never the real Keychain, and cannot initiate live OAuth.
+
+Initial integration verification: 109 core tests and five assistant UI tests passed on iPhone 17 (iOS 26.5), and Debug and Release simulator builds succeeded. After the streaming fix, all 116 core tests and all five interaction UI tests passed, including delayed progress/cancellation, chart sharing, and proposal Apply/Discard. A live chart request using the already-connected ChatGPT account on iPhone 17 Pro Max completed with a chart and explanatory text; this verifies live inference and tool continuation, not the initial OAuth sign-in flow. UI result bundles include screenshots of sign-in, proposal review, and charts.
+
+- On a physical device with an eligible account, verify Continue with ChatGPT returns from the loopback browser callback and shows the selected account.
+- Decline plan usage, then explicitly enable it; identity-only access must not send model requests.
+- Ask a question about recorded history, graph a metric, and create or edit a workout through proposal review.
+- Change the workout after receiving a proposal; applying the stale proposal must fail without overwriting the edit.
+- Check account switching, token expiry/renewal, cancel, usage-limit recovery, and disconnect.
+- Confirm general image requests explain the preview limitation rather than silently switching billing routes.
+
+Live OAuth and subscription entitlement require manual verification; mocked tests cannot establish them.
 
 ### Personal exercise catalog
 

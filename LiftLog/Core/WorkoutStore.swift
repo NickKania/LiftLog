@@ -14,6 +14,8 @@ final class WorkoutStore {
 
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private var loadFailure: String?
+    /// Advances only after a successful atomic save; review drafts bind to this revision.
+    @ObservationIgnored private(set) var revision: UInt64 = 0
 
     private typealias Snapshot = WorkoutSnapshot
     let cloudBackup: CloudBackupManager
@@ -121,6 +123,31 @@ final class WorkoutStore {
                 updated.exercises[index].exercise = Self.register(updated.exercises[index].exercise, in: &next)
             }
             next.activeWorkout = updated
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    /// Starts the exact reviewed draft in one commit without manufacturing completed work.
+    @discardableResult
+    func startReviewedWorkout(_ workout: WorkoutSession) -> Bool {
+        guard activeWorkout == nil else {
+            return fail(StoreError.invalid("Finish or discard your current workout before starting another."))
+        }
+        guard workout.finishedAt == nil, workout.importSourceKey == nil,
+              workout.unit == unit, workout.templateID == nil,
+              !history.contains(where: { $0.id == workout.id }),
+              workout.exercises.allSatisfy({ !$0.sets.isEmpty && $0.sets.allSatisfy { !$0.isCompleted } }) else {
+            return fail(StoreError.invalid("The proposed workout must contain only planned, uncompleted sets in your current unit."))
+        }
+        do {
+            try Self.validate(workout)
+            var next = snapshot
+            var reviewed = workout
+            reviewed.startedAt = Date()
+            for index in reviewed.exercises.indices {
+                reviewed.exercises[index].exercise = Self.register(reviewed.exercises[index].exercise, in: &next)
+            }
+            next.activeWorkout = reviewed
             return commit(next)
         } catch { return fail(error) }
     }
@@ -254,6 +281,7 @@ final class WorkoutStore {
             guard !isRestoring else { throw StoreError.invalid("Wait for the backup restore to finish before making changes.") }
             try WorkoutDatabase(url: fileURL).save(next)
             apply(next)
+            revision &+= 1
             errorMessage = nil
             cloudBackup.scheduleBackup()
             return true

@@ -12,6 +12,11 @@ targets:
   LiftLog:
     type: application
     platform: iOS
+    info:
+      path: LiftLog/App/Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     sources:
       - path: LiftLog
     dependencies:

@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(WorkoutStore.self) private var store
+    @Environment(ChatGPTAccountStore.self) private var chatGPT
+    @Environment(WorkoutAssistant.self) private var assistant
     @State private var showWorkout = false
 
     var body: some View {
@@ -13,9 +16,14 @@ struct RootView: View {
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
             NavigationStack { SettingsView() }
                 .tabItem { Label("Settings", systemImage: "gearshape") }
+            NavigationStack { AssistantView() }
+                .tabItem { Label("Assistant", systemImage: "sparkles") }
         }
         .fullScreenCover(isPresented: $showWorkout) {
             NavigationStack { ActiveWorkoutView() }
+        }
+        .task(id: chatGPT.revision) {
+            if chatGPT.canUsePlan { await assistant.refreshModels() }
         }
     }
 }
@@ -35,6 +43,14 @@ struct SettingsView: View {
                 Text("Weight")
             } footer: {
                 Text("Template weights convert to this unit. Active workouts and history keep their recorded unit.")
+            }
+            Section("ChatGPT") {
+                NavigationLink("ChatGPT Account") {
+                    Form { ChatGPTAccountSettingsView() }
+                        .navigationTitle("ChatGPT Account")
+                        .navigationBarTitleDisplayMode(.inline)
+                }
+                .accessibilityIdentifier("chatGPTSettingsLink")
             }
             CloudBackupSettingsView()
         }

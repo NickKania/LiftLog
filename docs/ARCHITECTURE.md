@@ -57,9 +57,10 @@ Changing the unit preference converts template weights using `1 lb = 0.45359237 
 Backups are immutable SQLite files in the iCloud container’s `Documents/Backups` directory. SQLite’s backup API captures committed journaled data and converts the result to a standalone rollback-journal database. Unique names include creation time, installation identity, and a UUID so devices never overwrite one another. A metadata query discovers undownloaded backups; explicit download and coordinated reads stage restore files locally.
 
 Restoring blocks edits, checks database identity/schema/integrity and workout validation, preserves the previous local data in a `before-restore-<UUID>.sqlite` recovery file, and atomically replaces the database before publishing state. Restores replace the complete dataset; there is no cross-device merge. Retention keeps the newest 30 uploaded snapshots per installation and all pending uploads, leaving other installations’ files alone. Backup preference, installation identity, and last-save time live in device-local UserDefaults. See [storage and backup setup](STORAGE.md) for signing, cloud behavior, and physical-device checks.
+The optional Assistant adds direct OpenAI networking and protected ChatGPT account registrations. Workout data remains local; signing in does not synchronize it or import ChatGPT conversations. See [ChatGPT assistant](CHATGPT_ASSISTANT.md) for the authentication and agent boundaries. Backup/export and migration policies will need explicit design before adding sync or materially changing the saved schema.
 
 ## Boundaries for later work
 
 The core contains workout rules and persistence; SwiftUI screens own navigation and temporary form input. Keep new business rules in the core so they can be tested without simulator UI automation.
 
-Rest timers, exercise analytics, personal records, cloud sync, Apple Health, and Apple Watch are outside the initial implementation. Unit handling must preserve the meaning of saved weights when adding conversion or additional measurement types.
+Rest timers, personal-record tracking, cloud sync, Apple Health, and Apple Watch remain outside the implementation. Unit handling must preserve the meaning of saved weights when adding conversion or additional measurement types.

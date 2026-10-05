@@ -3,6 +3,7 @@
 A native SwiftUI iPhone app for creating reusable workout templates and logging sets as you train. Inspired by the workout tracking features of [Strong](https://www.strong.app/#features); this project is independent and is not affiliated with Strong.
 
 The first version focuses on templates, workout execution, and a local workout history. There are no app accounts. Workouts save locally, with optional backups through your Apple iCloud Drive account.
+Templates, workout execution, and history work locally without an account. The optional Assistant connects to ChatGPT so eligible users can use their subscription for workout insights and planning.
 
 ## Features
 
@@ -14,8 +15,14 @@ The first version focuses on templates, workout execution, and a local workout h
 - Back up to iCloud Drive automatically or on demand, and restore a selected backup from Settings.
 - Choose pounds or kilograms.
 - Import completed workouts from Strong CSV exports, with exercise matching, session selection, and duplicate protection.
+- Connect a ChatGPT account, select an available model, and ask questions about your workout data.
+- Generate graphs from recorded workouts and share them as images.
+- Review and apply assistant proposals to create workouts or templates and add, change, or remove their exercises.
 
 The Workout tab holds templates and the current workout. The History tab shows finished sessions. The Settings tab holds weight units and iCloud Drive backups.
+The Workout tab holds templates and the current workout. The History tab shows finished sessions, and the Assistant tab contains the ChatGPT conversation. Settings are available from the Workout screen.
+
+See [ChatGPT integration](docs/CHATGPT_ASSISTANT.md) for eligibility, sign-in, data sharing, and current image-generation limitations. The integration uses the documented subscription OAuth flow and does not require an API key.
 
 Use **History → Import Workouts** to choose a Strong CSV, confirm its weight unit and time zone, and review the sessions before saving. See [workout import](docs/WORKOUT_IMPORT.md) for field mapping, unsupported data, and duplicate handling.
 
@@ -56,3 +63,4 @@ Templates, personal exercises, settings, history, and the active workout are sto
 Existing `workouts.json` data migrates automatically on first launch; the original JSON remains untouched. Open **Settings → iCloud Drive Backups** to enable automatic backups, back up now, or restore a saved snapshot. Backups include your active workout and can be restored on another device using the same Apple account. iCloud handles upload after the snapshot is saved, including when connectivity returns.
 
 Deleting the app removes local files. Uploaded iCloud backups remain available for restoration after reinstalling. This version does not merge changes between devices or include Apple Health integration, Apple Watch support, charts, or social features.
+The app does not include cloud sync, Apple Health integration, Apple Watch support, or social features. Local workout data is tied to the app installation; deleting the app removes its local files. ChatGPT credentials are stored separately in the iOS Keychain; disconnect from Settings before uninstalling if you want to end the renewable session.
