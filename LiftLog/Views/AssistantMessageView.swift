@@ -12,6 +12,7 @@ struct AssistantMessageView: View {
                     if !message.text.isEmpty {
                         Text(verbatim: message.text)
                             .textSelection(.enabled)
+                            .accessibilityLabel("You: \(message.text)")
                     }
                     ForEach(message.references, id: \.key) { reference in
                         AssistantReferenceLabel(reference: reference)

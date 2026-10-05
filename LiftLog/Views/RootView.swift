@@ -57,6 +57,7 @@ struct SettingsView: View {
                         Text("\(saved) (unavailable)").tag(saved)
                     }
                 }
+                .pickerStyle(.menu)
                 .accessibilityIdentifier("assistantDefaultModelPicker")
                 .disabled(assistant.isLoadingModels)
                 if assistant.isLoadingModels {

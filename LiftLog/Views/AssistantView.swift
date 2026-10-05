@@ -14,6 +14,7 @@ struct AssistantView: View {
     @State private var selectedReferences: [AssistantWorkoutReference] = []
     @State private var showReferencePicker = false
     @State private var referenceMentionDraft: String?
+    @State private var restoreComposerAfterReferencePicker = false
     @FocusState private var composerFocused: Bool
 
     private var accountIdentity: String {
@@ -75,10 +76,16 @@ struct AssistantView: View {
                     .accessibilityIdentifier("assistantWelcomeGotItButton")
             }.padding(24).presentationDetents([.medium, .large])
         }
-        .sheet(isPresented: $showReferencePicker, onDismiss: { referenceMentionDraft = nil }) {
+        .sheet(isPresented: $showReferencePicker, onDismiss: {
+            referenceMentionDraft = nil
+            if restoreComposerAfterReferencePicker, accounts.canUsePlan, !assistant.isWorking {
+                composerFocused = true
+            }
+            restoreComposerAfterReferencePicker = false
+        }) {
             AssistantReferencePicker(
                 references: assistant.availableReferences,
-                selectedReferences: selectedReferences,
+                selectedReferences: selectedReferences.map(currentReference),
                 isDisabled: assistant.isWorking,
                 onSelect: { references in
                     selectedReferences = references
@@ -105,6 +112,7 @@ struct AssistantView: View {
                   newValue == oldValue + "@",
                   oldValue.isEmpty || oldValue.last?.isWhitespace == true else { return }
             referenceMentionDraft = newValue
+            restoreComposerAfterReferencePicker = true
             composerFocused = false
             showReferencePicker = true
         }
@@ -123,7 +131,12 @@ struct AssistantView: View {
         composer = ""
         selectedReferences = []
         referenceMentionDraft = nil
+        restoreComposerAfterReferencePicker = false
         showReferencePicker = false
+    }
+
+    private func currentReference(_ reference: AssistantWorkoutReference) -> AssistantWorkoutReference {
+        assistant.availableReferences.first { $0.key == reference.key } ?? reference
     }
 
     private var connectionView: some View {
@@ -304,7 +317,8 @@ struct AssistantView: View {
                     HStack(spacing: 8) {
                         ForEach(selectedReferences, id: \.key) { reference in
                             HStack(spacing: 8) {
-                                AssistantReferenceLabel(reference: reference)
+                                AssistantReferenceLabel(reference: currentReference(reference))
+                                    .frame(maxWidth: 240, alignment: .leading)
                                     .accessibilityIdentifier("assistantSelectedReference.\(reference.key)")
                                 Button {
                                     selectedReferences.removeAll { $0.key == reference.key }
@@ -328,6 +342,7 @@ struct AssistantView: View {
             HStack(alignment: .bottom, spacing: 12) {
                 Button {
                     referenceMentionDraft = nil
+                    restoreComposerAfterReferencePicker = true
                     composerFocused = false
                     showReferencePicker = true
                 } label: {
