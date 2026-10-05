@@ -207,7 +207,7 @@ final class AssistantInteractionUITests: XCTestCase {
         if delayed { app.launchArguments.append("--assistant-delayed-ui-fixture") }
         if dense { app.launchArguments.append("--assistant-dense-chart-ui-fixture") }
         if largeText {
-            app.launchArguments += ["-AppleInterfaceStyle", "Dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+            app.launchArguments += ["--assistant-dark-ui-fixture", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
         app.launch()
         app.tabBars.buttons["Assistant"].tap()
@@ -231,10 +231,19 @@ final class AssistantInteractionUITests: XCTestCase {
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         _ = element.waitForExistence(timeout: 5)
         let transcript = app.scrollViews.firstMatch
-        // The transcript lands at its newest reply. Earlier card controls may be
-        // outside LazyVStack's realized content until we scroll back to them.
-        for _ in 0..<6 where !element.isHittable { transcript.swipeDown() }
-        for _ in 0..<8 where !element.isHittable { transcript.swipeUp() }
+        // Scroll using the target's position. Large-text replies can span several
+        // pages in either direction, and a lazy card may not yet be realized.
+        for _ in 0..<20 {
+            if element.exists {
+                let viewport = transcript.frame
+                if element.frame.midY < viewport.minY { transcript.swipeDown() }
+                else if element.frame.midY > viewport.maxY { transcript.swipeUp() }
+                else if element.isHittable { return }
+                else { transcript.swipeUp() }
+            } else {
+                transcript.swipeDown()
+            }
+        }
         XCTAssertTrue(element.isHittable)
     }
 

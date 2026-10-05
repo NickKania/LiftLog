@@ -26,7 +26,9 @@ struct AssistantChartPlot: View {
                         .accessibilityLabel("\(point.workoutName), \(point.date.formatted(date: .abbreviated, time: .shortened))")
                         .accessibilityValue("\(presentation.formattedValue(point.value)) \(presentation.valueUnit)")
                 } else {
-                    BarMark(x: .value("Workout", Double(index)), y: .value(presentation.valueLabel, point.value), width: .ratio(0.55))
+                    BarMark(xStart: .value("Workout", Double(index) - 0.28),
+                            xEnd: .value("Workout", Double(index) + 0.28),
+                            y: .value(presentation.valueLabel, point.value))
                         .cornerRadius(4)
                         .foregroundStyle(.blue.opacity(selectedID == nil || point.id == selectedID ? 1 : 0.35))
                         .accessibilityLabel("\(point.workoutName), \(point.date.formatted(date: .abbreviated, time: .shortened))")
@@ -71,6 +73,7 @@ struct AssistantChartPlot: View {
             }
         }
         .frame(height: 210)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityIdentifier("assistantWorkoutChart")
     }
 

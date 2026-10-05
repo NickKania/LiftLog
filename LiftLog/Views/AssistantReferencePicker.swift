@@ -28,7 +28,7 @@ struct AssistantReferencePicker: View {
         let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !search.isEmpty else { return references }
         return references.filter { reference in
-            var searchableText = "\(reference.name) \(reference.subtitle)"
+            var searchableText = "\(reference.name) \(reference.subtitle) \(reference.summary ?? "")"
             if let date = reference.startedAt {
                 searchableText += " \(date.formatted(.dateTime.year().month(.wide).day()))"
                 searchableText += " \(date.formatted(.iso8601.year().month().day().dateSeparator(.dash)))"
@@ -113,7 +113,7 @@ struct AssistantReferencePicker: View {
                         }
                     } label: {
                         HStack(spacing: 12) {
-                            AssistantReferenceLabel(reference: reference)
+                            AssistantReferenceLabel(reference: reference, showsSummary: true)
                             Spacer(minLength: 8)
                             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(isSelected ? Color.blue : Color.secondary)
@@ -124,7 +124,7 @@ struct AssistantReferencePicker: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isDisabled || (!isSelected && selectedReferences.count >= selectionLimit))
-                    .accessibilityLabel("\(reference.name), \(reference.subtitle)")
+                    .accessibilityLabel([reference.name, reference.subtitle, reference.summary].compactMap { $0 }.joined(separator: ", "))
                     .accessibilityValue(isSelected ? "Selected" : "Not selected")
                     .accessibilityIdentifier("assistantReferenceRow.\(reference.key)")
                 }
@@ -135,6 +135,7 @@ struct AssistantReferencePicker: View {
 
 struct AssistantReferenceLabel: View {
     let reference: AssistantWorkoutReference
+    var showsSummary = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
@@ -143,6 +144,9 @@ struct AssistantReferenceLabel: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: reference.name).font(.subheadline.weight(.medium))
                 Text(verbatim: reference.subtitle).font(.caption).foregroundStyle(.secondary)
+                if showsSummary, let summary = reference.summary {
+                    Text(verbatim: summary).font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
         .fixedSize(horizontal: false, vertical: true)

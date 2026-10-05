@@ -9,13 +9,15 @@ struct AssistantWorkoutReference: Identifiable, Equatable, Codable {
     let name: String
     let startedAt: Date?
     let finishedAt: Date?
+    let summary: String?
 
-    init(kind: Kind, id: UUID, name: String, startedAt: Date? = nil, finishedAt: Date? = nil) {
+    init(kind: Kind, id: UUID, name: String, startedAt: Date? = nil, finishedAt: Date? = nil, summary: String? = nil) {
         self.kind = kind
         self.id = id
         self.name = name
         self.startedAt = startedAt
         self.finishedAt = finishedAt
+        self.summary = summary
     }
 
     /// Templates and workout sessions may legitimately share a UUID.
@@ -30,7 +32,11 @@ struct AssistantWorkoutReference: Identifiable, Equatable, Codable {
     }
 
     init(template: WorkoutTemplate) {
-        self.init(kind: .template, id: template.id, name: template.name)
+        let exerciseNames = template.exercises.prefix(3).map { $0.exercise.name }.joined(separator: ", ")
+        let count = template.exercises.count
+        let sets = template.exercises.reduce(0) { $0 + $1.sets.count }
+        self.init(kind: .template, id: template.id, name: template.name,
+                  summary: "\(count) \(count == 1 ? "exercise" : "exercises") · \(sets) \(sets == 1 ? "set" : "sets") · \(exerciseNames)\(count > 3 ? ", …" : "")")
     }
 
     init(workout: WorkoutSession) {

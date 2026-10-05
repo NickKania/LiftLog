@@ -19,7 +19,7 @@ The assistant can inspect templates, the current session, exercise definitions, 
 
 ### Tagging templates and workouts
 
-Tap **@** beside the question field to choose specific templates or workout instances. Search by name or the displayed workout date, select up to ten items, and tap **Done**. Workout dates and active/completed labels distinguish sessions with the same name. Selected tags appear above the question; remove a tag before sending with its remove button. Cancel closes the picker without changing your draft selection.
+Tap **@** beside the question field, or type a standalone `@`, to choose specific templates or workout instances. Search by name, template exercises, or the displayed workout date, select up to ten items, and tap **Done**. Workout dates and active/completed labels distinguish sessions with the same name; template rows show exercise summaries. Selected tags appear above the question; remove a tag before sending with its remove button. Cancel closes the picker without changing your draft selection.
 
 Send a question with the tags, for example, “Compare these workouts” or “Adjust this template based on this session.” Tags remain visible with the sent question. They identify exact records, independently of their names, and share those records’ exercise and set details with OpenAI. The app resolves the current record when you send, so a renamed template or a workout that has just finished still refers to the same item. If a selected record was deleted or the selected data exceeds the request limit, sending shows an error and preserves your draft.
 
@@ -31,7 +31,7 @@ Graph values are computed locally from recorded data, with explicit units. This 
 
 Assistant replies render native Markdown: headings, emphasis, nested lists, links, tables, quotes, and fenced code. Tables and code scroll horizontally when needed; replies remain selectable and offer Copy response, and code blocks offer Copy code. Streaming replies use the same renderer, including unfinished code fences. User questions retain their literal text.
 
-Charts show one point per workout with evenly spaced sessions and date labels taken from actual records. Tap a point or hold and drag to inspect its exact value, workout name, date, and time. Previous/Next workout controls and **View workouts** provide alternative ways to select records. Use the style menu to switch between a line and bars. **All**, **30 days**, and **90 days** filter the snapshot relative to its latest recorded workout, rather than today's date. **Share chart** exports the current range and style as a light-background image without chat or interactive controls.
+Charts show one point per workout with evenly spaced sessions and date labels taken from actual records. Tap a point or drag horizontally to inspect its exact value, workout name, date, and time. Previous/Next workout controls and **View workouts** provide alternative ways to select records. Use the style menu to switch between a line and bars. **All**, **30 days**, and **90 days** filter the snapshot relative to its latest recorded workout, rather than today's date. **Share chart** exports the current range and style as a light-background image without chat or interactive controls.
 
 **Manage usage** opens [ChatGPT usage settings](https://chatgpt.com/settings/usage). Usage restrictions stop requests and retain the local workout data. There is no automatic fallback to paid API usage.
 

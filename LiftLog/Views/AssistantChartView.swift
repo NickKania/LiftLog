@@ -7,7 +7,6 @@ struct AssistantChartView: View {
     @State private var range = AssistantChartPresentation.Range.all
     @State private var style = AssistantChartPlot.Style.line
     @State private var selectedID: UUID?
-    @State private var selectedPosition: Double?
     @State private var showWorkouts = false
     @State private var shareImage: UIImage?
 
@@ -26,26 +25,24 @@ struct AssistantChartView: View {
                 controls
                 if let selectedPoint { detail(selectedPoint) }
                 AssistantChartPlot(presentation: presentation, style: style, selectedID: selectedPoint?.id)
-                    .chartXSelection(value: $selectedPosition)
-                    .chartGesture { proxy in
-                        SpatialTapGesture().onEnded { value in
-                            proxy.selectXValue(at: value.location.x)
-                        }.simultaneously(with:
-                            LongPressGesture(minimumDuration: 0.25)
-                                .sequenced(before: DragGesture(minimumDistance: 0))
-                                .onChanged { value in
-                                    if case .second(true, let drag?) = value {
-                                        proxy.selectXValue(at: drag.location.x)
-                                    }
+                    .chartOverlay { proxy in
+                        GeometryReader { geometry in
+                            Rectangle().fill(.clear).contentShape(Rectangle())
+                                .onTapGesture { location in
+                                    selectPoint(at: location, proxy: proxy, geometry: geometry)
                                 }
-                        )
-                    }
-                    .onChange(of: selectedPosition) { _, position in
-                        if let position, let point = presentation.nearestPoint(to: position) { selectedID = point.id }
+                                .simultaneousGesture(DragGesture(minimumDistance: 10).onChanged { value in
+                                    // Vertical swipes belong to the conversation. A horizontal
+                                    // scrub can inspect points without capturing its scroll gesture.
+                                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                                    selectPoint(at: value.location, proxy: proxy, geometry: geometry)
+                                })
+                                .accessibilityHidden(true)
+                        }
                     }
                 HStack(spacing: 6) {
                     Image(systemName: "hand.draw").accessibilityHidden(true)
-                    Text("Tap or hold and drag · One point per workout")
+                    Text("Tap or drag sideways · One point per workout")
                 }.font(.caption2).foregroundStyle(.secondary)
                 Divider()
                 footer
@@ -55,8 +52,16 @@ struct AssistantChartView: View {
             .task(id: exportID) { renderShareImage() }
             .onChange(of: range) { _, _ in
                 selectedID = nil
-                selectedPosition = nil
             }
+    }
+
+    private func selectPoint(at location: CGPoint, proxy: ChartProxy, geometry: GeometryProxy) {
+        guard let frame = proxy.plotFrame else { return }
+        let plot = geometry[frame]
+        let x = min(max(location.x - plot.minX, 0), plot.width)
+        guard let position = proxy.value(atX: x, as: Double.self),
+              let point = presentation.nearestPoint(to: position) else { return }
+        selectedID = point.id
     }
 
     private var header: some View {
@@ -93,6 +98,7 @@ struct AssistantChartView: View {
                 Text(range.label).tag(range)
             }
         }.pickerStyle(.segmented)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .accessibilityHint("Days ending at the latest recorded workout in this chart")
             .accessibilityIdentifier("assistantChartRangePicker")
     }

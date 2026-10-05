@@ -64,6 +64,7 @@
 		F353AC6E21DD68C94CE1F0C1 /* ChatGPTAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AAACCA17D53A1207E7EEE7 /* ChatGPTAccountStore.swift */; };
 		F5B4817BB6A1253EC19DA0DD /* AssistantMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8204EA2703895D60C6BA4ECF /* AssistantMarkdown.swift */; };
 		FA8B68F63AEA37256744987E /* AssistantArtifactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A5D5F97CFF092C0E48B691 /* AssistantArtifactViews.swift */; };
+		FDF945DD5137F54E05028606 /* AssistantReferenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF48971A15C6DD8B3E80750C /* AssistantReferenceUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -136,6 +137,7 @@
 		F2AAC3270DB541F6A6CB9C2B /* AssistantUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantUITests.swift; sourceTree = "<group>"; };
 		F7AAACCA17D53A1207E7EEE7 /* ChatGPTAccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatGPTAccountStore.swift; sourceTree = "<group>"; };
 		FDE1474847815AFF2FDA9AA2 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
+		FF48971A15C6DD8B3E80750C /* AssistantReferenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantReferenceUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -263,6 +265,7 @@
 			isa = PBXGroup;
 			children = (
 				6F7CD5150AEDBAE548FA1549 /* AssistantInteractionUITests.swift */,
+				FF48971A15C6DD8B3E80750C /* AssistantReferenceUITests.swift */,
 				F2AAC3270DB541F6A6CB9C2B /* AssistantUITests.swift */,
 				1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */,
 				DCF119549ADEE654B1F436C3 /* PersonalCatalogUITests.swift */,
@@ -439,6 +442,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				64E861BB44A888DD9A2600D9 /* AssistantInteractionUITests.swift in Sources */,
+				FDF945DD5137F54E05028606 /* AssistantReferenceUITests.swift in Sources */,
 				87ED8196BC144B488BE80FF4 /* AssistantUITests.swift in Sources */,
 				1F83DD23FDF095D24881B279 /* LiftLogUITests.swift in Sources */,
 				76A4F4F1F9E50A7A266B8D5A /* PersonalCatalogUITests.swift in Sources */,

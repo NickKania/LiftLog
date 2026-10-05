@@ -180,6 +180,7 @@ struct AssistantView: View {
                 modelPicker
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .padding(.horizontal, 20).padding(.vertical, 10)
         .background(Color(.secondarySystemGroupedBackground))
     }
@@ -383,6 +384,7 @@ struct AssistantView: View {
             }
             Text("Question + relevant workout data shared with OpenAI.")
                 .font(.caption2).foregroundStyle(.secondary)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
         .background(Color(.secondarySystemGroupedBackground))

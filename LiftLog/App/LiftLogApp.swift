@@ -67,6 +67,9 @@ struct LiftLogApp: App {
                         backgroundBackup.run(store.cloudBackup)
                     }
                 }
+                #if DEBUG
+                .preferredColorScheme(AssistantUITestFixture.isEnabled && ProcessInfo.processInfo.arguments.contains("--assistant-dark-ui-fixture") ? .dark : nil)
+                #endif
         }
     }
 }
