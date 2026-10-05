@@ -9,6 +9,7 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 | Create a routine | Name a template, select exercises, add sets, enter planned weights and target reps, save | `LiftLogUITests` template-to-history test; core template create/edit/delete tests |
 | Validate or cancel a draft | Missing names/exercises and invalid set input prevent saving; cancel leaves no template | `WorkflowUITests` template validation/cancel test; `SetInputValidationTests` |
 | Find or create an exercise | Search the offline catalog without case sensitivity, or add a custom name; selection survives relaunch | `WorkflowUITests` exercise search/custom test; core catalog and snapshot tests |
+| Plan progression | Open Plan Next Workout, compare the last session, adjust targets, and save a new default version; browse and start earlier versions | Template version core tests and version UI workflow |
 | Log a session | Start from a template or empty workout; edit actual values across an exercise's sets while preserving targets and independent completion flags | `LiftLogUITests` propagation and template-to-history tests; core session snapshot tests |
 | Resume training | Minimize or relaunch, then resume with saved values and completion state | `LiftLogUITests` relaunch tests; core persistence tests |
 | Finish and review | Complete sets, confirm finish, open history; omit incomplete sets | `LiftLogUITests` template-to-history test; core completion filtering/history tests |
@@ -19,8 +20,8 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 ## Core flows
 
 1. **Launch:** load and validate SQLite, migrate preserved legacy JSON if no database exists, or seed starter templates for a new installation. Corrupt, unsupported, or inconsistent saved files remain untouched and block mutations.
-2. **Template mutation:** validate names, set values, and item IDs; trim the template name; insert, replace, or delete a template; atomically persist before updating published state.
-3. **Start:** reject an invalid template or an existing active session; copy the plan with fresh item IDs and target snapshots; persist one active session.
+2. **Template mutation:** validate names, set values, and item IDs; trim the template name; create a template, append a changed version, or delete a template; atomically persist before updating published state.
+3. **Start:** reject an invalid template or an existing active session; resolve the chosen saved version and copy the plan with fresh item IDs, version attribution, and weight/rep target snapshots; persist one active session.
 4. **Update:** validate the active session identity and editable data; retain its original start time, template reference, and unit; persist edits without changing templates or history.
 5. **Finish:** require completed work; filter incomplete sets and empty exercises; prepend the finished snapshot to history and clear the active session in the same commit.
 6. **Discard:** clear the active session without recording history, then permit a new workout.

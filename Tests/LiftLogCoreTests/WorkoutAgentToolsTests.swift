@@ -24,6 +24,8 @@ final class WorkoutAgentToolsTests: XCTestCase {
         let tools = try XCTUnwrap(namespace["tools"] as? [[String: Any]])
         let names = tools.compactMap { $0["name"] as? String }
         XCTAssertTrue(names.contains("propose_edit_workout_exercises"))
+        XCTAssertTrue(names.contains("propose_template_version"))
+        XCTAssertTrue(names.contains("get_template_versions"))
         XCTAssertFalse(names.contains("apply_proposal"))
         XCTAssertFalse(names.contains("finish_workout"))
         XCTAssertTrue(JSONSerialization.isValidJSONObject(WorkoutAgentTools.definitions))
@@ -43,7 +45,9 @@ final class WorkoutAgentToolsTests: XCTestCase {
         XCTAssertNil(proposal.beforeTemplate)
         XCTAssertEqual(proposal.afterTemplate?.exercises.first?.sets.first?.weight, 100)
         XCTAssertEqual(try tools.applyProposal(proposal.id).status, .applied)
-        XCTAssertEqual(store.templates.last, proposal.afterTemplate)
+        XCTAssertEqual(store.templates.last?.id, proposal.afterTemplate?.id)
+        XCTAssertEqual(store.templates.last?.exercises, proposal.afterTemplate?.exercises)
+        XCTAssertEqual(store.templates.last?.currentVersion?.number, 1)
         XCTAssertEqual(WorkoutStore(fileURL: url).templates, store.templates)
         XCTAssertThrowsError(try tools.applyProposal(proposal.id)) { XCTAssertEqual($0 as? WorkoutAgentToolError, .proposalAlreadyResolved) }
     }
@@ -120,6 +124,7 @@ final class WorkoutAgentToolsTests: XCTestCase {
         XCTAssertEqual(try tools.applyProposal(proposal.id).status, .applied)
         let active = try XCTUnwrap(store.activeWorkout)
         XCTAssertEqual(active.exercises[0].sets[0].weight, 100, accuracy: 0.00001)
+        XCTAssertEqual(try XCTUnwrap(active.exercises[0].sets[0].targetWeight), 100, accuracy: 0.00001)
         XCTAssertFalse(active.exercises[0].sets[0].isCompleted)
         XCTAssertTrue(store.history.isEmpty)
         XCTAssertThrowsError(try tools.execute(name: "propose_create_workout", arguments: json(createArgs(store)))) { XCTAssertEqual($0 as? WorkoutAgentToolError, .activeWorkoutExists) }
@@ -186,6 +191,195 @@ final class WorkoutAgentToolsTests: XCTestCase {
         XCTAssertThrowsError(try tools.execute(name: "propose_edit_workout_exercises", arguments: json(args)))
         XCTAssertTrue(tools.pendingProposals.isEmpty)
         XCTAssertEqual(store.templates[0], template)
+    }
+
+    @MainActor func testTemplateVersionProposalPreservesBeforeAndAfterAndBecomesDefaultAfterReview() async throws {
+        let url = file()
+        let store = WorkoutStore(fileURL: url)
+        let tools = WorkoutAgentTools(store: store)
+        let before = store.templates[0]
+        let base = try XCTUnwrap(before.currentVersion)
+        let entry = before.exercises[0]
+        let sets = entry.sets.map { ["weight": $0.weight + 5, "reps": $0.targetReps + 1] as [String: Any] }
+        let args: [String: Any] = ["template_id": before.id.uuidString, "base_version_id": base.id.uuidString,
+                                  "unit": "lb", "operations": [["operation": "update", "entry_id": entry.id.uuidString,
+                                                                "exercise_id": entry.exercise.id.uuidString, "sets": sets]]]
+        let proposal = try XCTUnwrap(tools.execute(name: "propose_template_version", arguments: json(args)).proposal)
+        XCTAssertEqual(store.templates[0], before)
+        XCTAssertEqual(proposal.beforeTemplate, before)
+        XCTAssertEqual(proposal.afterTemplate?.exercises[0].sets[0].id, entry.sets[0].id)
+        XCTAssertEqual(proposal.afterTemplate?.exercises[0].sets[0].weight, entry.sets[0].weight + 5)
+        XCTAssertEqual(proposal.afterTemplate?.exercises[0].sets[0].targetReps, entry.sets[0].targetReps + 1)
+        XCTAssertTrue(proposal.summary.contains("version \(base.number + 1)"))
+        try tools.applyProposal(proposal.id)
+        let updated = store.templates[0]
+        XCTAssertEqual(updated.versions.dropLast(), before.versions[...])
+        XCTAssertEqual(updated.currentVersion?.number, base.number + 1)
+        XCTAssertTrue(store.startWorkout(template: updated))
+        let active = try XCTUnwrap(store.activeWorkout)
+        XCTAssertEqual(active.templateVersionID, updated.currentVersion?.id)
+        XCTAssertEqual(active.templateVersionNumber, updated.currentVersion?.number)
+        XCTAssertEqual(active.exercises[0].sets[0].targetWeight, entry.sets[0].weight + 5)
+        XCTAssertEqual(active.exercises[0].sets[0].targetReps, entry.sets[0].targetReps + 1)
+        XCTAssertEqual(WorkoutStore(fileURL: url).templates, store.templates)
+    }
+
+    @MainActor func testOutdatedBaseVersionRejectedAndPendingVersionBecomesStale() async throws {
+        let store = WorkoutStore(fileURL: file())
+        let tools = WorkoutAgentTools(store: store)
+        var template = store.templates[0]
+        let entry = template.exercises[0]
+        let base = try XCTUnwrap(template.currentVersion)
+        let args: [String: Any] = ["template_id": template.id.uuidString, "base_version_id": base.id.uuidString,
+                                  "unit": "lb", "operations": [["operation": "update", "entry_id": entry.id.uuidString,
+                                                                "exercise_id": entry.exercise.id.uuidString,
+                                                                "sets": [["weight": 140, "reps": 9]]]]]
+        let proposal = try XCTUnwrap(tools.execute(name: "propose_template_version", arguments: json(args)).proposal)
+        template.exercises[0].sets[0].targetReps += 2
+        XCTAssertTrue(store.saveTemplate(template))
+        let changed = store.templates[0]
+        XCTAssertThrowsError(try tools.execute(name: "propose_template_version", arguments: json(args))) {
+            XCTAssertEqual($0 as? WorkoutAgentToolError, .staleProposal)
+        }
+        XCTAssertThrowsError(try tools.applyProposal(proposal.id)) {
+            XCTAssertEqual($0 as? WorkoutAgentToolError, .staleProposal)
+        }
+        XCTAssertEqual(tools.proposal(proposal.id)?.status, .stale)
+        XCTAssertEqual(store.templates[0], changed)
+        XCTAssertEqual(tools.pendingProposals.count, 0)
+    }
+
+    @MainActor func testCurrentTemplateReadsAreCompactAndVersionHistoryUsesOriginalUnits() async throws {
+        let store = WorkoutStore(fileURL: file())
+        let tools = WorkoutAgentTools(store: store)
+        var template = store.templates[0]
+        let first = try XCTUnwrap(template.currentVersion)
+        XCTAssertTrue(store.setUnit(.kg))
+        template = store.templates[0]
+        template.exercises[0].sets[0].weight = 60
+        XCTAssertTrue(store.saveTemplate(template))
+        let latest = try XCTUnwrap(store.templates[0].currentVersion)
+        let output = try tools.execute(name: "get_templates", arguments: "{}").outputJSONString
+        let current = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(output.utf8)) as? [[String: Any]])
+        XCTAssertEqual(current[0]["unit"] as? String, "kg")
+        XCTAssertEqual(current[0]["currentVersionID"] as? String, latest.id.uuidString)
+        XCTAssertEqual(current[0]["currentVersionNumber"] as? Int, latest.number)
+        XCTAssertNil(current[0]["versions"])
+        let pageOutput = try tools.execute(name: "get_template_versions", arguments: json([
+            "template_id": template.id.uuidString, "limit": 1, "offset": 1
+        ])).outputJSONString
+        let page = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(pageOutput.utf8)) as? [String: Any])
+        XCTAssertEqual(page["total"] as? Int, 2)
+        XCTAssertEqual(page["offset"] as? Int, 1)
+        let versions = try XCTUnwrap(page["versions"] as? [[String: Any]])
+        XCTAssertEqual(versions.count, 1)
+        XCTAssertEqual(versions[0]["id"] as? String, first.id.uuidString)
+        XCTAssertEqual(versions[0]["unit"] as? String, "lb")
+        XCTAssertThrowsError(try tools.execute(name: "get_template_versions", arguments: json([
+            "template_id": template.id.uuidString, "limit": 21, "offset": 0
+        ])))
+        XCTAssertThrowsError(try tools.execute(name: "get_template_versions", arguments: json([
+            "template_id": UUID().uuidString, "limit": 1, "offset": 0
+        ])))
+    }
+
+    @MainActor func testActiveActualEditsKeepOriginalPlannedTargetsAndSetIdentity() async throws {
+        let store = WorkoutStore(fileURL: file())
+        XCTAssertTrue(store.startWorkout(template: store.templates[0]))
+        let before = try XCTUnwrap(store.activeWorkout)
+        let entry = before.exercises[0]
+        let tools = WorkoutAgentTools(store: store)
+        let args: [String: Any] = ["target": "active_workout", "target_id": before.id.uuidString,
+                                  "operation": "update", "entry_id": entry.id.uuidString,
+                                  "exercise_id": entry.exercise.id.uuidString, "unit": before.unit.rawValue,
+                                  "sets": entry.sets.map { ["weight": $0.weight + 10, "reps": $0.reps + 2] as [String: Any] }]
+        let proposal = try XCTUnwrap(tools.execute(name: "propose_edit_exercise", arguments: json(args)).proposal)
+        let draft = try XCTUnwrap(proposal.afterWorkout)
+        XCTAssertEqual(draft.exercises[0].sets.map(\.id), entry.sets.map(\.id))
+        XCTAssertEqual(draft.exercises[0].sets.map(\.targetReps), entry.sets.map(\.targetReps))
+        XCTAssertEqual(draft.exercises[0].sets.map(\.targetWeight), entry.sets.map(\.targetWeight))
+        try tools.applyProposal(proposal.id)
+        let after = try XCTUnwrap(store.activeWorkout)
+        XCTAssertEqual(after.exercises[0].sets[0].weight, entry.sets[0].weight + 10)
+        XCTAssertEqual(after.exercises[0].sets[0].reps, entry.sets[0].reps + 2)
+        XCTAssertEqual(after.exercises[0].sets[0].targetWeight, entry.sets[0].targetWeight)
+        XCTAssertEqual(after.exercises[0].sets[0].targetReps, entry.sets[0].targetReps)
+    }
+
+    @MainActor func testUnchangedVersionProposalDoesNotClaimANewVersion() async throws {
+        let store = WorkoutStore(fileURL: file())
+        let tools = WorkoutAgentTools(store: store)
+        let template = store.templates[0]
+        let entry = template.exercises[0]
+        let args: [String: Any] = ["template_id": template.id.uuidString,
+                                  "base_version_id": try XCTUnwrap(template.currentVersion).id.uuidString,
+                                  "unit": store.unit.rawValue,
+                                  "operations": [["operation": "update", "entry_id": entry.id.uuidString,
+                                                   "exercise_id": entry.exercise.id.uuidString,
+                                                   "sets": entry.sets.map { ["weight": $0.weight, "reps": $0.targetReps] as [String: Any] }]]]
+        XCTAssertThrowsError(try tools.execute(name: "propose_template_version", arguments: json(args)))
+        XCTAssertTrue(tools.pendingProposals.isEmpty)
+        XCTAssertEqual(store.templates[0], template)
+    }
+
+    @MainActor func testSemanticallyUnchangedVersionWithNewEntryIDsAndConvertedUnitsIsRejected() async throws {
+        let store = WorkoutStore(fileURL: file())
+        XCTAssertTrue(store.saveTemplate(WorkoutTemplate(name: "Stable plan", exercises: [
+            TemplateExercise(exercise: store.exercises[0], sets: [TemplateSet(weight: 100, targetReps: 8)])
+        ])))
+        let template = try XCTUnwrap(store.templates.last)
+        let entry = template.exercises[0]
+        let tools = WorkoutAgentTools(store: store)
+        let args: [String: Any] = ["template_id": template.id.uuidString,
+                                  "base_version_id": try XCTUnwrap(template.currentVersion).id.uuidString,
+                                  "unit": "kg", "operations": [
+                                    ["operation": "add", "entry_id": NSNull(), "exercise_id": entry.exercise.id.uuidString,
+                                     "sets": [["weight": 45.359237 + 1e-12, "reps": 8]]],
+                                    ["operation": "remove", "entry_id": entry.id.uuidString,
+                                     "exercise_id": NSNull(), "sets": NSNull()]
+                                  ]]
+        XCTAssertThrowsError(try tools.execute(name: "propose_template_version", arguments: json(args)))
+        XCTAssertTrue(tools.pendingProposals.isEmpty)
+        XCTAssertEqual(store.templates.last, template)
+    }
+
+    @MainActor func testRestoreInvalidatesPendingVersionWithSameVersionIDAndDifferentUnit() async throws {
+        let url = file()
+        let store = WorkoutStore(fileURL: url)
+        var template = store.templates[0]
+        template.exercises[0].sets[0].weight = 100
+        XCTAssertTrue(store.saveTemplate(template))
+        template = store.templates[0]
+        let base = try XCTUnwrap(template.currentVersion)
+        let entry = template.exercises[0]
+
+        let backupURL = url.deletingLastPathComponent().appendingPathComponent("kg-backup.sqlite")
+        try WorkoutDatabase(url: url).backup(to: backupURL)
+        let backupStore = WorkoutStore(fileURL: backupURL)
+        XCTAssertTrue(backupStore.setUnit(.kg))
+        XCTAssertEqual(backupStore.templates[0].currentVersion?.id, base.id)
+
+        let tools = WorkoutAgentTools(store: store)
+        let args: [String: Any] = ["template_id": template.id.uuidString, "base_version_id": base.id.uuidString,
+                                  "unit": "lb", "operations": [["operation": "update", "entry_id": entry.id.uuidString,
+                                                                "exercise_id": entry.exercise.id.uuidString,
+                                                                "sets": [["weight": 140, "reps": 9]]]]]
+        let proposal = try XCTUnwrap(tools.execute(name: "propose_template_version", arguments: json(args)).proposal)
+        let beforeRestoreRevision = store.revision
+        try store.restoreDatabase(from: backupURL)
+        XCTAssertGreaterThan(store.revision, beforeRestoreRevision)
+        XCTAssertEqual(store.unit, .kg)
+        XCTAssertEqual(store.templates[0].currentVersion?.id, base.id)
+        let restored = store.templates
+        let restoredDisk = try Data(contentsOf: url)
+        XCTAssertThrowsError(try tools.applyProposal(proposal.id)) {
+            XCTAssertEqual($0 as? WorkoutAgentToolError, .staleProposal)
+        }
+        XCTAssertEqual(tools.proposal(proposal.id)?.status, .stale)
+        XCTAssertEqual(store.templates, restored)
+        XCTAssertEqual(store.templates[0].exercises[0].sets[0].weight, 45.359237, accuracy: 1e-10)
+        XCTAssertEqual(store.templates[0].currentVersion?.number, base.number)
+        XCTAssertEqual(try Data(contentsOf: url), restoredDisk)
     }
 
     @MainActor func testChartsOnlyUseActualCompletedHistoryAndConvertEachSessionUnit() async throws {

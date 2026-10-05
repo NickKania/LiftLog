@@ -76,6 +76,12 @@ Live OAuth and subscription entitlement require manual verification; mocked test
 
 Seven core catalog tests cover merged identities, persisted personal entries, legacy backfill without history changes, bundled-name overlap, template/active-workout registration, cancellation and skipped duplicates, and atomic failures.
 
+### Template versions
+
+`TemplateVersionTests` covers immutable revision history, semantic no-op saves, stale/deleted drafts, archived and default version starts, independent planned/actual values, unit conversion, failed saves, JSON and SQLite v1 upgrades, read-only old backups, and transactional schema rollback. Agent tests cover reviewed progression, version reads, no-op rejection, target preservation, and proposal invalidation after unit changes or backup restore.
+
+Verification for this change: all 161 core tests passed. The iOS simulator build succeeded, and three UI flows passed on the isolated LiftLog Reference Verification simulator (iOS 26.5): version planning/cancellation/archived start/history targets, template creation/completion/relaunch, and assistant review/Apply/relaunch. The version test uses `firstMatch` for the system confirmation button because iOS exposes nested accessibility matches.
+
 ### Templates
 
 - Create a named template, add exercises, and configure multiple sets with weights and target reps.

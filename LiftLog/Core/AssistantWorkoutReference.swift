@@ -10,14 +10,16 @@ struct AssistantWorkoutReference: Identifiable, Equatable, Codable {
     let startedAt: Date?
     let finishedAt: Date?
     let summary: String?
+    let templateVersionNumber: Int?
 
-    init(kind: Kind, id: UUID, name: String, startedAt: Date? = nil, finishedAt: Date? = nil, summary: String? = nil) {
+    init(kind: Kind, id: UUID, name: String, startedAt: Date? = nil, finishedAt: Date? = nil, summary: String? = nil, templateVersionNumber: Int? = nil) {
         self.kind = kind
         self.id = id
         self.name = name
         self.startedAt = startedAt
         self.finishedAt = finishedAt
         self.summary = summary
+        self.templateVersionNumber = templateVersionNumber
     }
 
     /// Templates and workout sessions may legitimately share a UUID.
@@ -25,7 +27,9 @@ struct AssistantWorkoutReference: Identifiable, Equatable, Codable {
     var isActive: Bool { kind == .workout && finishedAt == nil }
 
     var subtitle: String {
-        guard kind == .workout else { return "Template" }
+        guard kind == .workout else {
+            return templateVersionNumber.map { "Template · Version \($0)" } ?? "Template"
+        }
         let status = isActive ? "Active workout" : "Completed workout"
         guard let startedAt else { return status }
         return "\(status) · \(startedAt.formatted(date: .abbreviated, time: .shortened))"
@@ -36,7 +40,8 @@ struct AssistantWorkoutReference: Identifiable, Equatable, Codable {
         let count = template.exercises.count
         let sets = template.exercises.reduce(0) { $0 + $1.sets.count }
         self.init(kind: .template, id: template.id, name: template.name,
-                  summary: "\(count) \(count == 1 ? "exercise" : "exercises") · \(sets) \(sets == 1 ? "set" : "sets") · \(exerciseNames)\(count > 3 ? ", …" : "")")
+                  summary: "\(count) \(count == 1 ? "exercise" : "exercises") · \(sets) \(sets == 1 ? "set" : "sets") · \(exerciseNames)\(count > 3 ? ", …" : "")",
+                  templateVersionNumber: template.currentVersion?.number)
     }
 
     init(workout: WorkoutSession) {

@@ -15,6 +15,10 @@ struct WorkoutHistoryView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(workout.name).font(.headline)
+                            if let version = workout.templateVersionNumber {
+                                Text("Template version \(version)")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                             Text(workout.startedAt.formatted(date: .abbreviated, time: .shortened))
                                 .font(.subheadline).foregroundStyle(.secondary)
                             HStack(spacing: 16) {
@@ -49,6 +53,10 @@ struct WorkoutDetailView: View {
                 LabeledContent("Date", value: workout.startedAt.formatted(date: .abbreviated, time: .shortened))
                 LabeledContent("Duration", value: duration)
                 LabeledContent("Completed sets", value: String(workout.exercises.reduce(0) { $0 + $1.sets.count }))
+                if let version = workout.templateVersionNumber {
+                    LabeledContent("Template version", value: String(version))
+                        .accessibilityIdentifier("historyTemplateVersion")
+                }
             }
             ForEach(workout.exercises) { exercise in
                 Section(exercise.exercise.name) {
@@ -56,8 +64,15 @@ struct WorkoutDetailView: View {
                         HStack {
                             Text("Set \(index + 1)").foregroundStyle(.secondary)
                             Spacer()
-                            Text("\(set.weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue) × \(set.reps)")
-                                .monospacedDigit()
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("\(set.weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue) × \(set.reps)")
+                                    .monospacedDigit()
+                                if set.targetWeight != nil || set.targetReps != nil {
+                                    Text(plannedPrescription(set))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                        .accessibilityIdentifier("historySetPlan-\(index + 1)")
+                                }
+                            }
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                         }
                     }
@@ -66,6 +81,19 @@ struct WorkoutDetailView: View {
         }
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func plannedPrescription(_ set: WorkoutSet) -> String {
+        switch (set.targetWeight, set.targetReps) {
+        case let (weight?, reps?):
+            "Planned: \(weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue) × \(reps)"
+        case let (weight?, nil):
+            "Planned weight: \(weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue)"
+        case let (nil, reps?):
+            "Planned reps: \(reps)"
+        case (nil, nil):
+            ""
+        }
     }
 
     private var duration: String {

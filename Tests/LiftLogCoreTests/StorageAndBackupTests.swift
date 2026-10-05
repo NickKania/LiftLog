@@ -28,8 +28,20 @@ final class StorageAndBackupTests: XCTestCase {
         return WorkoutSnapshot(templates: [template], history: [completed], activeWorkout: active, unit: .kg, personalExercises: [exercise])
     }
 
-    private func assertEqual(_ actual: WorkoutSnapshot, _ expected: WorkoutSnapshot, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertEqual(actual.templates, expected.templates, file: file, line: line)
+    private func assertEqual(_ actual: WorkoutSnapshot, _ expected: WorkoutSnapshot, backfilledVersions: Bool = false, file: StaticString = #filePath, line: UInt = #line) {
+        var templates = actual.templates
+        if backfilledVersions {
+            for index in templates.indices {
+                let template = templates[index]
+                XCTAssertEqual(template.versions.count, 1, file: file, line: line)
+                XCTAssertEqual(template.currentVersion?.number, 1, file: file, line: line)
+                XCTAssertEqual(template.currentVersion?.name, template.name, file: file, line: line)
+                XCTAssertEqual(template.currentVersion?.exercises, template.exercises, file: file, line: line)
+                XCTAssertEqual(template.currentVersion?.unit, actual.unit, file: file, line: line)
+                templates[index].versions = []
+            }
+        }
+        XCTAssertEqual(templates, expected.templates, file: file, line: line)
         XCTAssertEqual(actual.history, expected.history, file: file, line: line)
         XCTAssertEqual(actual.activeWorkout, expected.activeWorkout, file: file, line: line)
         XCTAssertEqual(actual.unit, expected.unit, file: file, line: line)
@@ -46,7 +58,7 @@ final class StorageAndBackupTests: XCTestCase {
         try original.write(to: legacy)
         let store = WorkoutStore(fileURL: database)
         XCTAssertNil(store.errorMessage)
-        assertEqual(try WorkoutDatabase(url: database).load(), saved)
+        assertEqual(try WorkoutDatabase(url: database).load(), saved, backfilledVersions: true)
         XCTAssertEqual(try Data(contentsOf: legacy), original)
         XCTAssertEqual(String(decoding: try Data(contentsOf: database).prefix(15), as: UTF8.self), "SQLite format 3")
         XCTAssertTrue(store.setUnit(.lb))
@@ -82,7 +94,7 @@ final class StorageAndBackupTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path + "-journal"))
         let store = WorkoutStore(fileURL: url)
         XCTAssertNil(store.errorMessage)
-        assertEqual(try WorkoutDatabase(url: url).load(), saved)
+        assertEqual(try WorkoutDatabase(url: url).load(), saved, backfilledVersions: true)
         XCTAssertTrue(store.setUnit(.lb))
     }
     #endif
@@ -147,7 +159,7 @@ final class StorageAndBackupTests: XCTestCase {
         await manager.restore(backup, into: store)
         XCTAssertNil(manager.errorMessage)
         XCTAssertFalse(store.isRestoring)
-        assertEqual(try WorkoutDatabase(url: url).load(), saved)
+        assertEqual(try WorkoutDatabase(url: url).load(), saved, backfilledVersions: true)
         XCTAssertEqual(store.activeWorkout, saved.activeWorkout)
         let recovery = try XCTUnwrap(FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
             .first { $0.lastPathComponent.hasPrefix("before-restore-") })
