@@ -21,7 +21,7 @@ Existing templates receive an initial version from their saved prescription. Exi
 ## Enable iCloud for a signed app
 
 1. Open `LiftLog.xcodeproj` after running `xcodegen generate`.
-2. Select the LiftLog app target and your Apple development team in Signing & Capabilities. That team must support iCloud provisioning.
+2. The LiftLog target uses automatic signing for team `2CUP94Z3Q9` and bundle ID `nkania.WeightsTracker`. If building for another team, update `project.yml` before regenerating; the team must support iCloud provisioning.
 3. Enable iCloud with **iCloud Documents** and register/select **`iCloud.com.liftlog.app`**. Ensure the App ID and provisioning profile include that container and the CloudDocuments entitlement.
 4. If changing the bundle or container identifier, update `project.yml`, `CloudBackupRepository.containerIdentifier`, and `LiftLog/Info.plist` together, then regenerate the project.
 5. Install on an iPhone signed in to iCloud with iCloud Drive enabled for Lift Log. Open Settings → iCloud Drive Backups.

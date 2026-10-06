@@ -39,7 +39,9 @@ xcodegen generate
 open LiftLog.xcodeproj
 ```
 
-Select the `LiftLog` scheme and an iPhone simulator, then Run. For a physical iPhone, select your development team under the app target’s Signing & Capabilities settings. Enable iCloud Documents and register/select the `iCloud.com.liftlog.app` container for that team. The project includes the entitlements but does not prescribe a signing team. See [storage and backup setup](docs/STORAGE.md).
+Select the `LiftLog` scheme and an iPhone simulator, then Run. The project uses automatic signing for team `2CUP94Z3Q9` and bundle ID `nkania.WeightsTracker`, matching the GymIntelligence app in App Store Connect. For a physical iPhone, use that team and the `iCloud.com.liftlog.app` iCloud Documents container. See [storage and backup setup](docs/STORAGE.md).
+
+For TestFlight, push the generated project together with `project.yml`, then start the **Internal TestFlight Build** Xcode Cloud workflow on that revision. Its iOS archive uses **TestFlight (Internal Testing Only)** distribution preparation, and its **TestFlight Internal Testing** post-action delivers to the existing **Dev Preview** group. Xcode Cloud builds committed remote files; local Signing & Capabilities edits do not affect a cloud build until pushed.
 
 The XcodeGen configuration in `project.yml` is the project source of truth; regenerate the Xcode project after changing it.
 

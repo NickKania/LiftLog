@@ -17,14 +17,21 @@ targets:
     type: application
     platform: iOS
     info:
-      path: LiftLog/App/Info.plist
+      path: LiftLog/Info.plist
       properties:
+        ITSAppUsesNonExemptEncryption: false
+        NSUbiquitousContainers:
+          iCloud.com.liftlog.app:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Lift Log
+            NSUbiquitousContainerSupportedFolderLevels: Any
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     sources:
       - path: LiftLog
         excludes:
           - App/Info.plist
+          - Info.plist
     dependencies:
       - sdk: libsqlite3.tbd
       - package: swift-markdown
@@ -42,7 +49,10 @@ targets:
       base:
         CODE_SIGN_ENTITLEMENTS: LiftLog/LiftLog.entitlements
         INFOPLIST_FILE: LiftLog/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.liftlog.app
+        PRODUCT_BUNDLE_IDENTIFIER: nkania.WeightsTracker
+        DEVELOPMENT_TEAM: 2CUP94Z3Q9
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
         PRODUCT_NAME: LiftLog
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Lift Log

@@ -95,7 +95,6 @@
 		346AF47C2B8BAF1DB14D8537 /* WorkoutImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportView.swift; sourceTree = "<group>"; };
 		3529283D0B184F68A1D285B8 /* WorkoutImportUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportUITests.swift; sourceTree = "<group>"; };
 		4EC13553765E2637097603C2 /* ChatGPTInference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatGPTInference.swift; sourceTree = "<group>"; };
-		542860A8A809BAE8097BF332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		55E01E95AFBD82E871913630 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		564E8B8B5AE363A497173FB9 /* ExerciseCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseCatalog.swift; sourceTree = "<group>"; };
 		56A5D5F97CFF092C0E48B691 /* AssistantArtifactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantArtifactViews.swift; sourceTree = "<group>"; };
@@ -173,7 +172,6 @@
 			isa = PBXGroup;
 			children = (
 				8A7362A4BF1BBB49DF08484B /* Assets.xcassets */,
-				542860A8A809BAE8097BF332 /* Info.plist */,
 				7154C0C8E5BFD29B1ED335CA /* LiftLog.entitlements */,
 				288EBF8C9BBA0F0A2CA29F6E /* App */,
 				993614B8D242444237EBD804 /* Core */,
@@ -350,6 +348,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					6201C61E7C5E34AC0A26B0BE = {
+						DevelopmentTeam = 2CUP94Z3Q9;
+						ProvisioningStyle = Automatic;
+					};
 					D219CD0DBE184E2BCCD7B1BC = {
 						TestTargetID = 6201C61E7C5E34AC0A26B0BE;
 					};
@@ -496,7 +498,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LiftLog/LiftLog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2CUP94Z3Q9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LiftLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Lift Log";
@@ -508,10 +512,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftlog.app;
+				PRODUCT_BUNDLE_IDENTIFIER = nkania.WeightsTracker;
 				PRODUCT_NAME = LiftLog;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -522,7 +526,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LiftLog/LiftLog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2CUP94Z3Q9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LiftLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Lift Log";
@@ -534,10 +540,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftlog.app;
+				PRODUCT_BUNDLE_IDENTIFIER = nkania.WeightsTracker;
 				PRODUCT_NAME = LiftLog;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
