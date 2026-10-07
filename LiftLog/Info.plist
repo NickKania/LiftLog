@@ -36,10 +36,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Lift Log reads heart rate, active energy, and steps for a workout only when you select an Apple Health @ tag. Attached data can be shown in charts and sent to the AI assistant with your message.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Lift Log uses Apple Health to read selected workout measurements. Lift Log does not save or update data in Apple Health.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.com.liftlog.app</key>
