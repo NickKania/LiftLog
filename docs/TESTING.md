@@ -39,6 +39,25 @@ For interactive verification, open the project in Xcode and run it on an iPhone 
 
 ## Manual acceptance checklist
 
+### Apple Health opt-in
+
+`WorkoutHealthDataTests` covers session time windows, invalid dates/values, bounded interval series, and missing data. `AssistantHealthPrivacyTests` captures outgoing requests and tests explicit per-message consent, plain-workout isolation, canonical session resolution, chart scope, cancellation, account changes, deletion during reads, and exclusion from saved history, archives, and title requests. The reference UI suite includes Health-tag selection, cancellation/removal/new-chat behavior, untagged follow-ups, and native health-chart navigation. Its provider and network transport are synthetic and never read personal Health data.
+
+Verification: all 210 core tests and all eight `AssistantReferenceUITests` passed on LiftLog Reference Verification (iOS 26.5), including the three new Health flows and existing large-text tag layout checks. The native chart screenshot was inspected for clear Health labeling and bpm values.
+
+On a signed physical iPhone with the HealthKit capability enabled:
+
+- Start a workout and open Assistant or the @ picker. Neither action should prompt for Health permission.
+- Send a question with a normal workout tag. No Health permission or Health data should be requested.
+- Select the session under **@ → Apple Health**, read the sharing disclosure, and send. Verify the system read-permission sheet appears when required, requesting heart rate, active energy, and steps only.
+- Allow selected metrics, deny others, and chart available readings. Missing metrics must remain unavailable, without fabricated zeros or a claim that read access was granted.
+- Check active-session boundaries against send time, and completed sessions against their recorded start/end. Compare interval averages/totals with available HealthKit data; samples crossing the session edges are excluded.
+- Cancel while a permission/read request is pending, or switch accounts. No delayed assistant request should be sent.
+- Ask a follow-up without a Health tag. The earlier readings and health-derived answer must not be included. Retag to read again.
+- Relaunch the app. Health questions, replies, and charts must be absent from saved chats; ordinary messages and charts still restore.
+
+Native permission behavior, wearable synchronization, actual statistics, and production signing require this physical-device pass; mocked tests cannot establish them.
+
 ### ChatGPT assistant
 
 The core tests use synthetic signed ID tokens and mocked HTTP/SSE responses. They cover callback binding, signature/claim checks, grant permissions, model discovery, raw SSE framing, interrupted/failed streams, account changes, tool limits, proposal approval/discard/staleness, batch edit atomicity, and chart unit conversion.

@@ -46,7 +46,26 @@ enum AssistantUITestFixture {
         }
         return WorkoutAssistant(store: store, accessToken: { "local-ui-fixture-token" },
             transport: AssistantFixtureTransport(exerciseID: exerciseID), storageURL: archiveURL,
-            archiveAccountIdentity: { "local-ui-fixture-account" })
+            archiveAccountIdentity: { "local-ui-fixture-account" },
+            healthDataProvider: AssistantFixtureHealthDataProvider.shared)
+    }
+}
+
+/// Synthetic session-scoped data. UI tests never request access to HealthKit.
+@MainActor
+private final class AssistantFixtureHealthDataProvider: WorkoutHealthDataProviding {
+    static let shared = AssistantFixtureHealthDataProvider()
+    private(set) var readCount = 0
+
+    func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
+        readCount += 1
+        let end = min(workout.finishedAt ?? through, through)
+        return WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name,
+            startedAt: workout.startedAt, endedAt: end, fetchedAt: through,
+            metrics: [WorkoutHealthMetricSeries(metric: .heartRate, samples: [
+                WorkoutHealthSample(date: workout.startedAt.addingTimeInterval(60), value: 120),
+                WorkoutHealthSample(date: workout.startedAt.addingTimeInterval(120), value: 140)
+            ])])
     }
 }
 
@@ -94,8 +113,17 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
                 : question.localizedCaseInsensitiveContains("formatting") ? "Training summary"
                 : "Workout planning"
             output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": title]]]]
+        } else if ProcessInfo.processInfo.arguments.contains("--assistant-health-chart-ui-fixture"), isContinuation {
+            output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": "Here is the heart rate chart from the Health data shared for this message."]]]]
+        } else if ProcessInfo.processInfo.arguments.contains("--assistant-health-chart-ui-fixture"),
+                  let snapshot = try healthSnapshots(in: question).first,
+                  let workoutID = snapshot["workoutID"] as? String {
+            let data = try JSONSerialization.data(withJSONObject: ["workout_id": workoutID, "metric": "heartRate"])
+            output = [["type": "function_call", "namespace": "liftlog", "name": "graph_workout_health",
+                       "call_id": UUID().uuidString, "arguments": String(decoding: data, as: UTF8.self)]]
         } else if ProcessInfo.processInfo.arguments.contains("--assistant-reference-ui-fixture") {
-            let text = try referenceAcknowledgment(for: question)
+            let readCount = await MainActor.run { AssistantFixtureHealthDataProvider.shared.readCount }
+            let text = try referenceAcknowledgment(for: question, healthReadCount: readCount)
             output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": text]]]]
         } else if question.localizedCaseInsensitiveContains("formatting") {
             output = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": """
@@ -160,10 +188,31 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
 
     /// Echo only the data actually present in the submitted user message. This lets
     /// UI tests verify record selection without making any real inference request.
-    private func referenceAcknowledgment(for content: String) throws -> String {
+    private func healthSnapshots(in content: String) throws -> [[String: Any]] {
+        let marker = "\n\nSelected Apple Health data for this message only (JSON):\n"
+        guard let range = content.range(of: marker) else { return [] }
+        let context = try JSONSerialization.jsonObject(with: Data(content[range.upperBound...].utf8)) as? [String: Any] ?? [:]
+        return context["selectedHealthSnapshots"] as? [[String: Any]] ?? []
+    }
+
+    private func referenceAcknowledgment(for content: String, healthReadCount: Int) throws -> String {
+        let healthMarker = "\n\nSelected Apple Health data for this message only (JSON):\n"
+        let selectedHealth = try healthSnapshots(in: content)
+        var healthParagraphs = ["Health reads: \(healthReadCount).", "Received \(selectedHealth.count) Health snapshots for this message."]
+        for snapshot in selectedHealth {
+            let name = snapshot["workoutName"] as? String ?? "missing"
+            let metrics = snapshot["metrics"] as? [[String: Any]] ?? []
+            for metric in metrics {
+                let values = (metric["samples"] as? [[String: Any]] ?? []).compactMap { ($0["value"] as? NSNumber)?.stringValue }.joined(separator: ", ")
+                healthParagraphs.append("Health \(name): \(metric["metric"] as? String ?? "missing") readings \(values).")
+            }
+        }
         let marker = "\n\nSelected workout references (JSON record data):\n"
-        guard let range = content.range(of: marker) else { return "Received 0 selected records." }
-        let json = Data(content[range.upperBound...].utf8)
+        guard let range = content.range(of: marker) else {
+            return (["Received 0 selected records."] + healthParagraphs).joined(separator: "\n\n")
+        }
+        let end = content.range(of: healthMarker)?.lowerBound ?? content.endIndex
+        let json = Data(content[range.upperBound..<end].utf8)
         let context = try JSONSerialization.jsonObject(with: json) as? [String: Any] ?? [:]
         guard let records = context["selectedRecords"] as? [[String: Any]] else {
             return "Selected record data was missing."
@@ -171,6 +220,7 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
         var paragraphs = ["Received \(records.count) selected records."]
         for reference in records {
             let kind = reference["kind"] as? String ?? "missing"
+            if kind == "health" { continue }
             let record = reference[kind == "template" ? "template" : "workout"] as? [String: Any] ?? [:]
             let exercises = record["exercises"] as? [[String: Any]] ?? []
             let name = record["name"] as? String ?? "missing"
@@ -197,7 +247,7 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
                 }
             }
         }
-        return paragraphs.joined(separator: "\n\n")
+        return (paragraphs + healthParagraphs).joined(separator: "\n\n")
     }
 
     private func response(for request: URLRequest) -> HTTPURLResponse {

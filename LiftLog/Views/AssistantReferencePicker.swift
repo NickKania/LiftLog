@@ -62,7 +62,7 @@ struct AssistantReferencePicker: View {
                             .font(.subheadline).foregroundStyle(.secondary)
                             .accessibilityIdentifier("assistantReferenceSelectionCount")
                         if selectedReferences.count == selectionLimit {
-                            Text("Remove a tag to choose another workout or template.")
+                            Text("Remove a tag to choose another record.")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
                     }
@@ -75,13 +75,14 @@ struct AssistantReferencePicker: View {
                     } else {
                         referenceSection("Templates", kind: .template)
                         referenceSection("Workouts", kind: .workout)
+                        referenceSection("Apple Health", kind: .health)
                     }
                 }
                 .listStyle(.insetGrouped)
                 .scrollDismissesKeyboard(.interactively)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Tag workouts")
+            .navigationTitle("Tag workout data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -102,7 +103,7 @@ struct AssistantReferencePicker: View {
     private func referenceSection(_ title: String, kind: AssistantWorkoutReference.Kind) -> some View {
         let items = matchingReferences.filter { $0.kind == kind }
         if !items.isEmpty {
-            Section(title) {
+            Section {
                 ForEach(items, id: \.key) { reference in
                     let isSelected = selectedReferences.contains { $0.key == reference.key }
                     Button {
@@ -124,9 +125,20 @@ struct AssistantReferencePicker: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isDisabled || (!isSelected && selectedReferences.count >= selectionLimit))
-                    .accessibilityLabel([reference.name, reference.subtitle, reference.summary].compactMap { $0 }.joined(separator: ", "))
+                    .accessibilityLabel([reference.kind == .health ? "Apple Health · \(reference.name)" : reference.name, reference.subtitle, reference.summary].compactMap { $0 }.joined(separator: ", "))
                     .accessibilityValue(isSelected ? "Selected" : "Not selected")
                     .accessibilityIdentifier("assistantReferenceRow.\(reference.key)")
+                }
+            } header: {
+                if kind == .health {
+                    Label(title, systemImage: "heart.fill")
+                } else {
+                    Text(title)
+                }
+            } footer: {
+                if kind == .health {
+                    Text("Health tags include heart rate, active energy and steps from the selected workout’s start to finish (or now for an active session). When you send, LiftLog requests read-only Apple Health access and shares available data with OpenAI for that message. Health replies and charts aren’t saved; tag Health again for each message.")
+                        .accessibilityIdentifier("assistantHealthPickerDisclosure")
                 }
             }
         }
@@ -137,12 +149,20 @@ struct AssistantReferenceLabel: View {
     let reference: AssistantWorkoutReference
     var showsSummary = false
 
+    private var symbol: String {
+        switch reference.kind {
+        case .template: "square.stack"
+        case .workout: "dumbbell"
+        case .health: "heart.fill"
+        }
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
-            Image(systemName: reference.kind == .template ? "square.stack" : "dumbbell")
+            Image(systemName: symbol)
                 .foregroundStyle(.blue).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: reference.name).font(.subheadline.weight(.medium))
+                Text(verbatim: reference.kind == .health ? "Apple Health · \(reference.name)" : reference.name).font(.subheadline.weight(.medium))
                 Text(verbatim: reference.subtitle).font(.caption).foregroundStyle(.secondary)
                 if showsSummary, let summary = reference.summary {
                     Text(verbatim: summary).font(.caption).foregroundStyle(.secondary)

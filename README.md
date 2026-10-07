@@ -21,6 +21,7 @@ Templates, workout execution, and history work locally without an account. The o
 - Connect a ChatGPT account, select an available model, and ask questions about your workout data.
 - Keep saved assistant chats with editable Luna-generated titles, and run several conversations at once.
 - Generate graphs from recorded workouts and share them as images.
+- Explicitly tag Apple Health data for an active or completed session to ask about heart rate, active energy, and steps or visualize those measurements.
 - Review and apply assistant proposals to create workouts or templates and add, change, or remove their exercises.
 
 The Workout tab holds templates and the current workout. The History tab shows finished sessions, and the Assistant tab contains saved ChatGPT conversations. The Settings tab holds weight units, assistant preferences, and iCloud Drive backups.
@@ -67,5 +68,6 @@ Templates, personal exercises, settings, history, and the active workout are sto
 
 Existing `workouts.json` data migrates automatically on first launch; the original JSON remains untouched. Open **Settings → iCloud Drive Backups** to enable automatic backups, back up now, or restore a saved snapshot. Backups include your active workout and can be restored on another device using the same Apple account. iCloud handles upload after the snapshot is saved, including when connectivity returns.
 
-Deleting the app removes local files. Uploaded iCloud backups remain available for restoration after reinstalling. This version does not merge changes between devices or include Apple Health integration, Apple Watch support, charts, or social features.
-The app does not include cloud sync, Apple Health integration, Apple Watch support, or social features. Local workout data is tied to the app installation; deleting the app removes its local files. ChatGPT credentials are stored separately in the iOS Keychain; disconnect from Settings before uninstalling if you want to end the renewable session.
+Deleting the app removes local files. Uploaded iCloud backups remain available for restoration after reinstalling. The app does not include cloud sync, an Apple Watch app, or social features. ChatGPT credentials are stored separately in the iOS Keychain; disconnect from Settings before uninstalling if you want to end the renewable session.
+
+Apple Health is read-only and opt-in for each assistant message. In **Assistant → @ → Apple Health**, select a session, then send your question. Only that session’s available heart rate, active energy, and step measurements are read; an active session ends at the request time. Ordinary workout tags never include Health data. Health-based replies and charts are temporary and excluded from saved chats, automatic titles, later requests, and workout backups. Tag Health again to refresh or ask a follow-up. See [Health tagging](docs/CHATGPT_ASSISTANT.md#tagging-apple-health) for permissions and limitations.

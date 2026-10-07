@@ -25,6 +25,18 @@ Send a question with the tags, for example, “Compare these workouts” or “A
 
 Tagging a completed workout does not make history editable. Proposed changes still require Apply. Each chat has its own conversation context and draft tags; starting a new chat leaves the earlier conversation available in Chats.
 
+### Tagging Apple Health
+
+Use **@ → Apple Health** to select the health data for a specific active or completed workout. Health tags are separate from ordinary workout tags, even when both refer to the same session. Opening the picker, starting a workout, connecting ChatGPT, and selecting a normal workout never request Health permission or read Health data. Remove a Health tag before sending to exclude it.
+
+Sending a Health-tagged question requests read-only Apple Health permission when needed, then reads available heart rate (bpm), active energy (kcal), and steps within that session. Completed sessions use their recorded start/end; active sessions stop at the send-time snapshot. The selected readings are shared with OpenAI for that message. Ask, for example, “Graph my heart rate during this workout.” Chart points come from HealthKit statistics: average heart rate or summed energy/steps per time interval, with at most 600 intervals per metric. The time axis preserves elapsed spacing. Missing intervals are omitted. Sessions longer than 48 hours are rejected; samples crossing the session boundaries are excluded, so edge totals can be incomplete.
+
+Consent applies to one submitted message. Later questions must tag Health again, even in the same chat. Health-based questions, replies, and chart artifacts are kept only in memory; they are excluded from saved chats, automatic title requests, subsequent inference history, and workout backups. They disappear after an app restart. Health turns support analysis and visualization; workout mutation proposals require a separate request without Health tags. Chart sharing remains an explicit user action.
+
+HealthKit may return no samples when access is denied, a metric is not collected, or wearable readings have not synced yet. The app cannot distinguish denied read access from missing data and does not treat an empty response as zero. This integration reads already available Health data; it does not start a Watch recording, measure a pulse on the phone, write Health records, or enable background collection. Send another explicitly tagged message to refresh an active session.
+
+Device signing requires the HealthKit capability for the app identifier. The XcodeGen configuration includes the entitlement and read-purpose description. Verify authorization, selective denial, and actual measurements on a signed iPhone before distributing; simulator fixtures verify app behavior without reading personal Health data.
+
 ### Saved chats
 
 Open **Chats** in the Assistant toolbar to browse conversations, select one to reopen it, or rename it. **New chat** starts a separate conversation even while another is responding. A spinner beside each working chat shows which conversations are still active; switching chats does not cancel a response. Stop cancels the selected chat only.

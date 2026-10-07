@@ -28,6 +28,7 @@ enum AssistantChatTitleGenerator {
         guard let model = latestLunaModel(in: models) else {
             throw ChatGPTInferenceError("A Luna model is not available for chat titles on this ChatGPT account.")
         }
+        let messages = messages.filter { !$0.containsEphemeralHealthData }
         let user = messages.first { $0.role == .user }?.text ?? ""
         let assistant = messages.first {
             $0.role == .assistant && !$0.isPartial && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

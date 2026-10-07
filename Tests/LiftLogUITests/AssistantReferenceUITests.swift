@@ -53,7 +53,7 @@ final class AssistantReferenceUITests: XCTestCase {
         openPicker(in: app)
         search("Recorded Fixture Workout 1", in: app)
         let workoutKey = selectRow(named: "Recorded Fixture Workout 1", kind: "workout", in: app)
-        XCTAssertEqual(referenceRows(in: app).count, 1, "Choose the particular completed session, not its neighbor")
+        XCTAssertEqual(referenceRows(in: app).count, 2, "The session has distinct workout and Apple Health tags")
         finishPicker(in: app)
         XCTAssertTrue(element("assistantSelectedReference.\(workoutKey)", in: app).exists)
         XCTAssertEqual(app.textFields["assistantComposer"].value as? String, "Compare these selected records")
@@ -151,9 +151,101 @@ final class AssistantReferenceUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchFixture(largeText: Bool = false) -> XCUIApplication {
+    func testHealthTagReadsOnlyOnSendAndExpiresAfterMessage() throws {
+        let app = launchFixture()
+        enterDraft("Review my session heart rate", in: app)
+        openPicker(in: app)
+        search("Recorded Fixture Workout 1", in: app)
+        let healthKey = selectRow(named: "Apple Health · Recorded Fixture Workout 1", kind: "health", in: app)
+        let workoutRows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "assistantReferenceRow.workout:"))
+        XCTAssertEqual(workoutRows.count, 1)
+        XCTAssertEqual(workoutRows.firstMatch.value as? String, "Not selected", "A Health tag must not select the workout tag")
+        finishPicker(in: app)
+        XCTAssertTrue(element("assistantSelectedReference.\(healthKey)", in: app).label.contains("Apple Health"))
+        XCTAssertTrue(element("assistantComposerPrivacyDisclosure", in: app).label.contains("shares it with OpenAI for this message"))
+        sendDraft(in: app)
+        assertResponse("Health reads: 1.", in: app)
+        assertResponse("Received 1 Health snapshots for this message.", in: app)
+        assertResponse("Health Recorded Fixture Workout 1: heartRate readings 120, 140.", in: app)
+        reveal(element("assistantMessageReference.\(healthKey)", in: app), in: app)
+        XCTAssertFalse(element("assistantSelectedReference.\(healthKey)", in: app).exists)
+
+        enterDraft("What about the next session?", in: app)
+        sendDraft(in: app)
+        assertResponse("Received 0 Health snapshots for this message.", in: app)
+        XCTAssertFalse(app.staticTexts["Health reads: 2."].exists)
+        keepScreenshot(of: app, named: "Explicit Health tag and untagged follow-up")
+    }
+
+    @MainActor
+    func testCancelRemoveAndNewChatDiscardHealthConsentWithoutReading() throws {
+        let app = launchFixture()
+        enterDraft("Review the workout only", in: app)
+        openPicker(in: app)
+        search("Recorded Fixture Workout 1", in: app)
+        let canceledKey = selectRow(named: "Apple Health · Recorded Fixture Workout 1", kind: "health", in: app)
+        app.buttons["assistantReferencePickerCancelButton"].tap()
+        XCTAssertFalse(element("assistantSelectedReference.\(canceledKey)", in: app).exists)
+
+        openPicker(in: app)
+        search("Recorded Fixture Workout 1", in: app)
+        let removedKey = selectRow(named: "Apple Health · Recorded Fixture Workout 1", kind: "health", in: app)
+        finishPicker(in: app)
+        app.buttons["assistantRemoveReference.\(removedKey)"].tap()
+        XCTAssertFalse(element("assistantSelectedReference.\(removedKey)", in: app).exists)
+
+        openPicker(in: app)
+        search("Recorded Fixture Workout 1", in: app)
+        let workoutKey = selectRow(named: "Recorded Fixture Workout 1", kind: "workout", in: app)
+        finishPicker(in: app)
+        sendDraft(in: app)
+        assertResponse("Received 1 selected records.", in: app)
+        assertResponse("Health reads: 0.", in: app)
+        assertResponse("Received 0 Health snapshots for this message.", in: app)
+        XCTAssertFalse(element("assistantMessageReference.\(removedKey)", in: app).exists)
+        reveal(element("assistantMessageReference.\(workoutKey)", in: app), in: app)
+
+        enterDraft("Discard this Health draft", in: app)
+        openPicker(in: app)
+        search("Recorded Fixture Workout 1", in: app)
+        _ = selectRow(named: "Apple Health · Recorded Fixture Workout 1", kind: "health", in: app)
+        finishPicker(in: app)
+        app.buttons["assistantNewChatButton"].tap()
+        XCTAssertTrue(element("assistantEmptyState", in: app).waitForExistence(timeout: 5))
+        XCTAssertFalse(element("assistantSelectedReference.\(removedKey)", in: app).exists)
+        enterDraft("Plain new message", in: app)
+        sendDraft(in: app)
+        assertResponse("Health reads: 0.", in: app)
+        assertResponse("Received 0 selected records.", in: app)
+    }
+
+    @MainActor
+    func testHealthChartUsesSessionReadingsAndHealthPresentation() throws {
+        let app = launchFixture(additionalArguments: ["--assistant-health-chart-ui-fixture"])
+        enterDraft("Chart the selected session heart rate", in: app)
+        openPicker(in: app)
+        search("Recorded Fixture Workout 1", in: app)
+        _ = selectRow(named: "Apple Health · Recorded Fixture Workout 1", kind: "health", in: app)
+        finishPicker(in: app)
+        sendDraft(in: app)
+        reveal(element("assistantWorkoutChart", in: app), in: app)
+        XCTAssertFalse(app.segmentedControls["assistantChartRangePicker"].exists)
+        reveal(element("assistantChartSelectedValue", in: app), in: app)
+        XCTAssertEqual(element("assistantChartSelectedValue", in: app).label, "140")
+        XCTAssertTrue(app.staticTexts["bpm"].exists)
+        let source = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Source: Apple Health in tagged workout sessions")).firstMatch
+        reveal(source, in: app)
+        XCTAssertTrue(source.label.contains("Average heart rate per interval"))
+        reveal(app.buttons["assistantChartPreviousButton"], in: app)
+        app.buttons["assistantChartPreviousButton"].tap()
+        XCTAssertEqual(element("assistantChartSelectedValue", in: app).label, "120")
+        keepScreenshot(of: app, named: "Apple Health session heart rate chart")
+    }
+
+    @MainActor
+    private func launchFixture(largeText: Bool = false, additionalArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--assistant-ui-fixture", "--assistant-reference-ui-fixture"]
+        app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--assistant-ui-fixture", "--assistant-reference-ui-fixture"] + additionalArguments
         if largeText {
             app.launchArguments += ["--assistant-dark-ui-fixture", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
@@ -204,6 +296,7 @@ final class AssistantReferenceUITests: XCTestCase {
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", "assistantReferenceRow.\(kind):", name + ",")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         let key = String(row.identifier.dropFirst("assistantReferenceRow.".count))
+        for _ in 0..<4 where !row.isHittable { app.swipeUp() }
         row.tap()
         XCTAssertEqual(row.value as? String, "Selected")
         return key

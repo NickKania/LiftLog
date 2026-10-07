@@ -39,20 +39,37 @@ struct WorkoutAgentProposal: Codable, Equatable, Identifiable {
     let unit: WeightUnit
 }
 
-/// Semantic chart data computed locally from completed history, never model-authored points.
+/// Semantic chart data computed locally from recorded data, never model-authored points.
 struct WorkoutAgentChart: Codable, Equatable, Identifiable {
     enum Metric: String, Codable, CaseIterable {
         case volume
         case maxWeight = "max_weight"
         case completedSets = "completed_sets"
+        case heartRate = "heart_rate"
+        case activeEnergy = "active_energy"
+        case steps
 
         var label: String {
             switch self {
             case .volume: return "Completed volume"
             case .maxWeight: return "Maximum weight"
             case .completedSets: return "Completed sets"
+            case .heartRate: return "Heart rate"
+            case .activeEnergy: return "Active energy"
+            case .steps: return "Steps"
             }
         }
+
+        var healthUnitLabel: String? {
+            switch self {
+            case .heartRate: return "bpm"
+            case .activeEnergy: return "kcal"
+            case .steps: return "steps"
+            case .volume, .maxWeight, .completedSets: return nil
+            }
+        }
+
+        var isHealthMetric: Bool { healthUnitLabel != nil }
     }
     struct Point: Codable, Equatable, Identifiable {
         let id: UUID
@@ -65,6 +82,8 @@ struct WorkoutAgentChart: Codable, Equatable, Identifiable {
     let metric: Metric
     let unit: WeightUnit?
     let points: [Point]
+
+    var valueUnitLabel: String { metric.healthUnitLabel ?? unit?.rawValue ?? "sets" }
 }
 
 enum WorkoutAgentToolError: LocalizedError, Equatable {

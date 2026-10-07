@@ -38,6 +38,8 @@
 	</dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Lift Log reads heart rate, active energy, and steps for a workout only when you select an Apple Health @ tag. Attached data can be shown in charts and sent to the AI assistant with your message.</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.com.liftlog.app</key>
