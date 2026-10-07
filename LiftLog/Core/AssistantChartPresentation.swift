@@ -49,6 +49,8 @@ struct AssistantChartPresentation {
         case .volume: return "Volume (\(chart.unit?.rawValue ?? "") × reps)"
         case .maxWeight: return "Max weight (\(chart.unit?.rawValue ?? ""))"
         case .completedSets: return "Completed sets"
+        case .heartRate, .activeEnergy, .steps:
+            return "\(chart.metric.label) (\(chart.valueUnitLabel))"
         }
     }
 
@@ -57,6 +59,7 @@ struct AssistantChartPresentation {
         case .volume: return "\(chart.unit?.rawValue ?? "") × reps"
         case .maxWeight: return chart.unit?.rawValue ?? ""
         case .completedSets: return "sets"
+        case .heartRate, .activeEnergy, .steps: return chart.valueUnitLabel
         }
     }
 

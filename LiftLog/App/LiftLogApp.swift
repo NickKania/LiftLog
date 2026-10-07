@@ -53,7 +53,8 @@ struct LiftLogApp: App {
         }, accountIdentity: {
             "\(accounts.currentAccount?.id ?? "none"):\(accounts.revision):\(accounts.canUsePlan)"
         }, storageURL: assistantStorageURL,
-        archiveAccountIdentity: { accounts.currentAccount?.id })
+        archiveAccountIdentity: { accounts.currentAccount?.id },
+        healthDataProvider: AppleHealthDataProvider())
     }
 
     private static var assistantStorageURL: URL {

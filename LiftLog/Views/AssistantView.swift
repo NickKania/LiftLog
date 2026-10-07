@@ -199,7 +199,7 @@ struct AssistantView: View {
                     Label("Review changes before applying them", systemImage: "checkmark.shield")
                     Label("Uses your eligible ChatGPT plan", systemImage: "person.crop.circle.badge.checkmark")
                 }.font(.subheadline)
-                Text("Only your submitted question and relevant workout data are shared with OpenAI. Workout logging stays on your device and works offline.")
+                Text("Your submitted question and relevant workout data are shared with OpenAI. Apple Health is included only when you select a Health tag using @ and send that message. Workout logging stays on your device and works offline.")
                     .font(.footnote).foregroundStyle(.secondary)
                     .accessibilityIdentifier("assistantPrivacyDisclosure")
                 ChatGPTSignInButton()
@@ -225,12 +225,12 @@ struct AssistantView: View {
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        .padding(.horizontal, 20).padding(.vertical, 10)
+        .padding(.horizontal, 16).padding(.vertical, 2)
         .background(Color(.secondarySystemGroupedBackground))
     }
 
     private var planStatus: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 4) {
             Label("ChatGPT plan", systemImage: "checkmark.seal.fill")
                 .font(.caption.weight(.semibold)).foregroundStyle(.blue)
                 .fixedSize()
@@ -257,11 +257,13 @@ struct AssistantView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .fixedSize(horizontal: true, vertical: false)
+                .frame(minHeight: 44)
                 .disabled(assistant.isWorking)
                 .accessibilityIdentifier("assistantModelPicker")
             } else {
                 Button("Reload models") { Task { await assistant.refreshModels() } }
-                    .font(.caption).accessibilityIdentifier("assistantReloadModelsButton")
+                    .font(.caption).frame(minHeight: 44)
+                    .accessibilityIdentifier("assistantReloadModelsButton")
             }
         }
     }
@@ -289,7 +291,7 @@ struct AssistantView: View {
                         }
                     }
                     Color.clear.frame(height: 1).id("assistantBottom")
-                }.padding(20)
+                }.padding(.horizontal, 20).padding(.vertical, 12)
             }
             .scrollDismissesKeyboard(.interactively)
             .task(id: assistant.isWorking) {
@@ -325,7 +327,7 @@ struct AssistantView: View {
                         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            Text("Charts use recorded completed sets. General image generation is unavailable through the ChatGPT plan preview.")
+            Text("Charts use recorded completed sets. Use @ to add Apple Health for a selected workout. General image generation is unavailable through the ChatGPT plan preview.")
                 .font(.footnote).foregroundStyle(.secondary)
         }.assistantCard()
             .accessibilityIdentifier("assistantEmptyState")
@@ -391,7 +393,7 @@ struct AssistantView: View {
                 .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 .accessibilityIdentifier("assistantSelectedReferences")
             }
-            HStack(alignment: .bottom, spacing: 12) {
+            HStack(alignment: .bottom, spacing: 8) {
                 Button {
                     referenceMentionDraft = nil
                     restoreComposerAfterReferencePicker = true
@@ -399,21 +401,27 @@ struct AssistantView: View {
                     showReferencePicker = true
                 } label: {
                     Image(systemName: "at").font(.headline).frame(width: 44, height: 44)
+                        .foregroundStyle(.tint)
+                        .background(Color.blue.opacity(0.08), in: Circle())
                 }
-                .buttonStyle(.bordered).clipShape(Circle())
+                .buttonStyle(.plain)
                 .disabled(assistant.isWorking)
-                .accessibilityLabel("Tag a workout or template")
+                .accessibilityLabel("Tag a workout, template or Apple Health data")
                 .accessibilityIdentifier("assistantAddReferenceButton")
                 TextField("Ask about your workouts", text: $composer, axis: .vertical)
-                    .lineLimit(1...5).padding(12)
+                    .lineLimit(1...5)
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .frame(minHeight: 44)
                     .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
                     .focused($composerFocused)
                     .accessibilityIdentifier("assistantComposer")
                 if assistant.isWorking {
                     Button { assistant.cancel() } label: {
                         Image(systemName: "stop.fill").font(.headline).frame(width: 44, height: 44)
+                            .foregroundStyle(.tint)
+                            .background(Color.blue.opacity(0.08), in: Circle())
                     }
-                    .buttonStyle(.bordered).clipShape(Circle())
+                    .buttonStyle(.plain)
                     .accessibilityLabel("Cancel response")
                     .accessibilityIdentifier("assistantCancelButton")
                 } else {
@@ -425,20 +433,31 @@ struct AssistantView: View {
                             composerFocused = false
                         }
                     } label: {
-                        Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44)
+                        Image(systemName: "arrow.up").font(.headline)
+                            .foregroundStyle(.white).frame(width: 44, height: 44)
+                            .background(Color.accentColor, in: Circle())
                     }
-                    .buttonStyle(.borderedProminent).clipShape(Circle())
-                    .disabled(composer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || assistant.selectedModel.isEmpty || assistant.isLoadingModels || assistant.usageLimitReached)
+                    .buttonStyle(.plain)
+                    .opacity(canSendQuestion ? 1 : 0.4)
+                    .disabled(!canSendQuestion)
                     .accessibilityLabel("Send question")
                     .accessibilityIdentifier("assistantSendButton")
                 }
             }
-            Text("Question + relevant workout data shared with OpenAI.")
+            Text(selectedReferences.contains { $0.kind == .health }
+                 ? "Sending reads Apple Health for tagged sessions and shares it with OpenAI for this message. Health replies and charts aren’t saved."
+                 : "Question + relevant workout data shared with OpenAI. Health requires an @ Health tag.")
                 .font(.caption2).foregroundStyle(.secondary)
                 .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                .accessibilityIdentifier("assistantComposerPrivacyDisclosure")
         }
-        .padding(.horizontal, 16).padding(.vertical, 10)
+        .padding(.horizontal, 16).padding(.vertical, 6)
         .background(Color(.secondarySystemGroupedBackground))
+    }
+
+    private var canSendQuestion: Bool {
+        !composer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !assistant.selectedModel.isEmpty && !assistant.isLoadingModels && !assistant.usageLimitReached
     }
 }
 

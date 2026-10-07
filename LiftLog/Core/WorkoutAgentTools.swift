@@ -11,7 +11,19 @@ final class WorkoutAgentTools {
     var pendingProposals: [WorkoutAgentProposal] {
         proposalOrder.compactMap { proposals[$0] }.filter { $0.status == .pending }
     }
-    var definitions: [[String: Any]] { Self.definitions }
+    var definitions: [[String: Any]] { definitions(includingHealth: false) }
+
+    func definitions(includingHealth: Bool, allowingProposals: Bool = true) -> [[String: Any]] {
+        Self.definitions.map { namespace in
+            var namespace = namespace
+            namespace["tools"] = (namespace["tools"] as? [[String: Any]] ?? []).filter { tool in
+                guard let name = tool["name"] as? String else { return false }
+                return (includingHealth || name != "graph_workout_health")
+                    && (allowingProposals || !name.hasPrefix("propose_"))
+            }
+            return namespace
+        }
+    }
 
     init(store: WorkoutStore) { self.store = store }
 
@@ -21,8 +33,12 @@ final class WorkoutAgentTools {
         try execute(name: name, argumentsJSONString: arguments)
     }
 
-    func execute(name: String, argumentsJSONString: String) throws -> WorkoutAgentToolResult {
+    func execute(name: String, argumentsJSONString: String, healthSnapshots: [WorkoutHealthSnapshot] = [],
+                 allowsProposals: Bool = true) throws -> WorkoutAgentToolResult {
         let toolName = name.hasPrefix("liftlog.") ? String(name.dropFirst(8)) : name
+        guard allowsProposals || !toolName.hasPrefix("propose_") else {
+            throw invalid("Workout changes are unavailable in Health messages. Send a separate message without Health tags to propose changes.")
+        }
         guard argumentsJSONString.utf8.count <= 65_536,
               let data = argumentsJSONString.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
@@ -61,6 +77,7 @@ final class WorkoutAgentTools {
             let matches = store.exercises.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
             return try result(CatalogPage(exercises: Array(matches.dropFirst(offset).prefix(limit)), total: matches.count, offset: offset))
         case "graph_workout_history": return try graph(args)
+        case "graph_workout_health": return try graphHealth(args, snapshots: healthSnapshots)
         case "propose_create_template", "propose_create_workout":
             try keys(args, allowed: ["name", "unit", "exercises"])
             let name = try boundedName(args, "name")
@@ -264,7 +281,7 @@ final class WorkoutAgentTools {
 
     private func graph(_ args: [String: Any]) throws -> WorkoutAgentToolResult {
         try keys(args, allowed: ["metric", "exercise_id", "unit", "start_date", "end_date"])
-        guard let metric = WorkoutAgentChart.Metric(rawValue: try requiredString(args, "metric")) else { throw invalid("Unsupported chart metric.") }
+        guard let metric = WorkoutAgentChart.Metric(rawValue: try requiredString(args, "metric")), !metric.isHealthMetric else { throw invalid("Unsupported chart metric.") }
         let outputUnit = try unit(args, "unit")
         let exerciseID = try optionalUUID(args, "exercise_id")
         if let exerciseID, !store.exercises.contains(where: { $0.id == exerciseID }) { throw WorkoutAgentToolError.missingTarget }
@@ -282,6 +299,7 @@ final class WorkoutAgentTools {
             case .volume: value = sets.reduce(0) { $0 + convert($1.weight, from: session.unit, to: outputUnit) * Double($1.reps) }
             case .maxWeight: value = sets.map { convert($0.weight, from: session.unit, to: outputUnit) }.max() ?? 0
             case .completedSets: value = Double(sets.count)
+            case .heartRate, .activeEnergy, .steps: throw invalid("Health metrics require a Health tag in the current message.")
             }
             guard value.isFinite else { throw invalid("Saved values are too large to chart.") }
             return WorkoutAgentChart.Point(id: session.id, date: session.startedAt, value: value, workoutName: session.name)
@@ -289,6 +307,35 @@ final class WorkoutAgentTools {
         let exerciseName = exerciseID.flatMap { id in store.exercises.first { $0.id == id }?.name }
         let chart = WorkoutAgentChart(id: UUID(), title: metric.label + (exerciseName.map { " · \($0)" } ?? ""), metric: metric,
                                       unit: metric == .completedSets ? nil : outputUnit, points: points)
+        return try result(chart, chart: chart)
+    }
+
+    /// This tool can only render snapshots already consented to and fetched for this turn.
+    /// It cannot read HealthKit or expand the selected time window or workout scope.
+    private func graphHealth(_ args: [String: Any], snapshots: [WorkoutHealthSnapshot]) throws -> WorkoutAgentToolResult {
+        try keys(args, allowed: ["workout_id", "metric"])
+        let workoutID = try uuid(args, "workout_id")
+        guard let snapshot = snapshots.first(where: { $0.workoutID == workoutID }) else {
+            throw invalid("Tag this workout’s Apple Health data in the current message before charting it.")
+        }
+        guard let metric = WorkoutHealthMetric(rawValue: try requiredString(args, "metric")) else {
+            throw invalid("Unsupported health metric.")
+        }
+        let chartMetric: WorkoutAgentChart.Metric
+        switch metric {
+        case .heartRate: chartMetric = .heartRate
+        case .activeEnergy: chartMetric = .activeEnergy
+        case .steps: chartMetric = .steps
+        }
+        let samples = snapshot.metrics.first { $0.metric == metric }?.samples ?? []
+        guard samples.allSatisfy({ $0.value.isFinite && $0.value >= 0 && $0.date >= snapshot.startedAt && $0.date <= snapshot.endedAt }) else {
+            throw invalid("Health samples are outside the selected session or invalid.")
+        }
+        let points = samples.sorted { $0.date < $1.date }.map {
+            WorkoutAgentChart.Point(id: UUID(), date: $0.date, value: $0.value, workoutName: snapshot.workoutName)
+        }
+        let chart = WorkoutAgentChart(id: UUID(), title: "\(metric.displayName) · \(snapshot.workoutName)",
+                                      metric: chartMetric, unit: nil, points: points)
         return try result(chart, chart: chart)
     }
 

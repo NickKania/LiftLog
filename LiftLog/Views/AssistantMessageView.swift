@@ -43,6 +43,11 @@ struct AssistantMessageView: View {
                     }
                 }.font(.caption.weight(.semibold))
                 AssistantMarkdownView(text: message.text)
+                if message.containsEphemeralHealthData {
+                    Label("Health response · Not saved · Tag Health again for another message", systemImage: "heart")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("assistantHealthResponseDisclosure")
+                }
             }.assistantCard()
         }
     }

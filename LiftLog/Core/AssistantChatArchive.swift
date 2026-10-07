@@ -66,9 +66,11 @@ final class WorkoutAssistantChat: Identifiable {
 
     func record() throws -> AssistantChatRecord {
         AssistantChatRecord(id: id, title: title, createdAt: createdAt, updatedAt: updatedAt,
-                            messages: messages, selectedModel: selectedModel,
+                            // Health turns remain visible while the app runs, but never enter backups or archives.
+                            messages: messages.filter { !$0.containsEphemeralHealthData }, selectedModel: selectedModel,
                             history: try JSONSerialization.data(withJSONObject: history),
-                            wasWorking: isWorking, errorMessage: errorMessage, titleError: titleError,
+                            wasWorking: isWorking && messages.last(where: { $0.role == .user })?.containsEphemeralHealthData != true,
+                            errorMessage: errorMessage, titleError: titleError,
                             hasCustomTitle: hasCustomTitle, hasGeneratedTitle: hasGeneratedTitle)
     }
 }

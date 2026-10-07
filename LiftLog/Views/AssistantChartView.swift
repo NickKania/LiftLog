@@ -11,6 +11,12 @@ struct AssistantChartView: View {
     @State private var shareImage: UIImage?
 
     private var presentation: AssistantChartPresentation { .init(chart: chart, range: range) }
+    private var isHealthChart: Bool { chart.metric.isHealthMetric }
+    private var sourceCaption: String {
+        isHealthChart
+            ? "Source: Apple Health in tagged workout sessions · \(presentation.points.count) time intervals. " + (chart.metric == .heartRate ? "Average heart rate per interval." : "Totals per interval, not per session.")
+            : "Source: completed sets in \(presentation.points.count) recorded workouts."
+    }
     private var selectedPoint: WorkoutAgentChart.Point? {
         presentation.points.first { $0.id == selectedID } ?? presentation.points.last
     }
@@ -19,8 +25,11 @@ struct AssistantChartView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
             if chart.points.isEmpty {
-                ContentUnavailableView("No recorded sets", systemImage: "chart.xyaxis.line",
-                    description: Text("Complete and save a workout to chart this metric."))
+                ContentUnavailableView(isHealthChart ? "No available Health readings" : "No recorded sets",
+                    systemImage: isHealthChart ? "heart" : "chart.xyaxis.line",
+                    description: Text(isHealthChart
+                        ? "Apple Health returned no readings for the tagged session. Access may be limited or no readings were recorded."
+                        : "Complete and save a workout to chart this metric."))
             } else {
                 controls
                 if let selectedPoint { detail(selectedPoint) }
@@ -35,7 +44,7 @@ struct AssistantChartView: View {
                     }
                 HStack(spacing: 6) {
                     Image(systemName: "hand.draw").accessibilityHidden(true)
-                    Text("Tap or drag sideways · One point per workout")
+                    Text(isHealthChart ? "Tap or drag sideways · One point per Health interval" : "Tap or drag sideways · One point per workout")
                 }.font(.caption2).foregroundStyle(.secondary)
                     .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 Divider()
@@ -53,15 +62,17 @@ struct AssistantChartView: View {
         guard let frame = proxy.plotFrame else { return }
         let plot = geometry[frame]
         let x = min(max(location.x - plot.minX, 0), plot.width)
-        guard let position = proxy.value(atX: x, as: Double.self),
-              let point = presentation.nearestPoint(to: position) else { return }
-        selectedID = point.id
+        guard let position = proxy.value(atX: x, as: Double.self) else { return }
+        let point = isHealthChart
+            ? presentation.points.min { abs($0.date.timeIntervalSinceReferenceDate - position) < abs($1.date.timeIntervalSinceReferenceDate - position) }
+            : presentation.nearestPoint(to: position)
+        selectedID = point?.id
     }
 
     private var header: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("WORKOUT HISTORY").font(.caption2.weight(.semibold)).tracking(1.2).foregroundStyle(.secondary)
+                Text(isHealthChart ? "APPLE HEALTH · THIS MESSAGE" : "WORKOUT HISTORY").font(.caption2.weight(.semibold)).tracking(1.2).foregroundStyle(.secondary)
                 Text(chart.title).font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
             }
             Spacer(minLength: 0)
@@ -75,12 +86,12 @@ struct AssistantChartView: View {
     private var controls: some View {
         ViewThatFits(in: .horizontal) {
             HStack {
-                rangePicker
+                if !isHealthChart { rangePicker }
                 Spacer(minLength: 12)
                 stylePicker
             }
             VStack(alignment: .leading, spacing: 10) {
-                rangePicker
+                if !isHealthChart { rangePicker }
                 stylePicker
             }
         }
@@ -157,15 +168,17 @@ struct AssistantChartView: View {
             Image(systemName: direction < 0 ? "chevron.left" : "chevron.right")
                 .font(.caption.weight(.bold)).frame(width: 44, height: 44)
         }.disabled(!points.indices.contains(target))
-            .accessibilityLabel(direction < 0 ? "Previous workout" : "Next workout")
+            .accessibilityLabel(isHealthChart
+                ? (direction < 0 ? "Previous Health interval" : "Next Health interval")
+                : (direction < 0 ? "Previous workout" : "Next workout"))
             .accessibilityIdentifier(direction < 0 ? "assistantChartPreviousButton" : "assistantChartNextButton")
     }
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Source: completed sets in \(presentation.points.count) recorded workouts.")
+            Text(sourceCaption)
                 .font(.caption).foregroundStyle(.secondary)
-            if range != .all {
+            if !isHealthChart, range != .all {
                 Text("\(range.label), ending at this chart’s latest workout.")
                     .font(.caption2).foregroundStyle(.secondary)
             }
@@ -182,7 +195,7 @@ struct AssistantChartView: View {
 
     private var workoutList: some View {
         let presentation = presentation
-        return DisclosureGroup("View workouts (\(presentation.points.count))", isExpanded: $showWorkouts) {
+        return DisclosureGroup(isHealthChart ? "View Health intervals (\(presentation.points.count))" : "View workouts (\(presentation.points.count))", isExpanded: $showWorkouts) {
             VStack(spacing: 0) {
                 ForEach(presentation.points) { point in
                     Button {
@@ -217,12 +230,12 @@ struct AssistantChartView: View {
     @MainActor private func renderShareImage() {
         guard !presentation.points.isEmpty else { shareImage = nil; return }
         let export = VStack(alignment: .leading, spacing: 16) {
-            Text("LIFT LOG · WORKOUT HISTORY").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(isHealthChart ? "LIFT LOG · APPLE HEALTH" : "LIFT LOG · WORKOUT HISTORY").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             Text(chart.title).font(.title2.bold())
             Text(presentation.valueLabel).font(.subheadline).foregroundStyle(.secondary)
             AssistantChartPlot(presentation: presentation, style: style, selectedID: nil)
-            Text("Source: completed sets in \(presentation.points.count) recorded workouts.").font(.caption).foregroundStyle(.secondary)
-            if range != .all { Text("\(range.label), ending at this chart’s latest workout.").font(.caption).foregroundStyle(.secondary) }
+            Text(sourceCaption).font(.caption).foregroundStyle(.secondary)
+            if !isHealthChart, range != .all { Text("\(range.label), ending at this chart’s latest workout.").font(.caption).foregroundStyle(.secondary) }
         }.padding(28).frame(width: 600).background(.white)
             .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .medium)
         let renderer = ImageRenderer(content: export)
