@@ -297,7 +297,7 @@ final class WorkoutStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testExerciseSetValuesPropagateAndPersistWithoutChangingOtherExercises() async throws {
+    func testExerciseSetValuesPropagateToRemainingSetsAndPersistWithoutChangingCompletedSets() async throws {
         let file = try temporaryFile()
         let store = WorkoutStore(fileURL: file)
         let original = template()
@@ -315,13 +315,15 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertTrue(store.startWorkout(template: reloadedTemplate))
         var active = try XCTUnwrap(store.activeWorkout)
         active.exercises[0].sets[0].isCompleted = true
+        let completedSet = active.exercises[0].sets[0]
         let setIDs = active.exercises[0].sets.map(\.id)
         let otherExercise = active.exercises[1]
         active.exercises[0].updateSetValues(weight: 150, reps: 6)
         XCTAssertTrue(store.updateActiveWorkout(active))
         let reloaded = try XCTUnwrap(WorkoutStore(fileURL: file).activeWorkout)
-        XCTAssertEqual(reloaded.exercises[0].sets.map(\.weight), [150, 150])
-        XCTAssertEqual(reloaded.exercises[0].sets.map(\.reps), [6, 6])
+        XCTAssertEqual(reloaded.exercises[0].sets.map(\.weight), [142.5, 150])
+        XCTAssertEqual(reloaded.exercises[0].sets.map(\.reps), [7, 6])
+        XCTAssertEqual(reloaded.exercises[0].sets[0], completedSet)
         XCTAssertEqual(reloaded.exercises[0].sets.map(\.id), setIDs)
         XCTAssertEqual(reloaded.exercises[0].sets.map(\.isCompleted), [true, false])
         XCTAssertEqual(reloaded.exercises[1], otherExercise)
@@ -342,12 +344,15 @@ final class WorkoutStoreTests: XCTestCase {
         active.exercises[0].sets[0].reps = 7
         active.exercises[0].sets[0].isCompleted = true
         XCTAssertTrue(store.updateActiveWorkout(active))
+        active = try XCTUnwrap(store.activeWorkout)
 
         let reloaded = WorkoutStore(fileURL: file)
         XCTAssertEqual(reloaded.activeWorkout, active)
         XCTAssertTrue(reloaded.activeWorkout?.exercises[0].sets[0].isCompleted == true)
         active.exercises[0].sets[0].isCompleted = false
         XCTAssertTrue(reloaded.updateActiveWorkout(active))
+        active = try XCTUnwrap(reloaded.activeWorkout)
+        XCTAssertNil(active.restTimer)
         XCTAssertEqual(WorkoutStore(fileURL: file).activeWorkout, active)
     }
 
@@ -457,6 +462,7 @@ final class WorkoutStoreTests: XCTestCase {
         var active = try XCTUnwrap(store.activeWorkout)
         active.exercises[0].sets[0].isCompleted = true
         XCTAssertTrue(store.updateActiveWorkout(active))
+        active = try XCTUnwrap(store.activeWorkout)
 
         XCTAssertTrue(store.setUnit(.kg))
         XCTAssertEqual(store.unit, .kg)
@@ -538,6 +544,7 @@ final class WorkoutStoreTests: XCTestCase {
         var active = try XCTUnwrap(store.activeWorkout)
         active.exercises[0].sets[0].isCompleted = true
         XCTAssertTrue(store.updateActiveWorkout(active))
+        active = try XCTUnwrap(store.activeWorkout)
         let templates = store.templates
         let history = store.history
 

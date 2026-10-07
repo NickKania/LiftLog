@@ -26,10 +26,18 @@ struct TemplateEditorView: View {
                     TextField("e.g. Upper Body", text: $draft.name)
                         .accessibilityIdentifier("templateNameField")
                 }
+                Section {
+                    Stepper(value: $draft.restSeconds, in: 0...3600, step: 15) {
+                        LabeledContent("Rest between sets", value: restDescription(draft.restSeconds))
+                    }
+                    .accessibilityIdentifier("templateRestStepper")
+                } footer: {
+                    Text("Complete a set with more sets remaining to start a countdown. A tone signals your next set. Set to Off to disable it.")
+                }
                 if let original {
                     Section {
                         LabeledContent("Based on", value: "Version \(original.currentVersion?.number ?? 1)")
-                        Text("Exercise and set changes save a new version. Renaming keeps the current version.")
+                        Text("Exercise, set, and rest changes save a new version. Renaming keeps the current version.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     if let lastWorkout {
@@ -96,7 +104,7 @@ struct TemplateEditorView: View {
                 if original != nil {
                     Section {
                         if changes.isEmpty {
-                            Text("Adjust a weight, rep target, or exercise to create your next version.")
+                            Text("Adjust a weight, rep target, exercise, or rest period to create your next version.")
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(Array(changes.enumerated()), id: \.offset) { _, change in
@@ -149,12 +157,15 @@ struct TemplateEditorView: View {
 
     private var createsVersion: Bool {
         guard let original else { return false }
-        return !WorkoutStore.samePrescription(draft.exercises, original.exercises)
+        return draft.restSeconds != original.restSeconds || !WorkoutStore.samePrescription(draft.exercises, original.exercises)
     }
 
     private var changes: [String] {
         guard let original else { return [] }
         var result: [String] = []
+        if draft.restSeconds != original.restSeconds {
+            result.append("Rest: \(restDescription(original.restSeconds)) → \(restDescription(draft.restSeconds))")
+        }
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if name != original.name { result.append("Name: \(original.name) → \(name)") }
         for item in original.exercises where !draft.exercises.contains(where: { $0.id == item.id }) {
@@ -179,6 +190,10 @@ struct TemplateEditorView: View {
             }
         }
         return result
+    }
+
+    private func restDescription(_ seconds: Int) -> String {
+        seconds == 0 ? "Off" : "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
     }
 
     private func prescription(_ set: TemplateSet) -> String {
@@ -241,6 +256,7 @@ private struct TemplateVersionDetailView: View {
             Section {
                 LabeledContent("Template", value: version.name)
                 LabeledContent("Version", value: String(version.number))
+                LabeledContent("Rest between sets", value: version.restSeconds == 0 ? "Off" : "\(version.restSeconds / 60):\(String(format: "%02d", version.restSeconds % 60))")
                 LabeledContent("Saved", value: version.createdAt.formatted(date: .abbreviated, time: .shortened))
                 Button("Start This Version", systemImage: "play.fill") {
                     guard let template = store.templates.first(where: { $0.id == templateID }) else { return }

@@ -252,7 +252,7 @@ final class WorkoutAgentTools {
 
     private func register(_ proposal: WorkoutAgentProposal) throws -> WorkoutAgentToolResult {
         if let before = proposal.beforeTemplate, let after = proposal.afterTemplate,
-           before.name == after.name, WorkoutStore.samePrescription(before.exercises, after.exercises) {
+           before.name == after.name, before.restSeconds == after.restSeconds, WorkoutStore.samePrescription(before.exercises, after.exercises) {
             throw invalid("The proposed template prescription is unchanged. Change reps, weight, or exercises to save a new version.")
         }
         guard pendingProposals.count < 20 else { throw invalid("Review or dismiss the pending proposals before creating more.") }

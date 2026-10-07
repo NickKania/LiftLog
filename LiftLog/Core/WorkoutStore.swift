@@ -81,8 +81,8 @@ final class WorkoutStore {
                 }
                 // Drafts may reference the current version but never replace saved archives.
                 trimmed.versions = saved.versions
-                if !Self.samePrescription(trimmed.exercises, saved.exercises) {
-                    trimmed.versions.append(WorkoutTemplateVersion(number: saved.versions.count + 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit))
+                if trimmed.restSeconds != saved.restSeconds || !Self.samePrescription(trimmed.exercises, saved.exercises) {
+                    trimmed.versions.append(WorkoutTemplateVersion(number: saved.versions.count + 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit, restSeconds: trimmed.restSeconds))
                 } else {
                     // Renaming changes template metadata, not its immutable prescription.
                     trimmed.exercises = saved.exercises
@@ -90,7 +90,7 @@ final class WorkoutStore {
                 next.templates[index] = trimmed
             } else {
                 guard template.versions.isEmpty else { throw StoreError.invalid("This template was deleted. Create a new template to save this plan.") }
-                trimmed.versions = [WorkoutTemplateVersion(number: 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit)]
+                trimmed.versions = [WorkoutTemplateVersion(number: 1, name: trimmed.name, exercises: trimmed.exercises, unit: unit, restSeconds: trimmed.restSeconds)]
                 next.templates.append(trimmed)
             }
             return commit(next)
@@ -118,6 +118,7 @@ final class WorkoutStore {
                 guard let version else { throw StoreError.invalid("This template version is no longer available.") }
                 if versionID != nil { source?.name = version.name }
                 source?.exercises = version.exercises(in: unit)
+                source?.restSeconds = version.restSeconds
             } else if versionID != nil {
                 throw StoreError.invalid("Choose a saved template before selecting a version.")
             }
@@ -131,7 +132,8 @@ final class WorkoutStore {
                     WorkoutExercise(exercise: item.exercise, sets: item.sets.map {
                         WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
                     })
-                } ?? []
+                } ?? [],
+                restSeconds: source?.restSeconds ?? 120
             )
             for index in workout.exercises.indices {
                 workout.exercises[index].exercise = Self.register(workout.exercises[index].exercise, in: &next)
@@ -142,7 +144,7 @@ final class WorkoutStore {
     }
 
     @discardableResult
-    func updateActiveWorkout(_ workout: WorkoutSession) -> Bool {
+    func updateActiveWorkout(_ workout: WorkoutSession, now: Date = Date()) -> Bool {
         guard let activeWorkout, workout.id == activeWorkout.id else {
             return fail(StoreError.invalid("This workout is no longer active."))
         }
@@ -153,6 +155,8 @@ final class WorkoutStore {
             updated.templateID = activeWorkout.templateID
             updated.templateVersionID = activeWorkout.templateVersionID
             updated.templateVersionNumber = activeWorkout.templateVersionNumber
+            updated.restSeconds = activeWorkout.restSeconds
+            updated.restTimer = activeWorkout.restTimer
             updated.unit = activeWorkout.unit
             updated.finishedAt = nil
             try Self.validate(updated)
@@ -169,6 +173,7 @@ final class WorkoutStore {
             for index in updated.exercises.indices {
                 updated.exercises[index].exercise = Self.register(updated.exercises[index].exercise, in: &next)
             }
+            updated.restTimer = WorkoutRestTimer.updated(previous: activeWorkout, current: updated, now: now)
             next.activeWorkout = updated
             return commit(next)
         } catch { return fail(error) }
@@ -184,6 +189,7 @@ final class WorkoutStore {
               workout.unit == unit, workout.templateID == nil,
               workout.templateVersionID == nil, workout.templateVersionNumber == nil,
               !history.contains(where: { $0.id == workout.id }),
+              workout.restTimer == nil,
               workout.exercises.allSatisfy({ !$0.sets.isEmpty && $0.sets.allSatisfy { !$0.isCompleted } }) else {
             return fail(StoreError.invalid("The proposed workout must contain only planned, uncompleted sets in your current unit."))
         }
@@ -213,6 +219,7 @@ final class WorkoutStore {
         guard !workout.exercises.isEmpty else {
             return fail(StoreError.invalid("Complete at least one set before finishing your workout."))
         }
+        workout.restTimer = nil
         workout.finishedAt = Date()
         var next = snapshot
         next.history.insert(workout, at: 0)
@@ -221,9 +228,25 @@ final class WorkoutStore {
     }
 
     @discardableResult
+    func deleteWorkout(id: UUID) -> Bool {
+        var next = snapshot
+        next.history.removeAll { $0.id == id }
+        return commit(next)
+    }
+
+    @discardableResult
     func discardWorkout() -> Bool {
         var next = snapshot
         next.activeWorkout = nil
+        return commit(next)
+    }
+
+    @discardableResult
+    func skipRest() -> Bool {
+        guard var workout = activeWorkout else { return false }
+        workout.restTimer = nil
+        var next = snapshot
+        next.activeWorkout = workout
         return commit(next)
     }
 
@@ -333,7 +356,7 @@ final class WorkoutStore {
         var next = snapshot
         for index in next.templates.indices where next.templates[index].versions.isEmpty {
             let template = next.templates[index]
-            next.templates[index].versions = [WorkoutTemplateVersion(number: 1, name: template.name, exercises: template.exercises, unit: snapshot.unit)]
+            next.templates[index].versions = [WorkoutTemplateVersion(number: 1, name: template.name, exercises: template.exercises, unit: snapshot.unit, restSeconds: template.restSeconds)]
         }
         return next
     }
@@ -409,6 +432,12 @@ final class WorkoutStore {
         }
     }
 
+    nonisolated private static func validateRest(_ seconds: Int) throws {
+        guard (0...3600).contains(seconds) else {
+            throw StoreError.invalid("Rest must be between zero and 60 minutes.")
+        }
+    }
+
     nonisolated private static func validateName(_ name: String) throws {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw StoreError.invalid("Enter a name before saving.")
@@ -417,6 +446,7 @@ final class WorkoutStore {
 
     nonisolated private static func validate(_ template: WorkoutTemplate) throws {
         try validateName(template.name)
+        try validateRest(template.restSeconds)
         guard !template.exercises.isEmpty else {
             throw StoreError.invalid("Add at least one exercise to your template.")
         }
@@ -433,6 +463,12 @@ final class WorkoutStore {
 
     nonisolated private static func validate(_ workout: WorkoutSession) throws {
         try validateName(workout.name)
+        try validateRest(workout.restSeconds)
+        if let timer = workout.restTimer {
+            guard workout.finishedAt == nil, timer.endsAt.timeIntervalSinceReferenceDate.isFinite else {
+                throw StoreError.invalid("A workout contains an invalid rest timer.")
+            }
+        }
         guard workout.startedAt.timeIntervalSinceReferenceDate.isFinite,
               workout.finishedAt.map({ $0.timeIntervalSinceReferenceDate.isFinite && $0 >= workout.startedAt }) ?? true else {
             throw StoreError.invalid("A workout contains invalid dates.")
@@ -476,10 +512,10 @@ final class WorkoutStore {
                 guard version.number == index + 1, version.createdAt.timeIntervalSinceReferenceDate.isFinite else {
                     throw StoreError.invalid("A template contains invalid saved versions.")
                 }
-                try validate(WorkoutTemplate(name: version.name, exercises: version.exercises))
+                try validate(WorkoutTemplate(name: version.name, exercises: version.exercises, restSeconds: version.restSeconds))
             }
             if let version = template.currentVersion {
-                guard samePrescription(template.exercises, version.exercises(in: snapshot.unit)) else {
+                guard template.restSeconds == version.restSeconds, samePrescription(template.exercises, version.exercises(in: snapshot.unit)) else {
                     throw StoreError.invalid("A template's current plan does not match its saved version.")
                 }
             }

@@ -11,6 +11,7 @@ struct WorkoutAgentTemplateSnapshot: Encodable {
     let id: UUID
     let name: String
     let exercises: [TemplateExercise]
+    let restSeconds: Int
     let unit: WeightUnit
     let currentVersionID: UUID?
     let currentVersionNumber: Int?
@@ -19,6 +20,7 @@ struct WorkoutAgentTemplateSnapshot: Encodable {
         id = template.id
         name = template.name
         exercises = template.exercises
+        restSeconds = template.restSeconds
         self.unit = unit
         currentVersionID = template.currentVersion?.id
         currentVersionNumber = template.currentVersion?.number

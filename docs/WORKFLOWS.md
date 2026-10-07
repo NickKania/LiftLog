@@ -10,7 +10,8 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 | Validate or cancel a draft | Missing names/exercises and invalid set input prevent saving; cancel leaves no template | `WorkflowUITests` template validation/cancel test; `SetInputValidationTests` |
 | Find or create an exercise | Search the offline catalog without case sensitivity, or add a custom name; selection survives relaunch | `WorkflowUITests` exercise search/custom test; core catalog and snapshot tests |
 | Plan progression | Open Plan Next Workout, compare the last session, adjust targets, and save a new default version; browse and start earlier versions | Template version core tests and version UI workflow |
-| Log a session | Start from a template or empty workout; edit actual values across an exercise's sets while preserving targets and independent completion flags | `LiftLogUITests` propagation and template-to-history tests; core session snapshot tests |
+| Log a session | Start from a template or empty workout; edit actual values across an exercise's remaining sets while preserving completed results, targets, and independent completion flags | `LiftLogUITests` propagation and template-to-history tests; core session snapshot tests |
+| Rest between sets | Set a template rest period (default two minutes); completing a set starts or restarts a countdown when sets remain; skip, undo, finish, and discard cancel it | `WorkoutRestTimerTests`; `RestTimerUITests` |
 | Resume training | Minimize or relaunch, then resume with saved values and completion state | `LiftLogUITests` relaunch tests; core persistence tests |
 | Finish and review | Complete sets, confirm finish, open history; omit incomplete sets | `LiftLogUITests` template-to-history test; core completion filtering/history tests |
 | Discard training | Cancel discard to keep training, or confirm to clear the session without history | `WorkflowUITests` discard test; core discard test |
@@ -33,3 +34,5 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 `WorkoutStoreTests` covers the main lifecycle, catalog compatibility, legacy reps migration, conversion, and rollback. `WorkoutStoreFlowTests` extends boundary and persistence coverage. `SetInputValidationTests` directly tests the numeric parsing used by the SwiftUI set editor; these are unit tests, while `WorkflowUITests` and `LiftLogUITests` are simulator UI integration tests.
 
 See [Testing](TESTING.md) for commands and remaining manual device, accessibility, and layout checks. UI automation covers representative paths; it does not replace those manual checks.
+
+Rest periods are saved with each template version and copied into sessions. Countdown deadlines persist across minimizing, suspension, relaunch, and backups. Foreground tones work without notification permission; background alerts require notification permission and enabled sounds, and follow system notification settings. Completing the last planned set does not start a rest timer.

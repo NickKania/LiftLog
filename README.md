@@ -12,7 +12,9 @@ Templates, workout execution, and history work locally without an account. The o
 - Find exercises in the searchable, offline catalog of 876 bundled exercises plus your saved personal exercises, or add an exercise by name.
 - Start a workout from a template and record the weight and actual reps for each set, with the original planned weight and reps shown alongside.
 - Mark sets complete and save finished workouts to history.
+- Delete a saved workout by swiping left in History and confirming Delete Workout.
 - Resume a saved active workout after reopening the app.
+- Follow rest countdowns, total workout time, and the next exercise and set on the Lock Screen and Dynamic Island with a Live Activity.
 - Back up to iCloud Drive automatically or on demand, and restore a selected backup from Settings.
 - Choose pounds or kilograms.
 - Import completed workouts from Strong CSV exports, with exercise matching, session selection, and duplicate protection.

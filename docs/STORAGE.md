@@ -16,6 +16,8 @@ When no SQLite database exists, the app reads an existing `workouts.json`, valid
 
 Schema version 2 stores template revision history, session version attribution, and planned set weights. Version-1 SQLite files and backups remain readable. On launch, templates without revisions gain a baseline version in one migration transaction; later saves also upgrade older database schemas transactionally. An unsuccessful write leaves the original schema and data intact. Restore reads the source backup without modifying it and writes the upgraded working database through staging.
 
+Schema version 3 adds rest durations and active countdown deadlines. Missing rest fields in older JSON, version payloads, and version-1/2 SQLite databases default to 120 seconds; read-only old backups stay unchanged, and a successful save migrates the working database atomically.
+
 Existing templates receive an initial version from their saved prescription. Existing sessions retain their recorded values; missing version references or planned weights are left unknown rather than inferred from a template that may have changed. Versions preserve their original weight units, including in backups.
 
 ## Enable iCloud for a signed app

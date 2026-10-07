@@ -673,3 +673,123 @@ extension AssistantChatPersistenceTests {
         XCTAssertNil(assistant.storageErrorMessage)
     }
 }
+
+
+extension AssistantChatPersistenceTests {
+    @MainActor
+    func testDeletingChatsPersistsSelectionAndKeepsOtherAccounts() throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("chats.json")
+        let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+        var account = "account-a"
+        let assistant = WorkoutAssistant(store: store, accessToken: { "mock" },
+                                         accountIdentity: { account }, storageURL: archive)
+        let first = try XCTUnwrap(assistant.selectedChatID)
+        let second = assistant.createChat()
+        let third = assistant.createChat()
+        assistant.accountWillChange()
+        account = "account-b"
+        assistant.reconcileAccount()
+        let otherAccountChat = try XCTUnwrap(assistant.selectedChatID)
+        assistant.saveChats()
+        assistant.accountWillChange()
+        account = "account-a"
+        assistant.reconcileAccount()
+        XCTAssertTrue(assistant.deleteChat(second))
+        XCTAssertEqual(assistant.selectedChatID, third)
+        XCTAssertTrue(assistant.deleteChat(third))
+        XCTAssertEqual(assistant.selectedChatID, first)
+        XCTAssertFalse(assistant.deleteChat(third))
+        let reopened = WorkoutAssistant(store: store, accessToken: { "mock" },
+                                        accountIdentity: { "account-a" }, storageURL: archive)
+        XCTAssertEqual(reopened.chats.map(\.id), [first])
+        XCTAssertEqual(reopened.selectedChatID, first)
+        XCTAssertTrue(reopened.deleteChat(first))
+        XCTAssertEqual(reopened.chats.count, 1)
+        XCTAssertNotEqual(reopened.selectedChatID, first)
+        XCTAssertTrue(reopened.messages.isEmpty)
+        let saved = try AssistantChatArchive.load(from: archive)
+        XCTAssertEqual(saved.accounts["account-a"]?.chats.map(\.id), reopened.chats.map(\.id))
+        XCTAssertEqual(saved.accounts["account-b"]?.chats.map(\.id), [otherAccountChat])
+    }
+
+    @MainActor
+    func testDeletingRunningChatCancelsOnlyItsWorkAndIgnoresLateOutput() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("chats.json")
+        let transport = ChatPersistenceTransport()
+        transport.holdStreams = true
+        let assistant = WorkoutAssistant(store: WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite")),
+                                         accessToken: { "mock" }, transport: transport, storageURL: archive)
+        await assistant.refreshModels()
+        XCTAssertTrue(assistant.send("First question"))
+        await waitUntil { transport.held.count == 1 }
+        let deleted = try XCTUnwrap(assistant.selectedChat)
+        let survivor = assistant.createChat()
+        XCTAssertTrue(assistant.send("Second question"))
+        await waitUntil { transport.held.count == 2 }
+        XCTAssertTrue(assistant.deleteChat(deleted.id))
+        await waitUntil { transport.cancelled.contains(0) }
+        XCTAssertFalse(deleted.isWorking)
+        XCTAssertNil(deleted.task)
+        XCTAssertEqual(assistant.selectedChatID, survivor)
+        XCTAssertTrue(assistant.isWorking)
+        XCTAssertFalse(transport.cancelled.contains(1))
+        transport.release(0, output: chatAnswer("Deleted answer"))
+        transport.release(1, output: chatAnswer("Surviving answer"))
+        await waitUntil { !assistant.isWorking }
+        XCTAssertEqual(assistant.messages.last?.text, "Surviving answer")
+        XCTAssertFalse(try AssistantChatArchive.load(from: archive).accounts["__local__"]!.chats.contains { $0.id == deleted.id })
+    }
+
+    @MainActor
+    func testDeletionSaveFailureRestoresChatAndLeavesItsResponseRunning() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("chats.json")
+        let transport = ChatPersistenceTransport()
+        transport.holdStreams = true
+        let assistant = WorkoutAssistant(store: WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite")),
+                                         accessToken: { "mock" }, transport: transport, storageURL: archive)
+        await assistant.refreshModels()
+        XCTAssertTrue(assistant.send("Keep this chat"))
+        await waitUntil { transport.held.count == 1 }
+        let chat = try XCTUnwrap(assistant.selectedChat)
+        try FileManager.default.removeItem(at: archive)
+        try FileManager.default.createDirectory(at: archive, withIntermediateDirectories: false)
+        XCTAssertFalse(assistant.deleteChat(chat.id))
+        XCTAssertEqual(assistant.chats.map(\.id), [chat.id])
+        XCTAssertEqual(assistant.selectedChatID, chat.id)
+        XCTAssertTrue(assistant.isWorking)
+        XCTAssertTrue(transport.cancelled.isEmpty)
+        XCTAssertNotNil(assistant.storageErrorMessage)
+        assistant.cancel()
+    }
+
+    @MainActor
+    func testDeletingChatCancelsPendingTitleGeneration() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let transport = ChatPersistenceTransport()
+        transport.catalog = Data("{\"models\":[{\"slug\":\"gpt-6.1-sol\",\"display_name\":\"Sol\",\"visibility\":\"list\"},{\"slug\":\"gpt-6-luna\",\"display_name\":\"Luna\",\"visibility\":\"list\"}]}".utf8)
+        transport.heldModels = ["gpt-6-luna"]
+        transport.replies = [chatCompleted(chatAnswer("Completed answer"))]
+        let assistant = WorkoutAssistant(store: WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite")),
+                                         accessToken: { "mock" }, transport: transport,
+                                         storageURL: directory.appendingPathComponent("chats.json"))
+        await assistant.refreshModels()
+        XCTAssertTrue(assistant.send("Name this chat"))
+        await waitUntil { transport.held.count == 1 }
+        let chat = try XCTUnwrap(assistant.selectedChat)
+        XCTAssertTrue(chat.isGeneratingTitle)
+        XCTAssertTrue(assistant.deleteChat(chat.id))
+        await waitUntil { transport.cancelled.contains(0) }
+        XCTAssertFalse(chat.isGeneratingTitle)
+        XCTAssertNil(chat.titleTask)
+        transport.release(0, output: chatAnswer("Late title"))
+        XCTAssertFalse(assistant.chats.contains { $0.id == chat.id })
+        XCTAssertEqual(assistant.selectedChat?.title, "New chat")
+    }
+}

@@ -20,6 +20,11 @@ targets:
       path: LiftLog/Info.plist
       properties:
         ITSAppUsesNonExemptEncryption: false
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: workout
+            CFBundleURLSchemes:
+              - liftlog
         NSUbiquitousContainers:
           iCloud.com.liftlog.app:
             NSUbiquitousContainerIsDocumentScopePublic: true
@@ -33,6 +38,7 @@ targets:
           - App/Info.plist
           - Info.plist
     dependencies:
+      - target: LiftLogWidgets
       - sdk: libsqlite3.tbd
       - package: swift-markdown
         product: Markdown
@@ -62,6 +68,32 @@ targets:
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+  LiftLogWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LiftLogWidgets
+        excludes:
+          - Info.plist
+      - path: LiftLog/Shared/WorkoutActivityAttributes.swift
+      - path: LiftLog/Core/WorkoutActivitySnapshot.swift
+    info:
+      path: LiftLogWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: nkania.WeightsTracker.Widgets
+        DEVELOPMENT_TEAM: 2CUP94Z3Q9
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_NAME: LiftLogWidgets
+        INFOPLIST_KEY_CFBundleDisplayName: Lift Log Workout
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: YES
   LiftLogUITests:
     type: bundle.ui-testing
     platform: iOS

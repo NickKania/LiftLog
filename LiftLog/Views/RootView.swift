@@ -22,6 +22,11 @@ struct RootView: View {
         .fullScreenCover(isPresented: $showWorkout) {
             NavigationStack { ActiveWorkoutView() }
         }
+        .onOpenURL { url in
+            if url.scheme == "liftlog", url.host == "workout", store.activeWorkout != nil {
+                showWorkout = true
+            }
+        }
         .task(id: chatGPT.revision) {
             if chatGPT.canUsePlan { await assistant.refreshModels() }
         }

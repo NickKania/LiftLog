@@ -139,6 +139,7 @@ final class WorkoutAgentToolsTests: XCTestCase {
         let proposal = try XCTUnwrap(tools.execute(name: "propose_edit_exercise", arguments: json(editArgs(workout, operation: "remove", entryID: workout.exercises[0].id))).proposal)
         workout.exercises[0].sets[0].isCompleted = true
         XCTAssertTrue(store.updateActiveWorkout(workout))
+        workout = try XCTUnwrap(store.activeWorkout)
         XCTAssertThrowsError(try tools.applyProposal(proposal.id))
         XCTAssertEqual(store.activeWorkout, workout)
     }
@@ -150,6 +151,7 @@ final class WorkoutAgentToolsTests: XCTestCase {
         var workout = try XCTUnwrap(store.activeWorkout)
         workout.exercises[0].sets[0].isCompleted = true
         XCTAssertTrue(store.updateActiveWorkout(workout))
+        workout = try XCTUnwrap(store.activeWorkout)
         let tools = WorkoutAgentTools(store: store)
         XCTAssertThrowsError(try tools.execute(name: "propose_edit_exercise", arguments: json(editArgs(workout, operation: "update", entryID: workout.exercises[0].id, exerciseID: store.exercises[0].id))))
         let proposal = try XCTUnwrap(tools.execute(name: "propose_edit_exercise", arguments: json(editArgs(workout, operation: "remove", entryID: workout.exercises[0].id))).proposal)

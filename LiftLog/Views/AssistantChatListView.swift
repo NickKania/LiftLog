@@ -8,6 +8,7 @@ struct AssistantChatListView: View {
     let onCreate: () -> Void
     @State private var renamingChatID: UUID?
     @State private var editedTitle = ""
+    @State private var deletingChat: WorkoutAssistantChat?
 
     var body: some View {
         NavigationStack {
@@ -66,6 +67,17 @@ struct AssistantChatListView: View {
                         .accessibilityLabel("Rename \(chat.title)")
                         .accessibilityIdentifier("assistantRenameChat.\(chat.id.uuidString)")
                     }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) { deletingChat = chat } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .accessibilityIdentifier("assistantDeleteChat.\(chat.id.uuidString)")
+                    }
+                    .contextMenu {
+                        Button("Delete chat", systemImage: "trash", role: .destructive) {
+                            deletingChat = chat
+                        }
+                    }
                 }
             }
             .accessibilityIdentifier("assistantChatList")
@@ -100,6 +112,18 @@ struct AssistantChatListView: View {
                 Button("Cancel", role: .cancel) { renamingChatID = nil }
             } message: {
                 Text("Choose a title up to 120 characters.")
+            }
+            .alert("Delete chat?", isPresented: Binding(
+                get: { deletingChat != nil },
+                set: { if !$0 { deletingChat = nil } }
+            )) {
+                Button("Delete", role: .destructive) {
+                    if let chat = deletingChat { assistant.deleteChat(chat.id) }
+                    deletingChat = nil
+                }
+                Button("Cancel", role: .cancel) { deletingChat = nil }
+            } message: {
+                Text("\"\(deletingChat?.title ?? "This chat")\" and its messages will be permanently deleted from this device. Any response in progress will stop.")
             }
         }
     }

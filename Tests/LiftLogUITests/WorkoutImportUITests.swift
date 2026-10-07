@@ -4,6 +4,52 @@ final class WorkoutImportUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testDeleteHistoryConfirmationPersistenceAndEmptyState() {
+        let app = launchFixture(reset: true)
+        openImport(in: app)
+        app.buttons["reviewOrImportButton"].tap()
+        XCTAssertTrue(app.navigationBars["Review Import"].waitForExistence(timeout: 5))
+        app.buttons["reviewOrImportButton"].tap()
+        app.alerts.buttons["confirmWorkoutImportButton"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["importSuccessCount"].waitForExistence(timeout: 5))
+        app.buttons["viewImportedHistoryButton"].tap()
+
+        let upper = app.buttons["historyWorkout-Sample Upper"]
+        let lower = app.buttons["historyWorkout-Sample Lower"]
+        XCTAssertTrue(upper.waitForExistence(timeout: 5))
+        upper.swipeLeft()
+        app.buttons["Delete"].tap()
+        let confirm = app.alerts.buttons["confirmDeleteHistoryWorkoutButton"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        app.alerts.buttons["Cancel"].tap()
+        XCTAssertTrue(upper.exists)
+        XCTAssertTrue(lower.exists)
+
+        upper.swipeLeft()
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(upper.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(lower.exists)
+        app.terminate()
+        app.launchArguments = ["--ui-testing", "--import-ui-fixture"]
+        app.launch()
+        app.tabBars.buttons["History"].tap()
+        XCTAssertTrue(lower.waitForExistence(timeout: 5))
+        XCTAssertFalse(upper.exists)
+
+        lower.swipeLeft()
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["Build your history"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["History"].tap()
+        XCTAssertTrue(app.staticTexts["Build your history"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testCancelReviewDoesNotCreateHistory() {
         let app = launchFixture(reset: true)
         openImport(in: app)
