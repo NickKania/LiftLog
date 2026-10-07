@@ -75,6 +75,7 @@ struct SetInputRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     TextField("0", text: $weightText)
                         .keyboardType(.decimalPad)
+                        .disabled(completed == true)
                         .accessibilityLabel("Weight for set \(number), \(unit.rawValue)")
                         .accessibilityIdentifier("setWeight-\(number)")
                     if let targetWeight {
@@ -87,6 +88,7 @@ struct SetInputRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     TextField(repsTitle, text: $repsText)
                         .keyboardType(.numberPad)
+                        .disabled(completed == true)
                         .accessibilityLabel("\(repsTitle) for set \(number)")
                         .accessibilityIdentifier("setReps-\(number)")
                     if let targetReps {

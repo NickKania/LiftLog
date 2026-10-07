@@ -89,6 +89,37 @@ final class AssistantChatUITests: XCTestCase {
     }
 
     @MainActor
+    func testSavedChatDeletionCanBeCancelledAndPersistsAfterRelaunch() throws {
+        let app = launchFixture()
+        send("Show formatting", in: app)
+        XCTAssertTrue(app.staticTexts["Your training, in perspective"].waitForExistence(timeout: 10))
+        openChats(in: app)
+        let row = chatRow(titled: "Training summary", in: app)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        let chatID = id(of: row)
+        row.swipeLeft()
+        app.buttons["assistantDeleteChat.\(chatID)"].tap()
+        XCTAssertTrue(app.alerts["Delete chat?"].waitForExistence(timeout: 5))
+        app.alerts.buttons["Cancel"].tap()
+        XCTAssertTrue(row.exists)
+        row.swipeLeft()
+        app.buttons["assistantDeleteChat.\(chatID)"].tap()
+        app.alerts.buttons["Delete"].tap()
+        XCTAssertFalse(row.waitForExistence(timeout: 2))
+        XCTAssertTrue(chatRow(titled: "New chat", in: app).exists)
+        app.buttons["assistantChatListDoneButton"].tap()
+        XCTAssertTrue(app.textFields["assistantComposer"].exists)
+        XCTAssertFalse(app.staticTexts["Your training, in perspective"].exists)
+        app.terminate()
+        app.launchArguments = ["--ui-testing", "--assistant-ui-fixture", "--assistant-chat-ui-fixture"]
+        app.launch()
+        app.tabBars.buttons["Assistant"].tap()
+        openChats(in: app)
+        XCTAssertFalse(app.buttons["assistantChat.\(chatID)"].exists)
+        XCTAssertTrue(chatRow(titled: "New chat", in: app).exists)
+    }
+
+    @MainActor
     private func launchFixture(concurrent: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--assistant-ui-fixture", "--assistant-chat-ui-fixture"]

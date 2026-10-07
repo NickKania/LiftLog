@@ -10,9 +10,11 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
     var finishedAt: Date?
     var unit: WeightUnit
     var exercises: [WorkoutExercise]
+    var restSeconds: Int
+    var restTimer: WorkoutRestTimer?
     var importSourceKey: String?
 
-    init(id: UUID = UUID(), templateID: UUID? = nil, templateVersionID: UUID? = nil, templateVersionNumber: Int? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = []) {
+    init(id: UUID = UUID(), templateID: UUID? = nil, templateVersionID: UUID? = nil, templateVersionNumber: Int? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = [], restSeconds: Int = 120, restTimer: WorkoutRestTimer? = nil) {
         self.id = id
         self.templateID = templateID
         self.templateVersionID = templateVersionID
@@ -23,7 +25,30 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         self.unit = unit
         self.exercises = exercises
         self.importSourceKey = importSourceKey
+        self.restSeconds = restSeconds
+        self.restTimer = restTimer
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, templateID, templateVersionID, templateVersionNumber, name, startedAt, finishedAt, unit, exercises, importSourceKey, restSeconds, restTimer
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        templateID = try values.decodeIfPresent(UUID.self, forKey: .templateID)
+        templateVersionID = try values.decodeIfPresent(UUID.self, forKey: .templateVersionID)
+        templateVersionNumber = try values.decodeIfPresent(Int.self, forKey: .templateVersionNumber)
+        name = try values.decode(String.self, forKey: .name)
+        startedAt = try values.decode(Date.self, forKey: .startedAt)
+        finishedAt = try values.decodeIfPresent(Date.self, forKey: .finishedAt)
+        unit = try values.decode(WeightUnit.self, forKey: .unit)
+        exercises = try values.decode([WorkoutExercise].self, forKey: .exercises)
+        importSourceKey = try values.decodeIfPresent(String.self, forKey: .importSourceKey)
+        restSeconds = try values.decodeIfPresent(Int.self, forKey: .restSeconds) ?? 120
+        restTimer = try values.decodeIfPresent(WorkoutRestTimer.self, forKey: .restTimer)
+    }
+
 }
 
 struct WorkoutExercise: Codable, Equatable, Identifiable {
@@ -37,9 +62,9 @@ struct WorkoutExercise: Codable, Equatable, Identifiable {
         self.sets = sets
     }
 
-    /// Numeric edits apply to every set; each set keeps its own completion state.
+    /// Numeric edits apply only to remaining sets, preserving completed results.
     mutating func updateSetValues(weight: Double, reps: Int) {
-        for index in sets.indices {
+        for index in sets.indices where !sets[index].isCompleted {
             sets[index].weight = weight
             sets[index].reps = reps
         }

@@ -33,6 +33,72 @@ final class WorkoutStoreFlowTests: XCTestCase {
     }
 
     @MainActor
+    func testDeletingHistoryPersistsAndPreservesOtherWorkoutData() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        for name in ["First", "Second"] {
+            XCTAssertTrue(store.startWorkout(template: template(name: name)))
+            var active = try XCTUnwrap(store.activeWorkout)
+            active.exercises[0].sets[0].isCompleted = true
+            XCTAssertTrue(store.updateActiveWorkout(active))
+            XCTAssertTrue(store.finishWorkout())
+        }
+        XCTAssertTrue(store.startWorkout(template: template(name: "Active")))
+        let active = store.activeWorkout
+        let templates = store.templates
+        let exercises = store.personalExercises
+        let retained = try XCTUnwrap(store.history.last)
+        let deleted = try XCTUnwrap(store.history.first)
+        let revision = store.revision
+
+        XCTAssertTrue(store.deleteWorkout(id: deleted.id))
+        XCTAssertEqual(store.revision, revision + 1)
+        XCTAssertEqual(store.history, [retained])
+        let restored = WorkoutStore(fileURL: file)
+        XCTAssertEqual(restored.history, [retained])
+        XCTAssertEqual(restored.activeWorkout, active)
+        XCTAssertEqual(restored.templates, templates)
+        XCTAssertEqual(restored.personalExercises, exercises)
+
+        // A history deletion cannot discard the active session.
+        XCTAssertTrue(restored.deleteWorkout(id: try XCTUnwrap(active).id))
+        XCTAssertEqual(restored.activeWorkout, active)
+        XCTAssertEqual(restored.history, [retained])
+        XCTAssertTrue(restored.deleteWorkout(id: retained.id))
+        XCTAssertTrue(WorkoutStore(fileURL: file).history.isEmpty)
+    }
+
+    @MainActor
+    func testFailedHistoryDeletionKeepsSessionAndCanRetry() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        XCTAssertTrue(store.startWorkout(template: template()))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.finishWorkout())
+        let history = store.history
+        let id = try XCTUnwrap(history.first).id
+        let revision = store.revision
+        let saved = try Data(contentsOf: file)
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        try Data("keep".utf8).write(to: file.appendingPathComponent("sentinel"))
+
+        XCTAssertFalse(store.deleteWorkout(id: id))
+        XCTAssertEqual(store.history, history)
+        XCTAssertEqual(store.revision, revision)
+        XCTAssertNotNil(store.errorMessage)
+
+        try FileManager.default.removeItem(at: file)
+        try saved.write(to: file)
+        XCTAssertEqual(WorkoutStore(fileURL: file).history, history)
+        XCTAssertTrue(store.deleteWorkout(id: id))
+        XCTAssertNil(store.errorMessage)
+        XCTAssertTrue(WorkoutStore(fileURL: file).history.isEmpty)
+    }
+
+    @MainActor
     func testWhitespaceIsTrimmedForSavedTemplatesAndStartedSessions() async throws {
         let file = try temporaryFile()
         let store = WorkoutStore(fileURL: file)

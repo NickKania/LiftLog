@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ActiveWorkoutView: View {
     @Environment(WorkoutStore.self) private var store
+    @Environment(RestTimerAlerts.self) private var restAlerts
     @Environment(\.dismiss) private var dismiss
     @State private var pickingExercise = false
     @State private var confirmingFinish = false
@@ -81,6 +82,16 @@ struct ActiveWorkoutView: View {
                 }
                 .padding(.vertical, 8)
             }
+            if workout.restTimer == nil {
+                Section {
+                    LabeledContent("Rest between sets", value: workout.restSeconds == 0 ? "Off" : "\(workout.restSeconds / 60):\(String(format: "%02d", workout.restSeconds % 60))")
+                        .foregroundStyle(.secondary)
+                } footer: {
+                    if restAlerts.backgroundSoundUnavailable && workout.restSeconds > 0 {
+                        restNotificationHint
+                    }
+                }
+            }
             if workout.exercises.isEmpty {
                 Section {
                     ContentUnavailableView("Ready when you are", systemImage: "dumbbell", description: Text("Add your first exercise to start logging sets."))
@@ -109,6 +120,10 @@ struct ActiveWorkoutView: View {
                                     session.exercises[index].sets.removeAll { $0.id == set.id }
                                 }
                             }
+                        }
+                        if let timer = workout.restTimer, timer.completedSetID == set.id {
+                            inlineRestTimer(timer, duration: workout.restSeconds)
+                                .listRowSeparator(.hidden)
                         }
                     }
                     Button("Add Set", systemImage: "plus") {
@@ -143,6 +158,68 @@ struct ActiveWorkoutView: View {
                 Button("Discard Workout", role: .destructive) { hideKeyboard(); confirmingDiscard = true }
                     .accessibilityIdentifier("discardWorkoutButton")
             }
+        }
+    }
+
+    private var restNotificationHint: some View {
+        Text("Rest tones play while the app is open. Enable notification sounds in Settings for alerts when the app is in the background.")
+    }
+
+    private func inlineRestTimer(_ timer: WorkoutRestTimer, duration: Int) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let seconds = timer.remainingSeconds(at: context.date)
+            let fraction = min(1, max(0, timer.endsAt.timeIntervalSince(context.date) / Double(max(1, duration))))
+            let title = seconds > 0 ? "\(seconds / 60):\(String(format: "%02d", seconds % 60))" : "Rest complete"
+
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.headline.monospacedDigit())
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                Color.orange.opacity(0.15)
+                                Color.orange.frame(width: geometry.size.width * fraction)
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .overlay {
+                        // Keep the centered time legible on both the orange fill and the empty track.
+                        Text(title)
+                            .font(.headline.monospacedDigit())
+                            .foregroundStyle(.black)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
+                            .mask {
+                                GeometryReader { geometry in
+                                    Rectangle().frame(width: geometry.size.width * fraction)
+                                }
+                            }
+                            .accessibilityHidden(true)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(title)
+                    .accessibilityIdentifier("restCountdown")
+                    .accessibilityHint(seconds > 0 ? "Time remaining before your next set" : "Ready for your next set")
+
+                HStack(alignment: .firstTextBaseline) {
+                    Label(seconds > 0 ? "Rest" : "Ready for your next set", systemImage: seconds > 0 ? "timer" : "checkmark.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button(seconds > 0 ? "Skip" : "Dismiss") { store.skipRest() }
+                        .font(.subheadline)
+                        .accessibilityIdentifier("skipRestButton")
+                }
+
+                if restAlerts.backgroundSoundUnavailable {
+                    restNotificationHint
+                        .font(.caption).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.vertical, 2)
         }
     }
 

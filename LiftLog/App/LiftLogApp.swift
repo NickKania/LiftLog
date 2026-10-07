@@ -4,6 +4,8 @@ import SwiftUI
 struct LiftLogApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: WorkoutStore
+    @State private var restAlerts = RestTimerAlerts()
+    @State private var liveActivity = WorkoutLiveActivity()
     @State private var backgroundBackup = BackupBackgroundActivity()
     @State private var chatGPT: ChatGPTAccountStore
     @State private var assistant: WorkoutAssistant
@@ -73,9 +75,21 @@ struct LiftLogApp: App {
                 .environment(store)
                 .environment(chatGPT)
                 .environment(assistant)
+                .environment(restAlerts)
                 .tint(.blue)
-                .task { store.cloudBackup.scheduleBackup() }
+                .task {
+                    restAlerts.setActive(scenePhase == .active)
+                    restAlerts.synchronize(store.activeWorkout?.restTimer)
+                    liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: scenePhase == .active)
+                    store.cloudBackup.scheduleBackup()
+                }
+                .onChange(of: store.activeWorkout?.restTimer) { _, rest in restAlerts.synchronize(rest) }
+                .onChange(of: store.activeWorkout?.activitySnapshot) { _, snapshot in
+                    liveActivity.synchronize(snapshot, isActive: scenePhase == .active)
+                }
                 .onChange(of: scenePhase) { _, phase in
+                    restAlerts.setActive(phase == .active)
+                    liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: phase == .active)
                     if phase == .active { store.cloudBackup.scheduleBackup() }
                     else if phase == .background {
                         assistant.saveChats()

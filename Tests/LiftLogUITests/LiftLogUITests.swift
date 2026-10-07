@@ -6,7 +6,14 @@ final class LiftLogUITests: XCTestCase {
     }
 
     @MainActor
-    func testSetValuesPropagateAcrossExerciseSets() throws {
+    func testSetValuesPropagateAcrossRemainingExerciseSets() throws {
+        addUIInterruptionMonitor(withDescription: "Rest notification permission") { alert in
+            if alert.buttons["Allow"].exists {
+                alert.buttons["Allow"].tap()
+                return true
+            }
+            return false
+        }
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing"]
         app.launch()
@@ -30,14 +37,35 @@ final class LiftLogUITests: XCTestCase {
         XCTAssertEqual(app.textFields["setReps-3"].firstMatch.value as? String, "6")
         XCTAssertEqual(weight.value as? String, "142.5")
 
+        app.buttons["completeSet-1"].firstMatch.tap()
+        app.tap() // Dismiss the first rest-timer notification permission prompt if present.
+        XCTAssertFalse(weight.isEnabled)
+        XCTAssertFalse(app.textFields["setReps-1"].firstMatch.isEnabled)
+        let remainingWeight = app.textFields["setWeight-2"].firstMatch
+        remainingWeight.tap()
+        remainingWeight.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "150")
+        app.buttons["Done"].tap()
+        reps.tap()
+        reps.typeText(XCUIKeyboardKey.delete.rawValue + "5")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(weight.value as? String, "142.5")
+        XCTAssertEqual(app.textFields["setReps-1"].firstMatch.value as? String, "6")
+        XCTAssertEqual(app.textFields["setWeight-3"].firstMatch.value as? String, "150")
+        XCTAssertEqual(app.textFields["setReps-3"].firstMatch.value as? String, "5")
+
         app.terminate()
         app.launchArguments = ["--ui-testing"]
         app.launch()
         XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 10))
         app.buttons["resumeWorkoutButton"].tap()
         XCTAssertTrue(app.textFields["setWeight-3"].firstMatch.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.textFields["setWeight-3"].firstMatch.value as? String, "142.5")
-        XCTAssertEqual(app.textFields["setReps-3"].firstMatch.value as? String, "6")
+        XCTAssertEqual(app.textFields["setWeight-3"].firstMatch.value as? String, "150")
+        XCTAssertEqual(app.textFields["setReps-3"].firstMatch.value as? String, "5")
+        XCTAssertEqual(app.textFields["setWeight-1"].firstMatch.value as? String, "142.5")
+        XCTAssertEqual(app.textFields["setReps-1"].firstMatch.value as? String, "6")
+        app.buttons["completeSet-1"].firstMatch.tap()
+        XCTAssertTrue(app.textFields["setWeight-1"].firstMatch.isEnabled)
+        XCTAssertTrue(app.textFields["setReps-1"].firstMatch.isEnabled)
     }
 
     @MainActor

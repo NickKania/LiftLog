@@ -92,8 +92,20 @@ Verification for this change: all 161 core tests passed. The iOS simulator build
 
 ### Workout execution
 
+`WorkoutActivitySnapshotTests` covers ordered next-set selection, out-of-order completion and undo, exercise removal, actual prescriptions and units, stable rest deadlines, persistence/relaunch, skip, and finish. The `LiftLogWidgets` extension is embedded by the app build.
+
+Live Activity verification: all 197 core tests and the existing `RestTimerUITests` flow passed, and the simulator app/extension build succeeded. The Lock Screen presentation was inspected on iPhone 17 Pro (iOS 26.5): rest progress and elapsed time continued outside the app, the next set matched the workout, tapping opened the workout, and finishing removed the activity. Compact and expanded Dynamic Island content was confirmed through accessibility; screenshots from this simulator omitted the Island content, so its visual layout still needs physical-device acceptance testing alongside signing and Lock Screen privacy settings.
+
+Live Activity acceptance checks on an iPhone with Live Activities enabled:
+
+- Start a workout, complete a set, and lock the phone. Confirm the rest bar counts down to zero, total workout time increases, and the next exercise, weight/reps, and set number match the app.
+- Complete another set, undo a completion, edit remaining weights/reps, skip rest, or remove an exercise. Confirm the Live Activity follows the saved workout.
+- Check compact, expanded, and minimal Dynamic Island presentations. Tap the activity and confirm it opens the active workout.
+- Relaunch during rest and confirm the original deadline and one activity remain. Finish or discard and confirm the activity disappears.
+- Dismiss the activity and reopen the app; it should remain dismissed for that workout. Disable Live Activities in system Settings and confirm logging still works.
+
 - Start a template and confirm its exercise order and planned sets are copied into the workout.
-- Change any set’s weight and reps and verify both values appear across all sets of that exercise. Confirm original target reps remain visible and unchanged, other exercises retain their values, and each set keeps its own completion state.
+- Complete a set, then change an incomplete set’s weight and reps. Verify both values appear only across the remaining sets of that exercise and the completed set retains its recorded values after relaunch. Completed numeric fields stay disabled until marked incomplete. Confirm original targets remain visible and unchanged, other exercises retain their values, and each set keeps its own completion state.
 - Toggle a set back to incomplete and verify it can be completed again.
 - Add and remove exercises and sets in the active workout without changing the source template.
 - Close and reopen the app during a workout; confirm valid edits and completion flags resume.
@@ -151,3 +163,5 @@ The twelve `StorageAndBackupTests` use isolated databases, UserDefaults suites, 
 `AssistantChatUITests` uses `--assistant-chat-ui-fixture` with the existing required fixture flags to expose a local Luna model. It verifies generated titles, renaming, chart/Markdown restoration after relaunch, saved proposal status, two simultaneous row spinners, and cancelling only the selected chat. `--assistant-concurrent-ui-fixture` delays response requests while keeping title requests fast. UI archives are isolated from normal app chats and reset only with `--reset-ui-testing`.
 
 Verification: all 180 core tests passed, the simulator build succeeded, and all six selected UI tests passed on LiftLog Rendering Verification (iOS 26.5): the three saved-chat flows plus default-model preference/relaunch, response cancellation, and new-chat tag cleanup. Luna calls were mocked; this run did not consume live subscription usage.
+
+Saved-chat deletion verification: all 184 core tests and all four `AssistantChatUITests` passed on LiftLog Rendering Verification (iOS 26.5). Coverage includes deletion persistence and selection, last-chat replacement, account isolation, cancelling response/title tasks, failed-save rollback, and the swipe confirmation Cancel/Delete/relaunch flow.

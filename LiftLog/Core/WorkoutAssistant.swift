@@ -128,6 +128,29 @@ final class WorkoutAssistant {
         return true
     }
 
+    @discardableResult
+    func deleteChat(_ id: UUID) -> Bool {
+        guard let chat = chats.first(where: { $0.id == id }) else { return false }
+        let previousChats = chats
+        let previousSelection = selectedChatID
+        chats.removeAll { $0.id == id }
+        if chats.isEmpty {
+            chats = [WorkoutAssistantChat(store: store, selectedModel: chat.selectedModel)]
+        }
+        if selectedChatID == id {
+            selectedChatID = chats.max { $0.updatedAt < $1.updatedAt }?.id
+        }
+        guard persist() else {
+            chats = previousChats
+            selectedChatID = previousSelection
+            return false
+        }
+        // Invalidate callbacks only after the removal is durable, so a failed save
+        // leaves the original conversation and its in-flight work intact.
+        cancel(chat)
+        return true
+    }
+
     /// Also used on backgrounding so the current rendered partial reply is durable.
     func saveChats() { persist() }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkoutHistoryView: View {
     @Environment(WorkoutStore.self) private var store
     @State private var importing = false
+    @State private var deletingWorkout: WorkoutSession?
 
     var body: some View {
         Group {
@@ -30,6 +31,13 @@ struct WorkoutHistoryView: View {
                         .padding(.vertical, 6)
                     }
                     .accessibilityIdentifier("historyWorkout-\(workout.name)")
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            deletingWorkout = workout
+                        }
+                        .tint(.red)
+                        .accessibilityIdentifier("deleteHistoryWorkout-\(workout.id)")
+                    }
                 }
             }
         }
@@ -41,6 +49,22 @@ struct WorkoutHistoryView: View {
             }
         }
         .sheet(isPresented: $importing) { WorkoutImportView() }
+        .alert("Delete workout?", isPresented: Binding(
+            get: { deletingWorkout != nil },
+            set: { if !$0 { deletingWorkout = nil } }
+        )) {
+            Button("Delete Workout", role: .destructive) {
+                if let workout = deletingWorkout { store.deleteWorkout(id: workout.id) }
+                deletingWorkout = nil
+            }
+            .accessibilityIdentifier("confirmDeleteHistoryWorkoutButton")
+            Button("Cancel", role: .cancel) { deletingWorkout = nil }
+        } message: {
+            if let workout = deletingWorkout {
+                Text("Delete \(workout.name) from \(workout.startedAt.formatted(date: .abbreviated, time: .shortened))? This cannot be undone.")
+            }
+        }
+        .workoutErrorAlert(enabled: !importing && deletingWorkout == nil)
     }
 }
 

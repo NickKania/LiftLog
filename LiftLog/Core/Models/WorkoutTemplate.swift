@@ -4,23 +4,26 @@ struct WorkoutTemplate: Codable, Equatable, Identifiable {
     var id: UUID
     var name: String
     var exercises: [TemplateExercise]
+    var restSeconds: Int
     var versions: [WorkoutTemplateVersion]
     var currentVersion: WorkoutTemplateVersion? { versions.last }
 
-    init(id: UUID = UUID(), name: String = "", exercises: [TemplateExercise] = [], versions: [WorkoutTemplateVersion] = []) {
+    init(id: UUID = UUID(), name: String = "", exercises: [TemplateExercise] = [], restSeconds: Int = 120, versions: [WorkoutTemplateVersion] = []) {
         self.id = id
         self.name = name
         self.exercises = exercises
+        self.restSeconds = restSeconds
         self.versions = versions
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, exercises, versions }
+    private enum CodingKeys: String, CodingKey { case id, name, exercises, restSeconds, versions }
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
         name = try values.decode(String.self, forKey: .name)
         exercises = try values.decode([TemplateExercise].self, forKey: .exercises)
+        restSeconds = try values.decodeIfPresent(Int.self, forKey: .restSeconds) ?? 120
         versions = try values.decodeIfPresent([WorkoutTemplateVersion].self, forKey: .versions) ?? []
     }
 }
@@ -32,15 +35,30 @@ struct WorkoutTemplateVersion: Codable, Equatable, Identifiable {
     let createdAt: Date
     let name: String
     let exercises: [TemplateExercise]
+    let restSeconds: Int
     let unit: WeightUnit
 
-    init(id: UUID = UUID(), number: Int, createdAt: Date = Date(), name: String, exercises: [TemplateExercise], unit: WeightUnit) {
+    init(id: UUID = UUID(), number: Int, createdAt: Date = Date(), name: String, exercises: [TemplateExercise], unit: WeightUnit, restSeconds: Int = 120) {
         self.id = id
         self.number = number
         self.createdAt = createdAt
         self.name = name
         self.exercises = exercises
+        self.restSeconds = restSeconds
         self.unit = unit
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, number, createdAt, name, exercises, unit, restSeconds }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        number = try values.decode(Int.self, forKey: .number)
+        createdAt = try values.decode(Date.self, forKey: .createdAt)
+        name = try values.decode(String.self, forKey: .name)
+        exercises = try values.decode([TemplateExercise].self, forKey: .exercises)
+        unit = try values.decode(WeightUnit.self, forKey: .unit)
+        restSeconds = try values.decodeIfPresent(Int.self, forKey: .restSeconds) ?? 120
     }
 
     func exercises(in unit: WeightUnit) -> [TemplateExercise] {

@@ -191,6 +191,8 @@ final class TemplateVersionTests: XCTestCase {
             try db.execute("ALTER TABLE records DROP COLUMN template_version_id")
             try db.execute("ALTER TABLE records DROP COLUMN template_version_number")
             try db.execute("ALTER TABLE workout_sets DROP COLUMN target_weight")
+            try db.execute("ALTER TABLE records DROP COLUMN rest_seconds")
+            try db.execute("ALTER TABLE records DROP COLUMN rest_timer")
             try db.execute("PRAGMA user_version = 1")
         }
         let backup = url.deletingLastPathComponent().appendingPathComponent("v1-backup.sqlite")
@@ -207,7 +209,7 @@ final class TemplateVersionTests: XCTestCase {
         XCTAssertNil(store.history[0].exercises[0].sets[0].targetReps)
         let reloaded = WorkoutStore(fileURL: url)
         XCTAssertEqual(reloaded.templates, store.templates)
-        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 2)
+        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 3)
         let revisionBeforeRestore = store.revision
         try store.restoreDatabase(from: backup)
         XCTAssertEqual(store.revision, revisionBeforeRestore + 1)
@@ -248,6 +250,8 @@ final class TemplateVersionTests: XCTestCase {
             try db.execute("ALTER TABLE records DROP COLUMN template_version_id")
             try db.execute("ALTER TABLE records DROP COLUMN template_version_number")
             try db.execute("ALTER TABLE workout_sets DROP COLUMN target_weight")
+            try db.execute("ALTER TABLE records DROP COLUMN rest_seconds")
+            try db.execute("ALTER TABLE records DROP COLUMN rest_timer")
             try db.execute("PRAGMA user_version = 1")
             // Force failure after the transactional schema upgrade has run.
             try db.execute("CREATE TRIGGER reject_records BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'simulated interrupted upgrade'); END")
