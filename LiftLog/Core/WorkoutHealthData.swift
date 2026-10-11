@@ -1,7 +1,7 @@
 import Foundation
 
-/// Reading health data is an explicit, per-attachment operation. Implementations must
-/// not fetch or request authorization when initialized or when a workout starts.
+/// Reading health data requires an explicit dashboard load or assistant attachment.
+/// Implementations must not fetch or request authorization when initialized or when a workout starts.
 @MainActor
 protocol WorkoutHealthDataProviding {
     func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot

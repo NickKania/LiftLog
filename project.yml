@@ -7,6 +7,9 @@ packages:
   swift-markdown:
     url: https://github.com/swiftlang/swift-markdown.git
     minorVersion: 0.8.0
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -22,7 +25,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
         NSHealthUpdateUsageDescription: Lift Log uses Apple Health to read selected workout measurements. Lift Log does not save or update data in Apple Health.
-        NSHealthShareUsageDescription: Lift Log reads heart rate, active energy, and steps for a workout only when you select an Apple Health @ tag. Attached data can be shown in charts and sent to the AI assistant with your message.
+        NSHealthShareUsageDescription: Lift Log reads heart rate, active energy, and steps when you load Apple Health in the Health dashboard or send an Apple Health tag to the assistant. Dashboard readings stay on your device. Tagged readings are sent with your assistant message.
         CFBundleURLTypes:
           - CFBundleURLName: workout
             CFBundleURLSchemes:
@@ -59,8 +62,7 @@ targets:
       base:
         CODE_SIGN_ENTITLEMENTS: LiftLog/LiftLog.entitlements
         INFOPLIST_FILE: LiftLog/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: nkania.WeightsTracker
-        DEVELOPMENT_TEAM: 2CUP94Z3Q9
+        PRODUCT_BUNDLE_IDENTIFIER: $(LIFTLOG_BUNDLE_IDENTIFIER)
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         PRODUCT_NAME: LiftLog
@@ -88,8 +90,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: nkania.WeightsTracker.Widgets
-        DEVELOPMENT_TEAM: 2CUP94Z3Q9
+        PRODUCT_BUNDLE_IDENTIFIER: $(LIFTLOG_BUNDLE_IDENTIFIER).Widgets
         CODE_SIGN_STYLE: Automatic
         PRODUCT_NAME: LiftLogWidgets
         INFOPLIST_KEY_CFBundleDisplayName: Lift Log Workout

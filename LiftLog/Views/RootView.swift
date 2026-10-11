@@ -14,6 +14,8 @@ struct RootView: View {
             .tabItem { Label("Workout", systemImage: "dumbbell.fill") }
             NavigationStack { WorkoutHistoryView() }
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
+            NavigationStack { HealthDashboardView() }
+                .tabItem { Label("Health", systemImage: "heart.fill") }
             NavigationStack { SettingsView() }
                 .tabItem { Label("Settings", systemImage: "gearshape") }
             NavigationStack { AssistantView() }

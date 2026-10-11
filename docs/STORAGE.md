@@ -23,9 +23,9 @@ Existing templates receive an initial version from their saved prescription. Exi
 ## Enable iCloud for a signed app
 
 1. Open `LiftLog.xcodeproj` after running `xcodegen generate`.
-2. The LiftLog target uses automatic signing for team `2CUP94Z3Q9` and bundle ID `nkania.WeightsTracker`. If building for another team, update `project.yml` before regenerating; the team must support iCloud provisioning.
-3. Enable iCloud with **iCloud Documents** and register/select **`iCloud.com.liftlog.app`**. Ensure the App ID and provisioning profile include that container and the CloudDocuments entitlement.
-4. If changing the bundle or container identifier, update `project.yml`, `CloudBackupRepository.containerIdentifier`, and `LiftLog/Info.plist` together, then regenerate the project.
+2. Copy `Config/Signing.local.xcconfig.example` to the ignored `Config/Signing.local.xcconfig`. Set `DEVELOPMENT_TEAM` to your Apple team and `LIFTLOG_BUNDLE_IDENTIFIER` to your registered app identifier. Both the app and widget use automatic signing; the widget identifier adds `.Widgets`. The team must support iCloud provisioning. These settings are read at build time and do not require project regeneration.
+3. Enable iCloud with **iCloud Documents** and register/select a container belonging to your team. The public configuration defaults to **`iCloud.com.liftlog.app`**. Ensure the App ID and provisioning profile include the selected container and the CloudDocuments entitlement.
+4. If changing the container identifier, update `project.yml` and `CloudBackupRepository.containerIdentifier` together, then regenerate the project to update `LiftLog/Info.plist` and the entitlements. Changing only the app bundle identifier does not change the iCloud container or migrate existing backups.
 5. Install on an iPhone signed in to iCloud with iCloud Drive enabled for Lift Log. Open Settings → iCloud Drive Backups.
 
 The entitlements and public iCloud Drive folder metadata are checked into the project. A simulator build with signing disabled validates compilation, but does not provision the Apple container or verify real iCloud transfers.

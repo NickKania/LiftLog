@@ -17,6 +17,7 @@ Templates, workout execution, and history work locally without an account. The o
 - Follow rest countdowns, total workout time, and the next exercise and set on the Lock Screen and Dynamic Island with a Live Activity.
 - Back up to iCloud Drive automatically or on demand, and restore a selected backup from Settings.
 - Choose pounds or kilograms.
+- Explore the Health dashboard for workout consistency, a calendar activity map, duration statistics, lifting-weight progression and records, and optional Apple Health calories and heart rate by template.
 - Import completed workouts from Strong CSV exports, with exercise matching, session selection, and duplicate protection.
 - Connect a ChatGPT account, select an available model, and ask questions about your workout data.
 - Keep saved assistant chats with editable Luna-generated titles, and run several conversations at once.
@@ -24,7 +25,7 @@ Templates, workout execution, and history work locally without an account. The o
 - Explicitly tag Apple Health data for an active or completed session to ask about heart rate, active energy, and steps or visualize those measurements.
 - Review and apply assistant proposals to create workouts or templates and add, change, or remove their exercises.
 
-The Workout tab holds templates and the current workout. The History tab shows finished sessions, and the Assistant tab contains saved ChatGPT conversations. The Settings tab holds weight units, assistant preferences, and iCloud Drive backups.
+The Workout tab holds templates and the current workout. The History tab shows finished sessions, the Health tab tracks training trends, and the Assistant tab contains saved ChatGPT conversations. The Settings tab holds weight units, assistant preferences, and iCloud Drive backups.
 
 See [ChatGPT integration](docs/CHATGPT_ASSISTANT.md) for eligibility, sign-in, data sharing, and current image-generation limitations. The integration uses the documented subscription OAuth flow and does not require an API key.
 
@@ -42,9 +43,9 @@ xcodegen generate
 open LiftLog.xcodeproj
 ```
 
-Select the `LiftLog` scheme and an iPhone simulator, then Run. The project uses automatic signing for team `2CUP94Z3Q9` and bundle ID `nkania.WeightsTracker`, matching the GymIntelligence app in App Store Connect. For a physical iPhone, use that team and the `iCloud.com.liftlog.app` iCloud Documents container. See [storage and backup setup](docs/STORAGE.md).
+Select the `LiftLog` scheme and an iPhone simulator, then Run. Public signing defaults live in `Config/Signing.xcconfig`: bundle ID `com.liftlog.app` and no development team. For a physical iPhone or distribution build, copy `Config/Signing.local.xcconfig.example` to `Config/Signing.local.xcconfig`, then set your Apple development team and registered app bundle ID. The widget uses the app's bundle ID followed by `.Widgets`. The local file is ignored by Git and read at build time; do not commit it or copy its values into the generated project. See [storage and backup setup](docs/STORAGE.md) for iCloud provisioning.
 
-For TestFlight, push the generated project together with `project.yml`, then start the **Internal TestFlight Build** Xcode Cloud workflow on that revision. Its iOS archive uses **TestFlight (Internal Testing Only)** distribution preparation, and its **TestFlight Internal Testing** post-action delivers to the existing **Dev Preview** group. Xcode Cloud builds committed remote files; local Signing & Capabilities edits do not affect a cloud build until pushed. Register both `nkania.WeightsTracker` and the widget extension ID `nkania.WeightsTracker.Widgets` in Apple Developer before building; Xcode Cloud cannot register a missing extension identifier. Keep both HealthKit purpose strings (`NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription`) in `project.yml`, even though the integration only requests read access, so App Store upload validation succeeds.
+For TestFlight, commit the generated project, `project.yml`, and public configuration files, then configure your archive/distribution workflow and tester group in App Store Connect or Xcode Cloud. A cloud checkout does not contain your ignored local signing file: supply `DEVELOPMENT_TEAM` and `LIFTLOG_BUNDLE_IDENTIFIER` as build-setting overrides, or create `Config/Signing.local.xcconfig` in your CI setup before the build. For Xcode Cloud, create that file from CI-provided values in a post-clone script. Register both your app bundle ID and its `.Widgets` extension ID in Apple Developer before building. Keep both HealthKit purpose strings (`NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription`) in `project.yml`, even though the integration only requests read access, so App Store upload validation succeeds.
 
 The XcodeGen configuration in `project.yml` is the project source of truth; regenerate the Xcode project after changing it.
 
@@ -70,4 +71,6 @@ Existing `workouts.json` data migrates automatically on first launch; the origin
 
 Deleting the app removes local files. Uploaded iCloud backups remain available for restoration after reinstalling. The app does not include cloud sync, an Apple Watch app, or social features. ChatGPT credentials are stored separately in the iOS Keychain; disconnect from Settings before uninstalling if you want to end the renewable session.
 
-Apple Health is read-only and opt-in for each assistant message. In **Assistant → @ → Apple Health**, select a session, then send your question. Only that session’s available heart rate, active energy, and step measurements are read; an active session ends at the request time. Ordinary workout tags never include Health data. Health-based replies and charts are temporary and excluded from saved chats, automatic titles, later requests, and workout backups. Tag Health again to refresh or ask a follow-up. See [Health tagging](docs/CHATGPT_ASSISTANT.md#tagging-apple-health) for permissions and limitations.
+Apple Health is read-only. In **Health → Activity**, explicitly load readings for the selected workout range to see available active calories and average heart rate by template. Dashboard readings stay in memory on the device; they are not added to chats or workout backups. Missing Health readings are shown as unavailable, not estimated. Overlapping calorie readings are excluded with a warning to avoid double-counting; partial overlaps can leave some calories uncounted. Switching the selected range clears readings even if it contains the same workouts. The Weight section tracks lifting weights from completed sets, converted to your preferred unit; it does not track body weight.
+
+Apple Health is separately opt-in for each assistant message. In **Assistant → @ → Apple Health**, select a session, then send your question. Only that session’s available heart rate, active energy, and step measurements are read; an active session ends at the request time. Ordinary workout tags never include Health data. Health-based replies and charts are temporary and excluded from saved chats, automatic titles, later requests, and workout backups. Tag Health again to refresh or ask a follow-up. See [Health tagging](docs/CHATGPT_ASSISTANT.md#tagging-apple-health) for permissions and limitations.
