@@ -25,6 +25,11 @@ struct LiftLogApp: App {
         #else
         workoutStore = WorkoutStore()
         #endif
+        #if DEBUG
+        if HealthDashboardUITestFixture.isEnabled {
+            HealthDashboardUITestFixture.seedWorkouts(in: workoutStore)
+        }
+        #endif
         let accountStore: ChatGPTAccountStore
         #if DEBUG
         accountStore = AssistantUITestFixture.isEnabled ? AssistantUITestFixture.makeAccounts() : ChatGPTAccountStore()

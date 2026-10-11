@@ -41,6 +41,12 @@ Strong CSV imports create completed history sessions through a separate preview 
 
 Editing weight or target reps in the template editor applies both values to every set in that exercise entry. Editing weight or actual reps in the workout editor applies both values only to incomplete sets in that exercise entry, preserving completed results. Completed sets' numeric fields are disabled until the set is marked incomplete. Set identifiers, targets, and completion flags remain independent. Other exercise entries, source templates, and past sessions are unaffected by active workout edits.
 
+## Health dashboard
+
+The Health tab projects completed workout history into Consistency, Weight, and Activity sections. `HealthDashboardAnalytics` owns calendar-based range filtering, weekday and daily counts, durations, exercise progression, and maximum recorded set weights. Comparisons convert recorded units into the current display unit without changing saved sessions. Weight refers to lifting weight, not body weight; progress uses each session's heaviest completed set for an exercise.
+
+`HealthDashboardHealthStore` reads session-scoped Apple Health snapshots only after an explicit load. It keeps readings in memory, cancels stale requests when the workout selection changes, and reports partial failures. The dashboard and assistant have independent data lifecycles: viewing dashboard readings does not attach them to a chat, title request, or backup. Missing measurements remain unavailable. The existing read-only provider handles authorization and HealthKit queries.
+
 ## Persistence
 
 The store saves a relational SQLite database in `Application Support/LiftLog/workouts.sqlite` inside the app sandbox, using Apple’s system SQLite library. `WorkoutDatabase` handles version-3 tables for preferences, template/session records, ordered exercise snapshots, ordered sets, and personal exercises. `SQLiteConnection` owns short-lived connections and bound SQL parameters. Startup opens the working database with write access so SQLite can recover an interrupted transaction’s hot journal; incoming backup files are inspected read-only. Valid changes to the active workout are saved so that a user can resume after the app is closed.
@@ -76,4 +82,4 @@ Luna title generation resolves the highest available numeric Luna model from the
 
 The core contains workout rules and persistence; SwiftUI screens own navigation and temporary form input. Keep new business rules in the core so they can be tested without simulator UI automation.
 
-Personal-record tracking, cloud sync, Apple Health, and Apple Watch remain outside the implementation. Unit handling must preserve the meaning of saved weights when adding conversion or additional measurement types.
+Cloud sync, body-weight tracking, and an Apple Watch app remain outside the implementation. Unit handling must preserve the meaning of saved weights when adding conversion or additional measurement types.

@@ -37,7 +37,7 @@
 		<true/>
 	</dict>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Lift Log reads heart rate, active energy, and steps for a workout only when you select an Apple Health @ tag. Attached data can be shown in charts and sent to the AI assistant with your message.</string>
+	<string>Lift Log reads heart rate, active energy, and steps when you load Apple Health in the Health dashboard or send an Apple Health tag to the assistant. Dashboard readings stay on your device. Tagged readings are sent with your assistant message.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Lift Log uses Apple Health to read selected workout measurements. Lift Log does not save or update data in Apple Health.</string>
 	<key>NSSupportsLiveActivities</key>

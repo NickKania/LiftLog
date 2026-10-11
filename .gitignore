@@ -4,3 +4,34 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 .swiftpm/
+
+# Local environment, credentials, and signing configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+secrets.json
+credentials.json
+auth.json
+/Config/Signing.local.xcconfig
+*.p8
+*.p12
+*.pfx
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+
+# Personal workout data, backups, and assistant conversations
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+workouts.json
+assistant-chats*.json
+
+# Exported builds and test results
+*.ipa
+*.dSYM/
+*.xcarchive/
+*.xcresult/

@@ -17,7 +17,7 @@ Import adds completed sessions to History. Strong CSV is the first supported for
 
 Imported sets have no target reps, and sessions have no template reference. Import does not create reusable templates or infer planned targets from completed work. Zero weight is valid for bodyweight exercises. Negative/nonfinite weights, fractional/nonpositive reps, and invalid dates or durations cannot become saved workout values.
 
-The supplied example has one 55-minute session, five exercises, 20 completed sets, and 20 rest-timer rows. Strong's example header contains neither weight units nor a time zone. Both need user confirmation; current app/device preferences are only initial selections, not inferred source facts.
+The [synthetic test fixture](../Tests/LiftLogCoreTests/Fixtures/strong_workouts.csv) has one invented 30-minute session, five exercises, 20 completed sets, and 20 rest-timer rows. It contains no exported user records; see [fixture provenance](../Tests/LiftLogCoreTests/Fixtures/README.md). The Strong CSV header contains neither weight units nor a time zone. Both need user confirmation; current app/device preferences are only initial selections, not inferred source facts.
 
 The file picker accepts UTF-8 CSV files up to 5 MB. Durations must be positive and no longer than seven days. Warning record numbers count parsed CSV records, including the header, rather than physical lines inside quoted fields.
 
