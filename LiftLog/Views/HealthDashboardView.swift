@@ -69,7 +69,7 @@ struct HealthDashboardView: View {
                     case .weight:
                         HealthDashboardWeightView(analytics: analytics, unit: store.unit)
                     case .activity:
-                        HealthDashboardActivityView(workouts: analytics.workouts)
+                        HealthDashboardActivityView(workouts: analytics.workouts, range: range)
                     }
                 }
             }

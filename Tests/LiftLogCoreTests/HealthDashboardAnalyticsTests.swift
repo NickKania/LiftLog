@@ -97,6 +97,7 @@ final class HealthDashboardAnalyticsTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(progression.changePercent), 21.2542442, accuracy: 0.000001)
         XCTAssertEqual(analytics.personalRecords.first?.date, last.startedAt)
         XCTAssertEqual(analytics.personalRecords.first?.reps, 4)
+        XCTAssertEqual(HealthDashboardAnalytics.personalRecords(for: analytics.exercises), analytics.personalRecords)
 
         let kilograms = HealthDashboardAnalytics(workouts: [first, last], unit: .kg, range: .all,
             now: date(2026, 3, 4), calendar: calendar)
@@ -177,6 +178,131 @@ final class HealthDashboardAnalyticsTests: XCTestCase {
         let rejected = HealthDashboardActivity(workouts: [session], snapshots: [session.id: wrong], now: now)
         XCTAssertNil(rejected.averageHeartRate)
         XCTAssertNil(rejected.activeEnergy)
+    }
+
+    func testIdenticalEnergyWindowsCountOnlyStableFirstReadingWithoutChangingHeartRateOrTime() {
+        let firstID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let secondID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+        var first = workout(date(2026, 3, 1))
+        var duplicate = workout(first.startedAt)
+        first.id = firstID
+        duplicate.id = secondID
+        let readings = [first.id: snapshot(first, rates: [100], energies: [50]),
+                        duplicate.id: snapshot(duplicate, rates: [140], energies: [90])]
+        let activity = HealthDashboardActivity(workouts: [duplicate, first], snapshots: readings, now: date(2026, 3, 2))
+        XCTAssertEqual(activity.activeEnergy, 50)
+        XCTAssertEqual(activity.energyWorkoutCount, 1)
+        XCTAssertEqual(activity.excludedEnergyWorkoutCount, 1)
+        XCTAssertEqual(activity, HealthDashboardActivity(workouts: [first, duplicate], snapshots: readings, now: date(2026, 3, 2)))
+        XCTAssertEqual(activity.workoutCount, 2)
+        XCTAssertEqual(activity.totalDuration, 3600)
+        XCTAssertEqual(activity.averageHeartRate, 120)
+        XCTAssertEqual(activity.heartRateWorkoutCount, 2)
+    }
+
+    func testPartiallyOverlappingEnergyWindowsExcludeWholeLaterReadingEvenWithDistinctSampleDates() {
+        let first = workout(date(2026, 3, 1, 12), duration: 3600)
+        let overlapping = workout(date(2026, 3, 1, 12, 30), duration: 3600)
+        // Samples are interval totals with a representative date. Their timestamps
+        // cannot reveal which fraction of a reading overlaps the other workout.
+        let laterReading = WorkoutHealthSnapshot(workoutID: overlapping.id, workoutName: overlapping.name,
+            startedAt: overlapping.startedAt, endedAt: overlapping.finishedAt!, fetchedAt: overlapping.finishedAt!,
+            metrics: [WorkoutHealthMetricSeries(metric: .activeEnergy,
+                samples: [WorkoutHealthSample(date: overlapping.finishedAt!, value: 70)])])
+        let activity = HealthDashboardActivity(workouts: [first, overlapping], snapshots: [
+            first.id: snapshot(first, rates: [], energies: [40]), overlapping.id: laterReading
+        ], now: date(2026, 3, 2))
+        XCTAssertEqual(activity.activeEnergy, 40)
+        XCTAssertEqual(activity.energyWorkoutCount, 1)
+        XCTAssertEqual(activity.excludedEnergyWorkoutCount, 1)
+    }
+
+    func testTouchingEnergyWindowsBothCountAndRejectedOverlapDoesNotBlockLaterReading() {
+        let first = workout(date(2026, 3, 1, 12), duration: 1800)
+        let overlapping = workout(date(2026, 3, 1, 12, 15), duration: 7200)
+        let touching = workout(date(2026, 3, 1, 12, 30), duration: 1800)
+        let activity = HealthDashboardActivity(workouts: [overlapping, touching, first], snapshots: [
+            first.id: snapshot(first, rates: [], energies: [40]),
+            overlapping.id: snapshot(overlapping, rates: [], energies: [150]),
+            touching.id: snapshot(touching, rates: [], energies: [60])
+        ], now: date(2026, 3, 2))
+        XCTAssertEqual(activity.activeEnergy, 100)
+        XCTAssertEqual(activity.energyWorkoutCount, 2)
+        XCTAssertEqual(activity.excludedEnergyWorkoutCount, 1)
+    }
+
+    func testCrossTemplateOverlapUsesSameGlobalSelectionForTotalsAndTemplateCoverage() throws {
+        let templateA = UUID(), templateB = UUID()
+        let first = workout(date(2026, 3, 1, 12), duration: 3600, templateID: templateA)
+        let overlapping = workout(date(2026, 3, 1, 12, 30), duration: 3600, templateID: templateB)
+        let later = workout(date(2026, 3, 1, 14), duration: 1800, templateID: templateB)
+        let activity = HealthDashboardActivity(workouts: [overlapping, first, later], snapshots: [
+            first.id: snapshot(first, rates: [100], energies: [40]),
+            overlapping.id: snapshot(overlapping, rates: [120], energies: [70]),
+            later.id: snapshot(later, rates: [140], energies: [20])
+        ], now: date(2026, 3, 2))
+        XCTAssertEqual(activity.activeEnergy, 60)
+        XCTAssertEqual(activity.energyWorkoutCount, 2)
+        XCTAssertEqual(activity.excludedEnergyWorkoutCount, 1)
+        XCTAssertEqual(activity.templates.compactMap(\.activeEnergy).reduce(0, +), activity.activeEnergy)
+        let groupA = try XCTUnwrap(activity.templates.first(where: { $0.templateID == templateA }))
+        let groupB = try XCTUnwrap(activity.templates.first(where: { $0.templateID == templateB }))
+        XCTAssertEqual(groupA.activeEnergy, 40)
+        XCTAssertEqual(groupA.energyWorkoutCount, 1)
+        XCTAssertEqual(groupA.excludedEnergyWorkoutCount, 0)
+        XCTAssertEqual(groupB.activeEnergy, 20)
+        XCTAssertEqual(groupB.energyWorkoutCount, 1)
+        XCTAssertEqual(groupB.excludedEnergyWorkoutCount, 1)
+        XCTAssertEqual(groupB.averageHeartRate, 130)
+        XCTAssertEqual(groupB.heartRateWorkoutCount, 2)
+    }
+
+    func testEarlierMissingOrInvalidEnergyDoesNotExcludeOverlappingValidReading() {
+        let first = workout(date(2026, 3, 1, 12), duration: 7200)
+        let invalid = workout(date(2026, 3, 1, 12, 15), duration: 3600)
+        let valid = workout(date(2026, 3, 1, 12, 30), duration: 1800)
+        let activity = HealthDashboardActivity(workouts: [first, invalid, valid], snapshots: [
+            first.id: snapshot(first, rates: [100], energies: []),
+            invalid.id: snapshot(invalid, rates: [], energies: [.nan, -1]),
+            valid.id: snapshot(valid, rates: [140], energies: [35])
+        ], now: date(2026, 3, 2))
+        XCTAssertEqual(activity.activeEnergy, 35)
+        XCTAssertEqual(activity.energyWorkoutCount, 1)
+        XCTAssertEqual(activity.excludedEnergyWorkoutCount, 0)
+        XCTAssertEqual(activity.averageHeartRate, 120)
+    }
+
+    func testEnergySelectionUsesScopedSnapshotEndAndIsIndependentOfInputOrdering() {
+        let first = workout(date(2026, 3, 1, 12), duration: 7200)
+        let later = workout(date(2026, 3, 1, 12, 30), duration: 1800)
+        let partial = WorkoutHealthSnapshot(workoutID: first.id, workoutName: first.name, startedAt: first.startedAt,
+            endedAt: later.startedAt, fetchedAt: first.finishedAt!, metrics: [
+                WorkoutHealthMetricSeries(metric: .activeEnergy,
+                    samples: [WorkoutHealthSample(date: first.startedAt, value: 25)])
+            ])
+        let readings = [first.id: partial, later.id: snapshot(later, rates: [], energies: [45])]
+        let forward = HealthDashboardActivity(workouts: [first, later], snapshots: readings, now: date(2026, 3, 2))
+        let reverse = HealthDashboardActivity(workouts: [later, first], snapshots: readings, now: date(2026, 3, 2))
+        XCTAssertEqual(forward.activeEnergy, 70)
+        XCTAssertEqual(forward.energyWorkoutCount, 2)
+        XCTAssertEqual(forward.excludedEnergyWorkoutCount, 0)
+        XCTAssertEqual(forward, reverse)
+    }
+
+    func testMeasuredZeroEnergyStillReservesWindowAndExcludedTemplateRemainsUnmeasured() throws {
+        let first = workout(date(2026, 3, 1, 12), duration: 3600, templateID: UUID())
+        let overlapping = workout(date(2026, 3, 1, 12, 30), duration: 1800, templateID: UUID())
+        let activity = HealthDashboardActivity(workouts: [first, overlapping], snapshots: [
+            first.id: snapshot(first, rates: [], energies: [0]),
+            overlapping.id: snapshot(overlapping, rates: [], energies: [70])
+        ], now: date(2026, 3, 2))
+        XCTAssertEqual(activity.activeEnergy, 0)
+        XCTAssertEqual(activity.energyWorkoutCount, 1)
+        XCTAssertEqual(activity.excludedEnergyWorkoutCount, 1)
+        let omitted = try XCTUnwrap(activity.templates.first(where: { $0.templateID == overlapping.templateID }))
+        XCTAssertNil(omitted.activeEnergy)
+        XCTAssertEqual(omitted.energyWorkoutCount, 0)
+        XCTAssertEqual(omitted.excludedEnergyWorkoutCount, 1)
     }
 
     private func snapshot(_ workout: WorkoutSession, rates: [Double], energies: [Double]) -> WorkoutHealthSnapshot {

@@ -67,7 +67,7 @@ final class HealthDashboardUITests: XCTestCase {
     func testHealthMetricsRequireExplicitLoadAndReloadAfterRangeChange() {
         let app = launchDashboard()
         defer { app.terminate() }
-        selectRange("All time", in: app)
+        selectRange("Year", in: app)
         selectSection("Activity", in: app)
 
         XCTAssertTrue(element("healthWorkoutTimeTotal", in: app).exists)
@@ -85,6 +85,19 @@ final class HealthDashboardUITests: XCTestCase {
         XCTAssertTrue(element("healthAverageHeartRate", in: app).label.contains("bpm"))
         XCTAssertFalse(app.alerts.firstMatch.exists, "The synthetic provider must not prompt for HealthKit access.")
 
+        // Both Year and All time include the same twelve fixture sessions. The
+        // selected range still changes consent context and must clear readings.
+        selectRange("All time", in: app)
+        reveal(load, in: app)
+        XCTAssertTrue(load.label.contains("Load Apple Health"))
+        assertLabel("healthCaloriesBurned", contains: "Not loaded", in: app)
+        assertLabel("healthAverageHeartRate", contains: "Not loaded", in: app)
+        XCTAssertFalse(element("healthDashboardReadStatus", in: app).exists)
+        reveal(load, in: app, upward: false)
+        load.tap()
+        assertLabel("healthCaloriesBurned", contains: "3,540", in: app)
+        assertLabel("healthAverageHeartRate", contains: "129.5", in: app)
+
         selectRange("Month", in: app)
         reveal(load, in: app)
         XCTAssertTrue(load.label.contains("Load Apple Health"))
@@ -97,10 +110,28 @@ final class HealthDashboardUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchDashboard(populated: Bool = true) -> XCUIApplication {
+    func testOverlappingWorkoutsDoNotDoubleCountCaloriesAndExplainCoverage() {
+        let app = launchDashboard(overlapping: true)
+        defer { app.terminate() }
+        selectRange("All time", in: app)
+        assertValue("healthWorkoutCount", equals: "13", in: app)
+        selectSection("Activity", in: app)
+        let load = app.buttons["loadDashboardHealthButton"]
+        reveal(load, in: app)
+        load.tap()
+
+        assertLabel("healthCaloriesBurned", contains: "3,540", in: app)
+        assertLabel("healthCaloriesBurned", contains: "12 of 13 workouts", in: app)
+        assertLabel("healthCaloriesOverlapWarning", contains: "1 overlapping workout", in: app)
+        keepScreenshot(of: app, named: "Overlapping calorie readings excluded")
+    }
+
+    @MainActor
+    private func launchDashboard(populated: Bool = true, overlapping: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         if populated { app.launchArguments.append("--health-dashboard-ui-fixture") }
+        if overlapping { app.launchArguments.append("--health-dashboard-overlap-ui-fixture") }
         app.launch()
         let tab = app.tabBars.buttons["Health"]
         XCTAssertTrue(tab.waitForExistence(timeout: 10))

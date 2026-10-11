@@ -3,11 +3,14 @@ import SwiftUI
 
 struct HealthDashboardActivityView: View {
     let workouts: [WorkoutSession]
+    let range: HealthDashboardRange
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var health: HealthDashboardHealthStore
 
-    init(workouts: [WorkoutSession], healthDataProvider: (any WorkoutHealthDataProviding)? = nil) {
+    init(workouts: [WorkoutSession], range: HealthDashboardRange = .all,
+         healthDataProvider: (any WorkoutHealthDataProviding)? = nil) {
         self.workouts = workouts
+        self.range = range
         let provider: any WorkoutHealthDataProviding
         if let healthDataProvider {
             provider = healthDataProvider
@@ -38,8 +41,9 @@ struct HealthDashboardActivityView: View {
             healthReadings
             templateActivity
         }
-        .onAppear { health.updateWorkouts(workouts) }
-        .onChange(of: workouts) { _, selection in health.updateWorkouts(selection) }
+        .onAppear { health.updateWorkouts(workouts, range: range) }
+        .onChange(of: workouts) { _, selection in health.updateWorkouts(selection, range: range) }
+        .onChange(of: range) { _, selection in health.updateWorkouts(workouts, range: selection) }
         .onDisappear { health.cancel() }
     }
 
@@ -105,7 +109,7 @@ struct HealthDashboardActivityView: View {
                 .accessibilityIdentifier("healthDashboardReadProgress")
             } else {
                 Button {
-                    health.updateWorkouts(workouts)
+                    health.updateWorkouts(workouts, range: range)
                     health.load()
                 } label: {
                     Label(health.hasLoaded ? "Refresh Apple Health" : "Load Apple Health", systemImage: "heart.text.clipboard")
@@ -133,6 +137,14 @@ struct HealthDashboardActivityView: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("healthDashboardReadStatus")
+            }
+            if activity.excludedEnergyWorkoutCount > 0 {
+                let count = activity.excludedEnergyWorkoutCount
+                Label("Calories from \(count) overlapping \(count == 1 ? "workout were" : "workouts were") excluded to avoid counting the same time twice. Partial overlaps may leave some calories out.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("healthCaloriesOverlapWarning")
             }
             ForEach(health.failures) { failure in
                 Label("\(failure.workoutName): \(failure.message)", systemImage: "exclamationmark.triangle")

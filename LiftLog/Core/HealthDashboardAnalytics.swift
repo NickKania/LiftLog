@@ -87,6 +87,7 @@ struct HealthDashboardTemplateActivity: Identifiable, Equatable {
     let activeEnergy: Double?
     let heartRateWorkoutCount: Int
     let energyWorkoutCount: Int
+    let excludedEnergyWorkoutCount: Int
     var averageDuration: TimeInterval? { workoutCount > 0 ? totalDuration / Double(workoutCount) : nil }
 }
 
@@ -98,6 +99,8 @@ struct HealthDashboardActivity: Equatable {
     let activeEnergy: Double?
     let heartRateWorkoutCount: Int
     let energyWorkoutCount: Int
+    /// Energy-bearing readings omitted because their windows overlap a retained reading.
+    let excludedEnergyWorkoutCount: Int
     let templates: [HealthDashboardTemplateActivity]
     var averageDuration: TimeInterval? { workoutCount > 0 ? totalDuration / Double(workoutCount) : nil }
 }
@@ -199,6 +202,11 @@ struct HealthDashboardAnalytics {
 
     /// Maximum loads within the selected range, choosing the most recent matching set.
     var personalRecords: [HealthDashboardRecord] {
+        Self.personalRecords(for: exercises)
+    }
+
+    /// Reuses already-derived progression data when a view also needs exercise charts.
+    static func personalRecords(for exercises: [HealthDashboardExercise]) -> [HealthDashboardRecord] {
         exercises.compactMap { exercise in
             let maximum = exercise.maximumWeight
             guard let point = exercise.points.last(where: { $0.weight == maximum }) else { return nil }
@@ -208,9 +216,26 @@ struct HealthDashboardAnalytics {
     }
 
     func activity(snapshots: [UUID: WorkoutHealthSnapshot]) -> HealthDashboardActivity {
-        var metrics: [UUID: (heartRate: Double?, energy: Double?)] = [:]
+        var metrics: [UUID: (heartRate: Double?, energy: Double?, energyInterval: DateInterval?)] = [:]
+        var excludedEnergyWorkoutIDs: Set<UUID> = []
+        var lastEnergyEnd: Date?
         for workout in workouts {
-            metrics[workout.id] = sessionMetrics(workout: workout, snapshot: snapshots[workout.id])
+            var session = sessionMetrics(workout: workout, snapshot: snapshots[workout.id])
+            if session.energy != nil, let interval = session.energyInterval, interval.duration > 0 {
+                // Workouts are ordered by start, then stable UUID. Retain the first
+                // energy-bearing scoped window and treat windows as half-open, so
+                // touching endpoints can both count. Sample dates represent lossy
+                // interval buckets and cannot support subtracting overlap precisely.
+                // Excluding the whole later reading avoids double counting but can
+                // undercount a partially overlapping session's nonoverlapping energy.
+                if let lastEnergyEnd, interval.start < lastEnergyEnd {
+                    session.energy = nil
+                    excludedEnergyWorkoutIDs.insert(workout.id)
+                } else {
+                    lastEnergyEnd = interval.end
+                }
+            }
+            metrics[workout.id] = session
         }
         let heartRates = workouts.compactMap { metrics[$0.id]?.heartRate }
         let energies = workouts.compactMap { metrics[$0.id]?.energy }
@@ -223,22 +248,26 @@ struct HealthDashboardAnalytics {
                 workoutCount: sessions.count,
                 totalDuration: sessions.reduce(0) { $0 + ($1.finishedAt?.timeIntervalSince($1.startedAt) ?? 0) },
                 averageHeartRate: Self.average(rates), activeEnergy: energy.isEmpty ? nil : energy.reduce(0, +),
-                heartRateWorkoutCount: rates.count, energyWorkoutCount: energy.count)
+                heartRateWorkoutCount: rates.count, energyWorkoutCount: energy.count,
+                excludedEnergyWorkoutCount: sessions.filter { excludedEnergyWorkoutIDs.contains($0.id) }.count)
         }.sorted {
             let order = $0.name.localizedStandardCompare($1.name)
             return order == .orderedSame ? $0.id < $1.id : order == .orderedAscending
         }
         return HealthDashboardActivity(workoutCount: workoutCount, totalDuration: totalDuration, longestDuration: longestDuration,
             averageHeartRate: Self.average(heartRates), activeEnergy: energies.isEmpty ? nil : energies.reduce(0, +),
-            heartRateWorkoutCount: heartRates.count, energyWorkoutCount: energies.count, templates: templates)
+            heartRateWorkoutCount: heartRates.count, energyWorkoutCount: energies.count,
+            excludedEnergyWorkoutCount: excludedEnergyWorkoutIDs.count, templates: templates)
     }
 
-    private func sessionMetrics(workout: WorkoutSession, snapshot: WorkoutHealthSnapshot?) -> (heartRate: Double?, energy: Double?) {
-        guard let snapshot, let scoped = try? snapshot.scoped(to: workout, through: now) else { return (nil, nil) }
+    private func sessionMetrics(workout: WorkoutSession, snapshot: WorkoutHealthSnapshot?)
+        -> (heartRate: Double?, energy: Double?, energyInterval: DateInterval?) {
+        guard let snapshot, let scoped = try? snapshot.scoped(to: workout, through: now) else { return (nil, nil, nil) }
         let heartRates = scoped.metrics.filter { $0.metric == .heartRate }.flatMap(\.samples).map(\.value)
         let energies = scoped.metrics.filter { $0.metric == .activeEnergy }.flatMap(\.samples).map(\.value)
         let energy = energies.isEmpty ? nil : energies.reduce(0, +)
-        return (Self.average(heartRates), energy.flatMap { $0.isFinite ? $0 : nil })
+        return (Self.average(heartRates), energy.flatMap { $0.isFinite ? $0 : nil },
+                DateInterval(start: scoped.startedAt, end: scoped.endedAt))
     }
 
     private static func average(_ values: [Double]) -> Double? {

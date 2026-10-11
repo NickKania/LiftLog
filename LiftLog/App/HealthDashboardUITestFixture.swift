@@ -32,7 +32,7 @@ enum HealthDashboardUITestFixture {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: now)
         let dayOffsets = [1, 3, 5, 8, 12, 18, 24, 35, 50, 70, 105, 150]
-        let sessions = dayOffsets.enumerated().map { index, daysAgo in
+        var sessions = dayOffsets.enumerated().map { index, daysAgo in
             let day = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
             let start = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: day)!
             let templateIndex = index % 2
@@ -54,6 +54,20 @@ enum HealthDashboardUITestFixture {
                 name: template.name, startedAt: start,
                 finishedAt: start.addingTimeInterval(Double(32 + index % 5 * 4) * 60), unit: unit,
                 importSourceKey: "health-dashboard-ui-fixture-\(index)", exercises: entries)
+        }
+        if ProcessInfo.processInfo.arguments.contains("--health-dashboard-overlap-ui-fixture") {
+            // Simulate importing a workout already recorded locally, with distinct
+            // record identities but an identical Health time window.
+            var duplicate = sessions[0]
+            duplicate.id = identifier(20_000)
+            duplicate.importSourceKey = "health-dashboard-overlap-0"
+            for index in duplicate.exercises.indices {
+                duplicate.exercises[index].id = identifier(30_000 + index)
+                for setIndex in duplicate.exercises[index].sets.indices {
+                    duplicate.exercises[index].sets[setIndex].id = identifier(40_000 + index * 10 + setIndex)
+                }
+            }
+            sessions.append(duplicate)
         }
         precondition(store.importWorkouts(sessions) != nil, "Could not save dashboard fixture workouts.")
     }

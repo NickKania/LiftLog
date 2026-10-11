@@ -126,6 +126,66 @@ final class HealthDashboardHealthStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testRangeChangeClearsLoadedReadingsEvenWhenWorkoutsAreIdentical() async throws {
+        let provider = DashboardHealthProvider()
+        let store = HealthDashboardHealthStore(provider: provider)
+        let sessions = [workout("Measured"), workout("Failed")]
+        provider.outcomes[sessions[1].id] = .failure
+        store.updateWorkouts(sessions, range: .year)
+        let task = try XCTUnwrap(store.load())
+        await task.value
+        XCTAssertEqual(store.snapshots.count, 1)
+        XCTAssertEqual(store.failures.count, 1)
+        XCTAssertEqual(store.completedCount, 2)
+        XCTAssertTrue(store.hasLoaded)
+
+        store.updateWorkouts(sessions, range: .year)
+        XCTAssertTrue(store.hasLoaded, "The same workouts and range preserve requested readings")
+        store.updateWorkouts(sessions, range: .all)
+        await Task.yield()
+        XCTAssertTrue(store.snapshots.isEmpty)
+        XCTAssertTrue(store.failures.isEmpty)
+        XCTAssertEqual(store.completedCount, 0)
+        XCTAssertFalse(store.hasLoaded)
+        XCTAssertFalse(store.isLoading)
+        XCTAssertEqual(provider.reads.count, 2, "Changing the range does not automatically read Health")
+
+        let reload = try XCTUnwrap(store.load())
+        await reload.value
+        XCTAssertEqual(provider.reads.count, 4)
+        XCTAssertEqual(store.snapshots.count, 1)
+        XCTAssertTrue(store.hasLoaded)
+    }
+
+    @MainActor
+    func testRangeChangeClearsPartialResultsAndRejectsSuspendedStaleRead() async throws {
+        let provider = DashboardHealthProvider()
+        provider.suspends = true
+        let store = HealthDashboardHealthStore(provider: provider)
+        let sessions = [workout("First"), workout("Second"), workout("Third")]
+        store.updateWorkouts(sessions, range: .year)
+        let staleTask = try XCTUnwrap(store.load())
+        await waitForReads(1, provider: provider)
+        provider.release(0)
+        await waitForReads(2, provider: provider)
+        XCTAssertEqual(store.snapshots.count, 1)
+        XCTAssertEqual(store.completedCount, 1)
+
+        store.updateWorkouts(sessions, range: .all)
+        XCTAssertTrue(store.snapshots.isEmpty)
+        XCTAssertEqual(store.completedCount, 0)
+        XCTAssertFalse(store.isLoading)
+        XCTAssertFalse(store.hasLoaded)
+        provider.release(1)
+        await staleTask.value
+        XCTAssertTrue(store.snapshots.isEmpty)
+        XCTAssertTrue(store.failures.isEmpty)
+        XCTAssertEqual(store.completedCount, 0)
+        XCTAssertFalse(store.hasLoaded)
+        XCTAssertEqual(provider.reads.count, 2, "The old read must not continue or start a replacement")
+    }
+
+    @MainActor
     func testOlderRefreshCannotOverwriteNewerResult() async throws {
         let provider = DashboardHealthProvider()
         provider.suspends = true

@@ -8,11 +8,7 @@ struct HealthDashboardWeightView: View {
     @State private var selectedExerciseID: UUID?
     @State private var selectedDate: Date?
 
-    private var exercise: HealthDashboardExercise? {
-        analytics.exercises.first { $0.id == selectedExerciseID } ?? analytics.exercises.first
-    }
-
-    private var selectedPoint: HealthDashboardWeightPoint? {
+    private func nearestPoint(in exercise: HealthDashboardExercise?) -> HealthDashboardWeightPoint? {
         guard let exercise else { return nil }
         guard let selectedDate else { return exercise.points.last }
         return exercise.points.min {
@@ -21,14 +17,21 @@ struct HealthDashboardWeightView: View {
     }
 
     var body: some View {
+        let exercises = analytics.exercises
+        let exercise = exercises.first { $0.id == selectedExerciseID } ?? exercises.first
+        let selectedPoint = nearestPoint(in: exercise)
+        let records = HealthDashboardAnalytics.personalRecords(for: exercises)
+        let exerciseIDs = exercises.map(\.id)
+        let workoutIDs = analytics.workouts.map(\.id)
+
         VStack(spacing: 20) {
             if let exercise {
                 HealthDashboardCard(title: "Lifting progress", subtitle: "Your heaviest completed set in each workout", systemImage: "dumbbell.fill") {
                     Picker("Exercise", selection: Binding<UUID?>(
-                        get: { self.exercise?.id },
+                        get: { exercise.id },
                         set: { selectedExerciseID = $0; selectedDate = nil }
                     )) {
-                        ForEach(analytics.exercises) { item in
+                        ForEach(exercises) { item in
                             Text(item.name).tag(Optional(item.id))
                         }
                     }
@@ -57,7 +60,7 @@ struct HealthDashboardWeightView: View {
                         .accessibilityElement(children: .combine)
                     }
 
-                    progressionChart(exercise)
+                    progressionChart(exercise, selectedPoint: selectedPoint)
                     Text("Tap or drag the chart to inspect a workout. Loads are shown in \(unit.rawValue), converted from each workout’s recorded unit.")
                         .font(.caption).foregroundStyle(.secondary)
                     Divider()
@@ -71,10 +74,10 @@ struct HealthDashboardWeightView: View {
                 }
             }
 
-            if !analytics.personalRecords.isEmpty {
+            if !records.isEmpty {
                 HealthDashboardCard(title: "Max weights by exercise", subtitle: "Heaviest completed sets within this date range", systemImage: "trophy.fill") {
                     VStack(spacing: 0) {
-                        ForEach(Array(analytics.personalRecords.enumerated()), id: \.element.id) { index, record in
+                        ForEach(Array(records.enumerated()), id: \.element.id) { index, record in
                             HStack(alignment: .top, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(record.name).font(.subheadline.weight(.semibold))
@@ -90,23 +93,24 @@ struct HealthDashboardWeightView: View {
                             }
                             .padding(.vertical, 10)
                             .accessibilityElement(children: .combine)
-                            if index < analytics.personalRecords.count - 1 { Divider() }
+                            if index < records.count - 1 { Divider() }
                         }
                     }
                 }
                 .accessibilityIdentifier("healthExerciseRecords")
             }
         }
-        .onChange(of: analytics.exercises.map(\.id)) { _, ids in
+        .onChange(of: exerciseIDs) { _, ids in
             if let selectedExerciseID, !ids.contains(selectedExerciseID) {
                 self.selectedExerciseID = nil
             }
             selectedDate = nil
         }
-        .onChange(of: analytics.workouts.map(\.id)) { _, _ in selectedDate = nil }
+        .onChange(of: workoutIDs) { _, _ in selectedDate = nil }
     }
 
-    private func progressionChart(_ exercise: HealthDashboardExercise) -> some View {
+    private func progressionChart(_ exercise: HealthDashboardExercise,
+                                  selectedPoint: HealthDashboardWeightPoint?) -> some View {
         Chart {
             ForEach(exercise.points) { point in
                 if exercise.points.count > 1 {

@@ -19,6 +19,7 @@ final class HealthDashboardHealthStore {
 
     @ObservationIgnored private let provider: any WorkoutHealthDataProviding
     @ObservationIgnored private var workouts: [WorkoutSession] = []
+    @ObservationIgnored private var range = HealthDashboardRange.all
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var loadTask: Task<Void, Never>?
 
@@ -31,11 +32,14 @@ final class HealthDashboardHealthStore {
 
     deinit { loadTask?.cancel() }
 
-    func updateWorkouts(_ workouts: [WorkoutSession]) {
+    /// The selected range is part of the explicit read context, even when two
+    /// ranges happen to contain exactly the same completed sessions.
+    func updateWorkouts(_ workouts: [WorkoutSession], range: HealthDashboardRange = .all) {
         let completed = workouts.filter { $0.finishedAt != nil }
-        guard self.workouts != completed else { return }
+        guard self.workouts != completed || self.range != range else { return }
         cancel()
         self.workouts = completed
+        self.range = range
     }
 
     /// Cancelling discards partial results, including results from providers that
