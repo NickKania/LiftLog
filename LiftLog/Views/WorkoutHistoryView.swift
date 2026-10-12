@@ -4,6 +4,8 @@ struct WorkoutHistoryView: View {
     @Environment(WorkoutStore.self) private var store
     @State private var importing = false
     @State private var deletingWorkout: WorkoutSession?
+    @State private var renamingWorkoutID: UUID?
+    @State private var editedName = ""
 
     var body: some View {
         Group {
@@ -37,6 +39,12 @@ struct WorkoutHistoryView: View {
                         }
                         .tint(.red)
                         .accessibilityIdentifier("deleteHistoryWorkout-\(workout.id)")
+                        Button("Rename", systemImage: "pencil") {
+                            editedName = workout.name
+                            renamingWorkoutID = workout.id
+                        }
+                        .tint(.blue)
+                        .accessibilityIdentifier("renameHistoryWorkout-\(workout.id)")
                     }
                 }
             }
@@ -49,6 +57,20 @@ struct WorkoutHistoryView: View {
             }
         }
         .sheet(isPresented: $importing) { WorkoutImportView() }
+        .alert("Rename workout", isPresented: Binding(
+            get: { renamingWorkoutID != nil },
+            set: { if !$0 { renamingWorkoutID = nil } }
+        )) {
+            TextField("Workout name", text: $editedName)
+                .accessibilityIdentifier("historyWorkoutNameField")
+            Button("Save") {
+                if let id = renamingWorkoutID { store.renameWorkout(id: id, name: editedName) }
+                renamingWorkoutID = nil
+            }
+            .disabled(editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityIdentifier("saveHistoryWorkoutNameButton")
+            Button("Cancel", role: .cancel) { renamingWorkoutID = nil }
+        }
         .alert("Delete workout?", isPresented: Binding(
             get: { deletingWorkout != nil },
             set: { if !$0 { deletingWorkout = nil } }
@@ -64,7 +86,7 @@ struct WorkoutHistoryView: View {
                 Text("Delete \(workout.name) from \(workout.startedAt.formatted(date: .abbreviated, time: .shortened))? This cannot be undone.")
             }
         }
-        .workoutErrorAlert(enabled: !importing && deletingWorkout == nil)
+        .workoutErrorAlert(enabled: !importing && deletingWorkout == nil && renamingWorkoutID == nil)
     }
 }
 

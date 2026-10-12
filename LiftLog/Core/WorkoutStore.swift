@@ -228,6 +228,19 @@ final class WorkoutStore {
     }
 
     @discardableResult
+    func renameWorkout(id: UUID, name: String) -> Bool {
+        do {
+            try Self.validateName(name)
+            var next = snapshot
+            guard let index = next.history.firstIndex(where: { $0.id == id }) else {
+                throw StoreError.invalid("This workout is no longer in your history.")
+            }
+            next.history[index].name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    @discardableResult
     func deleteWorkout(id: UUID) -> Bool {
         var next = snapshot
         next.history.removeAll { $0.id == id }

@@ -32,6 +32,109 @@ final class WorkoutStoreFlowTests: XCTestCase {
         ])
     }
 
+    private func importedWorkout() -> WorkoutSession {
+        var workout = completedWorkout()
+        workout.startedAt = workout.finishedAt!.addingTimeInterval(-60)
+        workout.importSourceKey = "strong:rename-test"
+        return workout
+    }
+
+    @MainActor
+    private func captureSnapshot(of store: WorkoutStore) -> WorkoutSnapshot {
+        WorkoutSnapshot(templates: store.templates, history: store.history, activeWorkout: store.activeWorkout, unit: store.unit, personalExercises: store.personalExercises)
+    }
+
+    private func assertSnapshot(_ actual: WorkoutSnapshot, equals expected: WorkoutSnapshot, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(actual.templates, expected.templates, file: file, line: line)
+        XCTAssertEqual(actual.history, expected.history, file: file, line: line)
+        XCTAssertEqual(actual.activeWorkout, expected.activeWorkout, file: file, line: line)
+        XCTAssertEqual(actual.unit, expected.unit, file: file, line: line)
+        XCTAssertEqual(actual.personalExercises, expected.personalExercises, file: file, line: line)
+    }
+
+    @MainActor
+    func testRenamingHistoryPersistsAndOnlyChangesSelectedName() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        let template = try XCTUnwrap(store.templates.first)
+        XCTAssertTrue(store.startWorkout(template: template))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.finishWorkout())
+        var renamed = try XCTUnwrap(store.history.first)
+        var other = importedWorkout()
+        other.name = renamed.name
+        other.importSourceKey = "strong:rename-test"
+        XCTAssertEqual(store.importWorkouts([other])?.importedCount, 1)
+        XCTAssertTrue(store.startWorkout(template: template))
+        let before = captureSnapshot(of: store)
+        let revision = store.revision
+
+        XCTAssertTrue(store.renameWorkout(id: renamed.id, name: " \n Morning Strength \t"))
+        renamed.name = "Morning Strength"
+        var expected = before
+        let index = try XCTUnwrap(expected.history.firstIndex { $0.id == renamed.id })
+        expected.history[index] = renamed
+        assertSnapshot(captureSnapshot(of: store), equals: expected)
+        XCTAssertEqual(store.revision, revision + 1)
+        assertSnapshot(captureSnapshot(of: WorkoutStore(fileURL: file)), equals: expected)
+
+        // Renaming an imported session retains its duplicate protection identity.
+        XCTAssertTrue(store.renameWorkout(id: other.id, name: "Imported Strength"))
+        let restored = WorkoutStore(fileURL: file)
+        XCTAssertEqual(restored.importWorkouts([other])?.importedCount, 0)
+        XCTAssertEqual(restored.history.first { $0.id == other.id }?.name, "Imported Strength")
+    }
+
+    @MainActor
+    func testInvalidHistoryRenamesPreserveMemoryAndDisk() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        let workout = importedWorkout()
+        XCTAssertEqual(store.importWorkouts([workout])?.importedCount, 1)
+        XCTAssertTrue(store.startWorkout())
+        let snapshot = captureSnapshot(of: store)
+        let revision = store.revision
+        let saved = try Data(contentsOf: file)
+
+        for name in ["", " \n\t "] {
+            XCTAssertFalse(store.renameWorkout(id: workout.id, name: name))
+            XCTAssertNotNil(store.errorMessage)
+        }
+        XCTAssertFalse(store.renameWorkout(id: UUID(), name: "Missing"))
+        XCTAssertFalse(store.renameWorkout(id: try XCTUnwrap(store.activeWorkout).id, name: "Active"))
+        assertSnapshot(captureSnapshot(of: store), equals: snapshot)
+        XCTAssertEqual(store.revision, revision)
+        XCTAssertEqual(try Data(contentsOf: file), saved)
+    }
+
+    @MainActor
+    func testFailedHistoryRenameKeepsOriginalAndCanRetry() async throws {
+        let file = try temporaryFile()
+        let store = WorkoutStore(fileURL: file)
+        let workout = importedWorkout()
+        XCTAssertEqual(store.importWorkouts([workout])?.importedCount, 1)
+        let snapshot = captureSnapshot(of: store)
+        let revision = store.revision
+        let saved = try Data(contentsOf: file)
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        try Data("keep".utf8).write(to: file.appendingPathComponent("sentinel"))
+
+        XCTAssertFalse(store.renameWorkout(id: workout.id, name: "New Name"))
+        assertSnapshot(captureSnapshot(of: store), equals: snapshot)
+        XCTAssertEqual(store.revision, revision)
+        XCTAssertNotNil(store.errorMessage)
+
+        try FileManager.default.removeItem(at: file)
+        try saved.write(to: file)
+        assertSnapshot(captureSnapshot(of: WorkoutStore(fileURL: file)), equals: snapshot)
+        XCTAssertTrue(store.renameWorkout(id: workout.id, name: "New Name"))
+        XCTAssertNil(store.errorMessage)
+        XCTAssertEqual(WorkoutStore(fileURL: file).history.first?.name, "New Name")
+    }
+
     @MainActor
     func testDeletingHistoryPersistsAndPreservesOtherWorkoutData() async throws {
         let file = try temporaryFile()

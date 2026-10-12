@@ -37,6 +37,10 @@ Replace `iPhone 17` with an available simulator name from `xcrun simctl list dev
 
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
+History renaming is covered by three `WorkoutStoreFlowTests` cases for persistence, blank/missing-session validation, duplicate-name isolation, import identity preservation, and atomic save failure recovery. `WorkoutImportUITests.testRenameHistoryValidationCancellationAndPersistence` checks the swipe action, prefilled name, Cancel, disabled Save for blank names, detail navigation, relaunch, and duplicate import detection.
+
+Rename verification: all 234 core tests and all five History/import UI cases passed across targeted runs on LiftLog Import Verification (iOS 26.5). The native rename dialog was also visually inspected. A stale synthetic `LiftLogUITests.json` fixture was removed from the simulator before UI verification because the existing test reset only deletes the SQLite file.
+
 ## Manual acceptance checklist
 
 ### Apple Health opt-in
