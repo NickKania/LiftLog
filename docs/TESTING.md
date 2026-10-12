@@ -37,6 +37,12 @@ Replace `iPhone 17` with an available simulator name from `xcrun simctl list dev
 
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
+`WorkoutHistoryQueryTests` covers combined workout/exercise search, case and accent matching, template identities and renamed templates, calendar-day boundaries across daylight saving, all four sort orders with deterministic ties, and clearing filters without changing the selected sort. `WorkoutHistoryUITests` reuses the synthetic dashboard workout fixture to verify date/template/search combinations, no-match recovery, sorting, detail navigation, deleting a filtered result, and empty-history import access.
+
+In History, check the filter and sort menus at accessibility text sizes. Date ranges include today and the previous 6, 29, or 89 local calendar days. Verify that swiping a filtered result still deletes the selected session after confirmation and that importing workouts refreshes the current results.
+
+History verification: all 236 core tests pass, and all four history UI cases passed across targeted runs on the dedicated LiftLog History Verification simulator (iOS 26.5). The iOS build succeeds.
+
 ## Manual acceptance checklist
 
 ### Apple Health opt-in
