@@ -37,6 +37,12 @@ Replace `iPhone 17` with an available simulator name from `xcrun simctl list dev
 
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
+Rest audio is covered by `LiftLogAppTests/RestTimerAudioTests`: a real countdown must activate a playback audio session that mixes with other music, the bundled chime must play to completion, skipping must cancel playback, returning must not repeat a successful chime, and failed playback must remain eligible for retry. Run the audio tests and the existing countdown UI flow with `-only-testing:LiftLogAppTests -only-testing:LiftLogUITests/RestTimerUITests` added to the Xcode test command above.
+
+On a physical iPhone, complete a set and let rest expire with the app open. Verify the chime at a nonzero media volume with silent mode enabled, then with wired or Bluetooth earbuds connected and music playing. The chime should use the current audio output and leave music playing. Repeat after connecting or disconnecting earbuds during the countdown. Background/locked-screen alerts use the same bundled sound as a local notification and remain subject to iOS notification permission, sound, silent-mode, and Focus settings. Simulator audio tests cannot verify physical headphone routing.
+
+The original chime is synthesized by `python3 scripts/generate_rest_chime.py`; its PCM WAV is bundled in the app and is short enough for notification playback.
+
 History renaming is covered by three `WorkoutStoreFlowTests` cases for persistence, blank/missing-session validation, duplicate-name isolation, import identity preservation, and atomic save failure recovery. `WorkoutImportUITests.testRenameHistoryValidationCancellationAndPersistence` checks the swipe action, prefilled name, Cancel, disabled Save for blank names, detail navigation, relaunch, and duplicate import detection.
 
 Rename verification: all 234 core tests and all five History/import UI cases passed across targeted runs on LiftLog Import Verification (iOS 26.5). The native rename dialog was also visually inspected. A stale synthetic `LiftLogUITests.json` fixture was removed from the simulator before UI verification because the existing test reset only deletes the SQLite file.
