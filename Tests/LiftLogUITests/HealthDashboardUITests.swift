@@ -29,6 +29,12 @@ final class HealthDashboardUITests: XCTestCase {
         assertValue("healthWorkoutCount", equals: "10", in: app)
         XCTAssertTrue(element("healthWeekdayChart", in: app).exists)
         reveal(element("healthWorkoutHeatmap", in: app), in: app)
+        assertLabel("healthWorkoutHeatmapLegend", contains: "one hour or more", in: app)
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let dayLabel = yesterday.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
+        let day = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", dayLabel)).firstMatch
+        XCTAssertTrue(day.exists)
+        XCTAssertEqual(day.value as? String, "32 min training")
         reveal(element("healthDurationMetrics", in: app), in: app)
 
         selectRange("All time", in: app)

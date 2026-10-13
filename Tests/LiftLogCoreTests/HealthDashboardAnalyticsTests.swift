@@ -35,9 +35,9 @@ final class HealthDashboardAnalyticsTests: XCTestCase {
             invalidFinish, boundary, older], unit: .lb, range: .month, now: now, calendar: calendar)
 
         XCTAssertEqual(analytics.workouts.map(\.id), [boundary.id, today.id])
-        XCTAssertEqual(analytics.dailyCounts.first?.date, date(2026, 2, 28, 0))
-        XCTAssertEqual(analytics.dailyCounts.last?.date, date(2026, 3, 31, 0))
-        XCTAssertEqual(analytics.dailyCounts.count, 32)
+        XCTAssertEqual(analytics.dailyActivity.first?.date, date(2026, 2, 28, 0))
+        XCTAssertEqual(analytics.dailyActivity.last?.date, date(2026, 3, 31, 0))
+        XCTAssertEqual(analytics.dailyActivity.count, 32)
         XCTAssertEqual(HealthDashboardRange.threeMonths.startDate(relativeTo: now, calendar: calendar), date(2025, 12, 31, 0))
         XCTAssertEqual(HealthDashboardRange.year.startDate(relativeTo: now, calendar: calendar), date(2025, 3, 31, 0))
     }
@@ -46,13 +46,35 @@ final class HealthDashboardAnalyticsTests: XCTestCase {
         let workouts = [workout(date(2026, 3, 7, 23)), workout(date(2026, 3, 8, 1)), workout(date(2026, 3, 8, 3))]
         let analytics = HealthDashboardAnalytics(workouts: workouts, unit: .lb, range: .all,
                                                now: date(2026, 3, 9), calendar: calendar)
-        XCTAssertEqual(analytics.dailyCounts.map(\.count), [1, 2, 0])
-        XCTAssertEqual(analytics.dailyCounts[2].date.timeIntervalSince(analytics.dailyCounts[1].date), 23 * 3600)
+        XCTAssertEqual(analytics.dailyActivity.map(\.count), [1, 2, 0])
+        XCTAssertEqual(analytics.dailyActivity.map(\.totalDuration), [1800, 3600, 0])
+        XCTAssertEqual(analytics.dailyActivity[2].date.timeIntervalSince(analytics.dailyActivity[1].date), 23 * 3600)
         XCTAssertEqual(analytics.activeDayCount, 2)
         XCTAssertEqual(analytics.weekdayCounts.map(\.weekday), [2, 3, 4, 5, 6, 7, 1])
         XCTAssertEqual(analytics.weekdayCounts.first(where: { $0.weekday == 1 })?.count, 2)
         XCTAssertEqual(analytics.weekdayCounts.first(where: { $0.weekday == 7 })?.count, 1)
         XCTAssertEqual(analytics.weekdayCounts.reduce(0) { $0 + $1.count }, 3)
+    }
+
+    func testHeatmapSumsDailyTrainingTimeAndCapsIntensityAtOneHour() {
+        let sessions = [
+            workout(date(2026, 3, 1, 9), duration: 600),
+            workout(date(2026, 3, 1, 18), duration: 300),
+            workout(date(2026, 3, 2), duration: 1800),
+            workout(date(2026, 3, 3), duration: 2700),
+            workout(date(2026, 3, 4), duration: 3600),
+            workout(date(2026, 3, 5), duration: 5400),
+            workout(date(2026, 3, 6), duration: 0),
+            workout(date(2026, 3, 6), duration: -60),
+            WorkoutSession(startedAt: date(2026, 3, 6))
+        ]
+        let analytics = HealthDashboardAnalytics(workouts: sessions, unit: .lb, range: .all,
+            now: date(2026, 3, 7), calendar: calendar)
+
+        XCTAssertEqual(analytics.dailyActivity.map(\.count), [2, 1, 1, 1, 1, 1, 0])
+        XCTAssertEqual(analytics.dailyActivity.map(\.totalDuration), [900, 1800, 2700, 3600, 5400, 0, 0])
+        XCTAssertEqual(analytics.dailyActivity.map(\.heatmapIntensity), [0.25, 0.5, 0.75, 1, 1, 0, 0])
+        XCTAssertEqual(analytics.dailyActivity.reduce(0) { $0 + $1.totalDuration }, analytics.totalDuration)
     }
 
     func testDurationsCountCompletedSessionsIncludingZeroWithoutInventingEmptyAverages() {
@@ -66,11 +88,11 @@ final class HealthDashboardAnalyticsTests: XCTestCase {
                                              now: date(2026, 3, 4), calendar: calendar)
         XCTAssertNil(empty.averageDuration)
         XCTAssertNil(empty.longestDuration)
-        XCTAssertEqual(empty.dailyCounts.map(\.count), [0])
+        XCTAssertEqual(empty.dailyActivity.map(\.count), [0])
         let invalidNow = HealthDashboardAnalytics(workouts: analytics.workouts, unit: .lb, range: .all,
             now: Date(timeIntervalSinceReferenceDate: .nan), calendar: calendar)
         XCTAssertTrue(invalidNow.workouts.isEmpty)
-        XCTAssertTrue(invalidNow.dailyCounts.isEmpty)
+        XCTAssertTrue(invalidNow.dailyActivity.isEmpty)
     }
 
     func testProgressionConvertsBeforeComparingAndUsesOnlyValidCompletedSets() throws {
