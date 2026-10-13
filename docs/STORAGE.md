@@ -18,6 +18,8 @@ Schema version 2 stores template revision history, session version attribution, 
 
 Schema version 3 adds rest durations and active countdown deadlines. Missing rest fields in older JSON, version payloads, and version-1/2 SQLite databases default to 120 seconds; read-only old backups stay unchanged, and a successful save migrates the working database atomically.
 
+Schema version 4 adds nullable superset membership to exercise entries. Earlier SQLite databases and JSON snapshots load with ungrouped exercises; successful saves upgrade the working schema transactionally. Template-version payloads and backups retain superset membership.
+
 Existing templates receive an initial version from their saved prescription. Existing sessions retain their recorded values; missing version references or planned weights are left unknown rather than inferred from a template that may have changed. Versions preserve their original weight units, including in backups.
 
 ## Enable iCloud for a signed app

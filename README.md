@@ -9,6 +9,7 @@ Templates, workout execution, and history work locally without an account. The o
 
 - Plan your next workout by saving a new template version with increased weight or reps; the newest version becomes the default.
 - Browse earlier template versions and start a workout from any saved prescription.
+- Group exercises into supersets from their options menu, with matching color markers and a selection sheet for adding or editing group members.
 - Find exercises in the searchable, offline catalog of 876 bundled exercises plus your saved personal exercises, or add an exercise by name.
 - Start a workout from a template and record the weight and actual reps for each set, with the original planned weight and reps shown alongside.
 - Mark sets complete and save finished workouts to history.

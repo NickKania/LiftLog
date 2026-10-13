@@ -70,6 +70,7 @@ final class WorkoutStore {
             try Self.validate(template)
             var next = snapshot
             var trimmed = template
+            SupersetGrouping.normalize(&trimmed.exercises)
             trimmed.name = template.name.trimmingCharacters(in: .whitespacesAndNewlines)
             for index in trimmed.exercises.indices {
                 trimmed.exercises[index].exercise = Self.register(trimmed.exercises[index].exercise, in: &next)
@@ -122,7 +123,11 @@ final class WorkoutStore {
             } else if versionID != nil {
                 throw StoreError.invalid("Choose a saved template before selecting a version.")
             }
-            if let source { try Self.validate(source) }
+            if var plan = source {
+                SupersetGrouping.normalize(&plan.exercises)
+                try Self.validate(plan)
+                source = plan
+            }
             var next = snapshot
             var workout = WorkoutSession(
                 templateID: source?.id, templateVersionID: version?.id, templateVersionNumber: version?.number,
@@ -131,7 +136,7 @@ final class WorkoutStore {
                 exercises: source?.exercises.map { item in
                     WorkoutExercise(exercise: item.exercise, sets: item.sets.map {
                         WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
-                    })
+                    }, supersetID: item.supersetID)
                 } ?? [],
                 restSeconds: source?.restSeconds ?? 120
             )
@@ -150,6 +155,7 @@ final class WorkoutStore {
         }
         do {
             var updated = workout
+            SupersetGrouping.normalize(&updated.exercises)
             // Session identity, start time, template reference, and recorded unit are fixed.
             updated.startedAt = activeWorkout.startedAt
             updated.templateID = activeWorkout.templateID
@@ -197,6 +203,7 @@ final class WorkoutStore {
             try Self.validate(workout)
             var next = snapshot
             var reviewed = workout
+            SupersetGrouping.normalize(&reviewed.exercises)
             reviewed.startedAt = Date()
             for index in reviewed.exercises.indices {
                 reviewed.exercises[index].exercise = Self.register(reviewed.exercises[index].exercise, in: &next)
@@ -216,6 +223,7 @@ final class WorkoutStore {
             completed.sets = item.sets.filter(\.isCompleted)
             return completed.sets.isEmpty ? nil : completed
         }
+        SupersetGrouping.normalize(&workout.exercises)
         guard !workout.exercises.isEmpty else {
             return fail(StoreError.invalid("Complete at least one set before finishing your workout."))
         }
@@ -308,6 +316,7 @@ final class WorkoutStore {
             }
             if !keys.insert(key).inserted { duplicates += 1; continue }
             var saved = session
+            SupersetGrouping.normalize(&saved.exercises)
             for index in saved.exercises.indices {
                 saved.exercises[index].exercise = Self.register(saved.exercises[index].exercise, in: &next)
             }
@@ -549,7 +558,7 @@ final class WorkoutStore {
     }
 
     nonisolated static func samePrescription(_ left: [TemplateExercise], _ right: [TemplateExercise]) -> Bool {
-        guard left.count == right.count else { return false }
+        guard left.count == right.count, SupersetGrouping.sameMembership(left, right) else { return false }
         return zip(left, right).allSatisfy { lhs, rhs in
             lhs.exercise == rhs.exercise && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
                 abs(a.weight - b.weight) <= max(1, abs(a.weight), abs(b.weight)) * 1e-12 && a.targetReps == b.targetReps

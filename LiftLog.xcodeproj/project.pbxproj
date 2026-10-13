@@ -11,6 +11,7 @@
 		090C433F21920EB1BF1301C1 /* HealthDashboardWeightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7237F52AA6DB9D4CC9820320 /* HealthDashboardWeightView.swift */; };
 		0935821E762AA9AE915BAE1E /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AD21AADB322170282982C4 /* Workout.swift */; };
 		0D7BBF6F6296EB8EF03ACC84 /* WorkoutAgentToolDefinitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E48C9807B2B444A6E39FF533 /* WorkoutAgentToolDefinitions.swift */; };
+		10AA62C4512B66492B3E8126 /* SupersetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE2856E33924CF9DC6CFAFC /* SupersetUITests.swift */; };
 		11927CC2D22F0A0166F981AA /* WorkoutDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = E38153F45CD8D927538626F6 /* WorkoutDatabase.swift */; };
 		11B7B1BD50EC3CB8A8D7E8F5 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = E2BC20ED6350BF812FC2ECDC /* Markdown */; };
 		141A8FA4F70C64BD03FA09CB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6024B29CF57ADD9CD63AD4 /* RootView.swift */; };
@@ -61,6 +62,7 @@
 		885495CBD86DB2221097B99E /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3959BA96BC51EFD042ABC84D /* WorkoutActivityAttributes.swift */; };
 		88CCB7FD0707A6B3920F1238 /* WorkflowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 937217B83F84CD9827FEE598 /* WorkflowUITests.swift */; };
 		89C056EACAFB83255AF40161 /* AssistantChatUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572ABBF5539A28A96EB73501 /* AssistantChatUITests.swift */; };
+		89ECE6878DD4341D8257C65F /* SupersetEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD233303C0E4A42364D069A8 /* SupersetEditorView.swift */; };
 		8AF305D35CBCE22CEEC0A2EC /* WorkoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A531FC30A83FC852D7E62EB2 /* WorkoutTemplate.swift */; };
 		8BA98E59CC016C0B75D73695 /* AssistantAccountViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57ACBC8BB30E583566B04D48 /* AssistantAccountViews.swift */; };
 		8BF2EE77D6FA586996847382 /* SQLiteConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA77E842076900E6AEE2429 /* SQLiteConnection.swift */; };
@@ -149,6 +151,7 @@
 		1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftLogUITests.swift; sourceTree = "<group>"; };
 		255E8F29C0E21AEFE1638ED6 /* WorkoutEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEditorComponents.swift; sourceTree = "<group>"; };
 		2C6024B29CF57ADD9CD63AD4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		2DE2856E33924CF9DC6CFAFC /* SupersetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupersetUITests.swift; sourceTree = "<group>"; };
 		2FA77E842076900E6AEE2429 /* SQLiteConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteConnection.swift; sourceTree = "<group>"; };
 		307670086F599871C2ED930C /* TemplateEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateEditorView.swift; sourceTree = "<group>"; };
 		346AF47C2B8BAF1DB14D8537 /* WorkoutImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportView.swift; sourceTree = "<group>"; };
@@ -201,6 +204,7 @@
 		A33AB89AF1F83A9939BF9C62 /* WorkoutLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityWidget.swift; sourceTree = "<group>"; };
 		A531FC30A83FC852D7E62EB2 /* WorkoutTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplate.swift; sourceTree = "<group>"; };
 		A8251E09E01B75056F035BE7 /* WorkoutImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImport.swift; sourceTree = "<group>"; };
+		AD233303C0E4A42364D069A8 /* SupersetEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupersetEditorView.swift; sourceTree = "<group>"; };
 		ADA6B1143B95FE65393E967A /* WorkoutRestTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRestTimer.swift; sourceTree = "<group>"; };
 		AEDA7940B39D630F5E2D32AC /* AssistantUITestFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantUITestFixture.swift; sourceTree = "<group>"; };
 		AFD9DD0170E58AAF6D2C4EB5 /* AssistantChatArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantChatArchive.swift; sourceTree = "<group>"; };
@@ -309,6 +313,7 @@
 				5E309AAE258A97366189597D /* HealthDashboardView.swift */,
 				7237F52AA6DB9D4CC9820320 /* HealthDashboardWeightView.swift */,
 				2C6024B29CF57ADD9CD63AD4 /* RootView.swift */,
+				AD233303C0E4A42364D069A8 /* SupersetEditorView.swift */,
 				307670086F599871C2ED930C /* TemplateEditorView.swift */,
 				255E8F29C0E21AEFE1638ED6 /* WorkoutEditorComponents.swift */,
 				01E340D7BEC3D5CD9C452727 /* WorkoutHistoryView.swift */,
@@ -402,6 +407,7 @@
 				1FCE16C9AC23FD24730C4BF2 /* LiftLogUITests.swift */,
 				DCF119549ADEE654B1F436C3 /* PersonalCatalogUITests.swift */,
 				90A74A37BFA25C258BA4CA1A /* RestTimerUITests.swift */,
+				2DE2856E33924CF9DC6CFAFC /* SupersetUITests.swift */,
 				937217B83F84CD9827FEE598 /* WorkflowUITests.swift */,
 				4173031E538DC0D87604F14A /* WorkoutHistoryUITests.swift */,
 				3529283D0B184F68A1D285B8 /* WorkoutImportUITests.swift */,
@@ -657,6 +663,7 @@
 				141A8FA4F70C64BD03FA09CB /* RootView.swift in Sources */,
 				8BF2EE77D6FA586996847382 /* SQLiteConnection.swift in Sources */,
 				8C5FA9C1505D90046D91DA8A /* SetInputValidation.swift in Sources */,
+				89ECE6878DD4341D8257C65F /* SupersetEditorView.swift in Sources */,
 				854529A35898BEE3CC7BF012 /* TemplateEditorView.swift in Sources */,
 				86B10999D30EC2A7D4E2893F /* WeightUnit.swift in Sources */,
 				0935821E762AA9AE915BAE1E /* Workout.swift in Sources */,
@@ -694,6 +701,7 @@
 				1F83DD23FDF095D24881B279 /* LiftLogUITests.swift in Sources */,
 				76A4F4F1F9E50A7A266B8D5A /* PersonalCatalogUITests.swift in Sources */,
 				6FD1D473700C2915591C3C97 /* RestTimerUITests.swift in Sources */,
+				10AA62C4512B66492B3E8126 /* SupersetUITests.swift in Sources */,
 				88CCB7FD0707A6B3920F1238 /* WorkflowUITests.swift in Sources */,
 				25187B044F399BCADF3CC211 /* WorkoutHistoryUITests.swift in Sources */,
 				1E336F4101032512B0CCF4E4 /* WorkoutImportUITests.swift in Sources */,

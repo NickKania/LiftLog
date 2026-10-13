@@ -51,15 +51,17 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
 
 }
 
-struct WorkoutExercise: Codable, Equatable, Identifiable {
+struct WorkoutExercise: Codable, Equatable, SupersetExercise {
     var id: UUID
     var exercise: Exercise
     var sets: [WorkoutSet]
+    var supersetID: UUID?
 
-    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()]) {
+    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
+        self.supersetID = supersetID
     }
 
     /// Numeric edits apply only to remaining sets, preserving completed results.

@@ -5,6 +5,7 @@ struct TemplateEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: WorkoutTemplate
     @State private var pickingExercise = false
+    @State private var supersetEditor: SupersetEditorContext?
     @State private var invalidSets: Set<UUID> = []
     @State private var draftUnit: WeightUnit?
     private let isNew: Bool
@@ -37,7 +38,7 @@ struct TemplateEditorView: View {
                 if let original {
                     Section {
                         LabeledContent("Based on", value: "Version \(original.currentVersion?.number ?? 1)")
-                        Text("Exercise, set, and rest changes save a new version. Renaming keeps the current version.")
+                        Text("Exercise, set, superset, and rest changes save a new version. Renaming keeps the current version.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     if let lastWorkout {
@@ -64,6 +65,7 @@ struct TemplateEditorView: View {
                     }
                 }
                 ForEach(Array(draft.exercises.enumerated()), id: \.element.id) { exerciseIndex, exercise in
+                    let group = SupersetStyle.group(for: exercise, in: draft.exercises)
                     Section {
                         SetColumnHeader(unit: unit, repsTitle: "TARGET REPS")
                         ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { setIndex, set in
@@ -85,15 +87,28 @@ struct TemplateEditorView: View {
                         }
                     } header: {
                         HStack {
-                            Text(exercise.exercise.name)
+                            SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                             Spacer()
+                            Menu {
+                                Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
+                                    hideKeyboard()
+                                    supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: draft.exercises, scope: "template", name: { $0.exercise.name })
+                                }
+                                .accessibilityIdentifier(exercise.supersetID == nil ? "addSupersetButton" : "editSupersetButton")
+                            } label: {
+                                Image(systemName: "ellipsis").padding(6)
+                            }
+                            .accessibilityLabel("Exercise options for \(exercise.exercise.name)")
+                            .accessibilityIdentifier("templateExerciseMenu-\(exercise.id)")
                             Button {
                                 exercise.sets.forEach { invalidSets.remove($0.id) }
                                 draft.exercises.removeAll { $0.id == exercise.id }
+                                SupersetGrouping.normalize(&draft.exercises)
                             } label: { Image(systemName: "minus.circle") }
                             .accessibilityLabel("Remove \(exercise.exercise.name)")
                         }
                     }
+                    .listRowBackground(SupersetRowBackground(group: group))
                 }
                 Section {
                     Button("Add Exercise", systemImage: "plus.circle.fill") { pickingExercise = true }
@@ -104,7 +119,7 @@ struct TemplateEditorView: View {
                 if original != nil {
                     Section {
                         if changes.isEmpty {
-                            Text("Adjust a weight, rep target, exercise, or rest period to create your next version.")
+                            Text("Adjust a weight, rep target, exercise, superset, or rest period to create your next version.")
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(Array(changes.enumerated()), id: \.offset) { _, change in
@@ -119,7 +134,7 @@ struct TemplateEditorView: View {
                     .accessibilityIdentifier("templateVersionChangeSummary")
                 }
             }
-            .workoutErrorAlert(enabled: !pickingExercise)
+            .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil)
             .navigationTitle(isNew ? "New Template" : (planningNextWorkout ? "Plan Next Workout" : "Edit Template"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -138,6 +153,11 @@ struct TemplateEditorView: View {
             .sheet(isPresented: $pickingExercise) {
                 ExercisePickerView { exercise in
                     draft.exercises.append(TemplateExercise(exercise: exercise, sets: [TemplateSet(weight: 0, targetReps: 10)]))
+                }
+            }
+            .sheet(item: $supersetEditor) { context in
+                SupersetEditorView(context: context) { selectedIDs in
+                    SupersetGrouping.update(&draft.exercises, anchorID: context.id, selectedIDs: selectedIDs)
                 }
             }
         }
@@ -168,6 +188,9 @@ struct TemplateEditorView: View {
         }
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if name != original.name { result.append("Name: \(original.name) → \(name)") }
+        if SupersetGrouping.memberIDs(draft.exercises) != SupersetGrouping.memberIDs(original.exercises) {
+            result.append("Update superset groups")
+        }
         for item in original.exercises where !draft.exercises.contains(where: { $0.id == item.id }) {
             result.append("Remove \(item.exercise.name)")
         }
@@ -268,12 +291,16 @@ private struct TemplateVersionDetailView: View {
                 Text("Starting this version keeps the newest version as your default.")
             }
             ForEach(version.exercises) { exercise in
-                Section(exercise.exercise.name) {
+                let group = SupersetStyle.group(for: exercise, in: version.exercises)
+                Section {
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                         LabeledContent("Set \(index + 1)", value: "\(set.weight.formatted(.number.precision(.fractionLength(0...2)))) \(version.unit.rawValue) × \(set.targetReps)")
                             .monospacedDigit()
                     }
+                } header: {
+                    SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                 }
+                .listRowBackground(SupersetRowBackground(group: group))
             }
         }
         .workoutErrorAlert(enabled: !showWorkout)

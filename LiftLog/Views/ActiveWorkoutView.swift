@@ -5,6 +5,7 @@ struct ActiveWorkoutView: View {
     @Environment(RestTimerAlerts.self) private var restAlerts
     @Environment(\.dismiss) private var dismiss
     @State private var pickingExercise = false
+    @State private var supersetEditor: SupersetEditorContext?
     @State private var confirmingFinish = false
     @State private var confirmingDiscard = false
     @State private var invalidSets: Set<UUID> = []
@@ -17,7 +18,7 @@ struct ActiveWorkoutView: View {
                 ContentUnavailableView("Workout saved", systemImage: "checkmark.circle", description: Text("Find your completed sets in History."))
             }
         }
-        .workoutErrorAlert(enabled: !pickingExercise)
+        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil)
         .navigationTitle(store.activeWorkout?.name ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -38,6 +39,13 @@ struct ActiveWorkoutView: View {
         .sheet(isPresented: $pickingExercise) {
             ExercisePickerView { exercise in
                 mutate { $0.exercises.append(WorkoutExercise(exercise: exercise, sets: [WorkoutSet(weight: 0, reps: 10)])) }
+            }
+        }
+        .sheet(item: $supersetEditor) { context in
+            SupersetEditorView(context: context) { selectedIDs in
+                mutate { session in
+                    SupersetGrouping.update(&session.exercises, anchorID: context.id, selectedIDs: selectedIDs)
+                }
             }
         }
         .alert("Finish workout?", isPresented: $confirmingFinish) {
@@ -98,6 +106,7 @@ struct ActiveWorkoutView: View {
                 }
             }
             ForEach(workout.exercises) { exercise in
+                let group = SupersetStyle.group(for: exercise, in: workout.exercises)
                 Section {
                     SetColumnHeader(unit: workout.unit, completion: true)
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
@@ -111,7 +120,7 @@ struct ActiveWorkoutView: View {
                         }, onValidity: { valid in
                             if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
                         })
-                        .listRowBackground(set.isCompleted ? Color.green.opacity(0.10) : Color(.secondarySystemGroupedBackground))
+                        .listRowBackground(SupersetRowBackground(group: group, completed: set.isCompleted))
                         .swipeActions {
                             Button("Delete", role: .destructive) {
                                 invalidSets.remove(set.id)
@@ -136,17 +145,28 @@ struct ActiveWorkoutView: View {
                     .accessibilityIdentifier("addSet-\(exercise.exercise.name)")
                 } header: {
                     HStack {
-                        Text(exercise.exercise.name)
+                        SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                         Spacer()
                         Menu {
+                            Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
+                                hideKeyboard()
+                                supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: workout.exercises, name: { $0.exercise.name })
+                            }
+                            .accessibilityIdentifier(exercise.supersetID == nil ? "addSupersetButton" : "editSupersetButton")
+                            Divider()
                             Button("Remove Exercise", systemImage: "trash", role: .destructive) {
                                 exercise.sets.forEach { invalidSets.remove($0.id) }
-                                mutate { $0.exercises.removeAll { $0.id == exercise.id } }
+                                mutate { session in
+                                    session.exercises.removeAll { $0.id == exercise.id }
+                                    SupersetGrouping.normalize(&session.exercises)
+                                }
                             }
                         } label: { Image(systemName: "ellipsis").padding(6) }
                         .accessibilityLabel("Options for \(exercise.exercise.name)")
+                        .accessibilityIdentifier("workoutExerciseMenu-\(exercise.id)")
                     }
                 }
+                .listRowBackground(SupersetRowBackground(group: group))
             }
             Section {
                 Button("Add Exercise", systemImage: "plus.circle.fill") { pickingExercise = true }
