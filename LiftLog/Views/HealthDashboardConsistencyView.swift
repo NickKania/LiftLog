@@ -34,8 +34,8 @@ struct HealthDashboardConsistencyView: View {
                 }
             }
 
-            HealthDashboardCard(title: "Every workout adds up", subtitle: "Each square is a day. More intense green means more workouts.", systemImage: "square.grid.3x3.fill") {
-                HealthDashboardHeatmap(days: analytics.dailyCounts)
+            HealthDashboardCard(title: "Every workout adds up", subtitle: "Each square is a day. More intense green means more time training, up to 1 hour or more.", systemImage: "square.grid.3x3.fill") {
+                HealthDashboardHeatmap(days: analytics.dailyActivity)
             }
 
             HealthDashboardCard(title: "Time spent training", subtitle: "Elapsed time from your recorded workout start and finish", systemImage: "timer") {
@@ -127,11 +127,11 @@ private struct HealthDashboardHeatmap: View {
                                     ForEach(0..<7, id: \.self) { row in
                                         if let day = week[row] {
                                             RoundedRectangle(cornerRadius: 3)
-                                                .fill(color(for: day.count))
+                                                .fill(color(for: day.heatmapIntensity))
                                                 .frame(width: cellSize, height: cellSize)
                                                 .accessibilityElement()
                                                 .accessibilityLabel(day.date.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
-                                                .accessibilityValue("\(day.count) \(day.count == 1 ? "workout" : "workouts")")
+                                                .accessibilityValue("\(HealthDashboardFormatting.duration(day.totalDuration)) training")
                                         } else {
                                             Color.clear.frame(width: cellSize, height: cellSize).accessibilityHidden(true)
                                         }
@@ -149,17 +149,18 @@ private struct HealthDashboardHeatmap: View {
             }
             .accessibilityIdentifier("healthWorkoutHeatmap")
             HStack(spacing: 5) {
-                Text("Less").padding(.trailing, 3)
+                Text("0 min").padding(.trailing, 3)
                 ForEach(0..<5, id: \.self) { level in
-                    RoundedRectangle(cornerRadius: 3).fill(color(for: level))
+                    RoundedRectangle(cornerRadius: 3).fill(color(for: Double(level) / 4))
                         .frame(width: 12, height: 12)
                 }
-                Text("More").padding(.leading, 3)
+                Text("1 hr+").padding(.leading, 3)
                 Spacer(minLength: 0)
             }
             .font(.caption2).foregroundStyle(.secondary)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Heatmap legend: gray means no workouts; more intense green means more workouts, up to four or more in a day")
+            .accessibilityLabel("Heatmap legend: gray means no recorded training time; more intense green means more total training time, up to one hour or more in a day")
+            .accessibilityIdentifier("healthWorkoutHeatmapLegend")
             if let first = days.first, let last = days.last {
                 Text("\(first.date.formatted(date: .abbreviated, time: .omitted)) – \(last.date.formatted(date: .abbreviated, time: .omitted)). Swipe to explore earlier weeks.")
                     .font(.caption2).foregroundStyle(.secondary)
@@ -177,13 +178,7 @@ private struct HealthDashboardHeatmap: View {
         return date.formatted(.dateTime.month(.abbreviated))
     }
 
-    private func color(for count: Int) -> Color {
-        switch count {
-        case 0: Color(.tertiarySystemFill)
-        case 1: Color.green.opacity(0.3)
-        case 2: Color.green.opacity(0.55)
-        case 3: Color.green.opacity(0.8)
-        default: Color.green
-        }
+    private func color(for intensity: Double) -> Color {
+        intensity > 0 ? Color.green.opacity(0.3 + 0.7 * intensity) : Color(.tertiarySystemFill)
     }
 }

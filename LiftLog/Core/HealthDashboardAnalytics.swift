@@ -29,6 +29,9 @@ struct HealthDashboardDay: Identifiable, Equatable {
     var id: Date { date }
     let date: Date
     let count: Int
+    let totalDuration: TimeInterval
+
+    var heatmapIntensity: Double { min(totalDuration / 3600, 1) }
 }
 
 struct HealthDashboardWeekday: Identifiable, Equatable {
@@ -148,15 +151,17 @@ struct HealthDashboardAnalytics {
     var averageDuration: TimeInterval? { workouts.isEmpty ? nil : totalDuration / Double(workoutCount) }
     var longestDuration: TimeInterval? { durations.map(\.duration).max() }
 
-    var dailyCounts: [HealthDashboardDay] {
+    var dailyActivity: [HealthDashboardDay] {
         guard now.timeIntervalSinceReferenceDate.isFinite else { return [] }
-        let counts = Dictionary(grouping: workouts) { calendar.startOfDay(for: $0.startedAt) }.mapValues(\.count)
+        let sessions = Dictionary(grouping: durations) { calendar.startOfDay(for: $0.date) }
         let end = calendar.startOfDay(for: now)
         var day = range.startDate(relativeTo: now, calendar: calendar)
             ?? workouts.first.map { calendar.startOfDay(for: $0.startedAt) } ?? end
         var days: [HealthDashboardDay] = []
         while day <= end {
-            days.append(HealthDashboardDay(date: day, count: counts[day] ?? 0))
+            let daySessions = sessions[day] ?? []
+            days.append(HealthDashboardDay(date: day, count: daySessions.count,
+                totalDuration: daySessions.reduce(0) { $0 + $1.duration }))
             guard let next = calendar.date(byAdding: .day, value: 1, to: day), next > day else { break }
             day = next
         }
