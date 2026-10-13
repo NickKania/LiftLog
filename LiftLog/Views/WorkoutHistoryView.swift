@@ -10,14 +10,6 @@ struct WorkoutHistoryView: View {
         WorkoutHistoryTemplateOption.options(in: store.history)
     }
 
-    private var templateLabel: String {
-        switch query.template {
-        case .all: "All templates"
-        case .other: "Other workouts"
-        case .template(let id): templateOptions.first { $0.id == id }?.name ?? "Selected template"
-        }
-    }
-
     var body: some View {
         let workouts = query.results(in: store.history)
         Group {
@@ -41,20 +33,19 @@ struct WorkoutHistoryView: View {
                             workoutRow(workout)
                         }
                     } header: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(workouts.count) of \(store.history.count) workouts")
-                                .accessibilityIdentifier("historyResultCount")
-                            Text([query.dateRange.label, templateLabel, query.sort.label].joined(separator: " · "))
-                                .font(.caption)
-                                .textCase(nil)
-                                .accessibilityIdentifier("historyQuerySummary")
-                        }
+                        Text("\(workouts.count) of \(store.history.count) workouts")
+                            .font(.caption)
+                            .fontWeight(.regular)
+                            .textCase(nil)
+                            .accessibilityIdentifier("historyResultCount")
                     }
                 }
+                .contentMargins(.horizontal, 12, for: .scrollContent)
                 .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("History")
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query.searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Workout or exercise")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -127,22 +118,35 @@ struct WorkoutHistoryView: View {
         NavigationLink {
             WorkoutDetailView(workout: workout)
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(workout.name).font(.headline)
-                if let version = workout.templateVersionNumber {
-                    Text("Template version \(version)")
-                        .font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(workout.name)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if let version = workout.templateVersionNumber {
+                        Text("v\(version)")
+                            .font(.caption2.weight(.medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(.secondary.opacity(0.12), in: Capsule())
+                            .fixedSize()
+                            .accessibilityLabel("Template version \(version)")
+                    }
                 }
                 Text(workout.startedAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.subheadline).foregroundStyle(.secondary)
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Label("\(workout.exercises.count) exercises", systemImage: "dumbbell")
                     Label("\(workout.exercises.reduce(0) { $0 + $1.sets.count }) sets", systemImage: "checkmark.circle")
+                    Label(duration(for: workout), systemImage: "clock")
                 }
+                .labelStyle(HistoryStatLabelStyle())
                 .font(.caption).foregroundStyle(.secondary)
             }
-            .padding(.vertical, 6)
         }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .accessibilityIdentifier("historyWorkout-\(workout.name)")
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("Delete", systemImage: "trash", role: .destructive) {
@@ -150,6 +154,20 @@ struct WorkoutHistoryView: View {
             }
             .tint(.red)
             .accessibilityIdentifier("deleteHistoryWorkout-\(workout.id)")
+        }
+    }
+
+    private func duration(for workout: WorkoutSession) -> String {
+        guard let finish = workout.finishedAt else { return "Unavailable" }
+        return HealthDashboardFormatting.duration(finish.timeIntervalSince(workout.startedAt))
+    }
+}
+
+private struct HistoryStatLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon
+            configuration.title
         }
     }
 }
