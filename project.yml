@@ -99,6 +99,17 @@ targets:
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         GENERATE_INFOPLIST_FILE: YES
+  LiftLogAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/LiftLogAppTests
+    dependencies:
+      - target: LiftLog
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.liftlog.apptests
   LiftLogUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -120,4 +131,5 @@ schemes:
     test:
       config: Debug
       targets:
+        - LiftLogAppTests
         - LiftLogUITests

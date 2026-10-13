@@ -37,6 +37,12 @@ Replace `iPhone 17` with an available simulator name from `xcrun simctl list dev
 
 For interactive verification, open the project in Xcode and run it on an iPhone simulator.
 
+Rest audio is covered by `LiftLogAppTests/RestTimerAudioTests`: a real countdown must activate a playback audio session that mixes with other music, the bundled chime must play to completion, skipping must cancel playback, returning must not repeat a successful chime, and failed playback must remain eligible for retry. Run the audio tests and the existing countdown UI flow with `-only-testing:LiftLogAppTests -only-testing:LiftLogUITests/RestTimerUITests` added to the Xcode test command above.
+
+On a physical iPhone, complete a set and let rest expire with the app open. Verify the chime at a nonzero media volume with silent mode enabled, then with wired or Bluetooth earbuds connected and music playing. The chime should use the current audio output and leave music playing. Repeat after connecting or disconnecting earbuds during the countdown. Background/locked-screen alerts use the same bundled sound as a local notification and remain subject to iOS notification permission, sound, silent-mode, and Focus settings. Simulator audio tests cannot verify physical headphone routing.
+
+The original chime is synthesized by `python3 scripts/generate_rest_chime.py`; its PCM WAV is bundled in the app and is short enough for notification playback.
+
 `WorkoutHistoryQueryTests` covers combined workout/exercise search, case and accent matching, template identities and renamed templates, calendar-day boundaries across daylight saving, all four sort orders with deterministic ties, and clearing filters without changing the selected sort. `WorkoutHistoryUITests` reuses the synthetic dashboard workout fixture to verify date/template/search combinations, no-match recovery, sorting, detail navigation, deleting a filtered result, and empty-history import access.
 
 In History, check the filter and sort menus at accessibility text sizes. Date ranges include today and the previous 6, 29, or 89 local calendar days. Verify that swiping a filtered result still deletes the selected session after confirmation and that importing workouts refreshes the current results.
