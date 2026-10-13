@@ -162,12 +162,14 @@ final class WorkoutAgentTools {
                 else {
                     var entry = try templateEntry(args, inputUnit: inputUnit, outputUnit: store.unit)
                     entry.id = after.exercises[index].id
+                    entry.supersetID = after.exercises[index].supersetID
                     for setIndex in entry.sets.indices where after.exercises[index].sets.indices.contains(setIndex) {
                         entry.sets[setIndex].id = after.exercises[index].sets[setIndex].id
                     }
                     after.exercises[index] = entry
                 }
             }
+            SupersetGrouping.normalize(&after.exercises)
             guard !after.exercises.isEmpty, after.exercises.count <= 100 else { throw invalid("A template needs between 1 and 100 exercise entries.") }
             return draft(summary: templateVersionSummary(before), beforeTemplate: before, afterTemplate: after)
         }
@@ -186,6 +188,7 @@ final class WorkoutAgentTools {
                 var replacement = workoutEntry(entry)
                 replacement.id = after.exercises[index].id
                 let existing = after.exercises[index]
+                replacement.supersetID = existing.supersetID
                 if existing.exercise.id == replacement.exercise.id {
                     for setIndex in replacement.sets.indices where existing.sets.indices.contains(setIndex) {
                         replacement.sets[setIndex].id = existing.sets[setIndex].id
@@ -196,6 +199,7 @@ final class WorkoutAgentTools {
                 after.exercises[index] = replacement
             }
         }
+        SupersetGrouping.normalize(&after.exercises)
         guard after.exercises.count <= 100 else { throw invalid("A workout may contain at most 100 exercise entries.") }
         return draft(summary: "\(operation.capitalized) exercise in “\(before.name)”", beforeWorkout: before, afterWorkout: after, displayUnit: before.unit)
     }
@@ -203,7 +207,7 @@ final class WorkoutAgentTools {
     private func workoutEntry(_ entry: TemplateExercise) -> WorkoutExercise {
         WorkoutExercise(exercise: entry.exercise, sets: entry.sets.map {
             WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
-        })
+        }, supersetID: entry.supersetID)
     }
 
     private func exerciseEntries(_ args: [String: Any], inputUnit: WeightUnit, outputUnit: WeightUnit) throws -> [TemplateExercise] {

@@ -209,7 +209,8 @@ struct WorkoutDetailView: View {
                 }
             }
             ForEach(workout.exercises) { exercise in
-                Section(exercise.exercise.name) {
+                let group = SupersetStyle.group(for: exercise, in: workout.exercises)
+                Section {
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                         HStack {
                             Text("Set \(index + 1)").foregroundStyle(.secondary)
@@ -226,7 +227,10 @@ struct WorkoutDetailView: View {
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                         }
                     }
+                } header: {
+                    SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                 }
+                .listRowBackground(SupersetRowBackground(group: group))
             }
         }
         .navigationTitle(workout.name)

@@ -49,6 +49,14 @@ Rename verification: all 234 core tests and all five History/import UI cases pas
 
 ## Manual acceptance checklist
 
+### Supersets
+
+`SupersetTests` covers membership edits and moves, singleton cleanup, old JSON decoding, SQLite/backup round trips, transactional schema migration and rollback, template versioning, workout starts and completion filtering, and preservation through assistant edits. `SupersetUITests` covers the all-exercise selection sheet, Cancel, duplicate exercise entries, matching group labels, template and active-workout relaunch, membership edits/removal, and superset-only version changes. The UI suite captures the picker and grouped template for visual inspection.
+
+Run the targeted simulator suite with `-only-testing:LiftLogUITests/SupersetUITests`. Supersets currently group and highlight exercise entries; rest countdowns and Live Activity next-set ordering retain their existing behavior.
+
+Verification: all 251 core tests and all three superset UI cases passed on LiftLog Superset Verification (iPhone 17, iOS 26.5). The iOS test build succeeded. Picker and grouped-exercise screenshots were inspected; the decorative group icon is hidden from accessibility so group identifiers expose the actual superset label.
+
 ### Apple Health opt-in
 
 `WorkoutHealthDataTests` covers session time windows, invalid dates/values, bounded interval series, and missing data. `AssistantHealthPrivacyTests` captures outgoing requests and tests explicit per-message consent, plain-workout isolation, canonical session resolution, chart scope, cancellation, account changes, deletion during reads, and exclusion from saved history, archives, and title requests. The reference UI suite includes Health-tag selection, cancellation/removal/new-chat behavior, untagged follow-ups, and native health-chart navigation. Its provider and network transport are synthetic and never read personal Health data.
