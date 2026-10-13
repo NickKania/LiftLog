@@ -4,6 +4,8 @@ struct WorkoutHistoryView: View {
     @Environment(WorkoutStore.self) private var store
     @State private var importing = false
     @State private var deletingWorkout: WorkoutSession?
+    @State private var renamingWorkoutID: UUID?
+    @State private var editedName = ""
     @State private var query = WorkoutHistoryQuery()
 
     private var templateOptions: [WorkoutHistoryTemplateOption] {
@@ -96,6 +98,20 @@ struct WorkoutHistoryView: View {
                 query.template = .all
             }
         }
+        .alert("Rename workout", isPresented: Binding(
+            get: { renamingWorkoutID != nil },
+            set: { if !$0 { renamingWorkoutID = nil } }
+        )) {
+            TextField("Workout name", text: $editedName)
+                .accessibilityIdentifier("historyWorkoutNameField")
+            Button("Save") {
+                if let id = renamingWorkoutID { store.renameWorkout(id: id, name: editedName) }
+                renamingWorkoutID = nil
+            }
+            .disabled(editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityIdentifier("saveHistoryWorkoutNameButton")
+            Button("Cancel", role: .cancel) { renamingWorkoutID = nil }
+        }
         .alert("Delete workout?", isPresented: Binding(
             get: { deletingWorkout != nil },
             set: { if !$0 { deletingWorkout = nil } }
@@ -111,7 +127,7 @@ struct WorkoutHistoryView: View {
                 Text("Delete \(workout.name) from \(workout.startedAt.formatted(date: .abbreviated, time: .shortened))? This cannot be undone.")
             }
         }
-        .workoutErrorAlert(enabled: !importing && deletingWorkout == nil)
+        .workoutErrorAlert(enabled: !importing && deletingWorkout == nil && renamingWorkoutID == nil)
     }
 
     private func workoutRow(_ workout: WorkoutSession) -> some View {
@@ -154,6 +170,12 @@ struct WorkoutHistoryView: View {
             }
             .tint(.red)
             .accessibilityIdentifier("deleteHistoryWorkout-\(workout.id)")
+            Button("Rename", systemImage: "pencil") {
+                editedName = workout.name
+                renamingWorkoutID = workout.id
+            }
+            .tint(.blue)
+            .accessibilityIdentifier("renameHistoryWorkout-\(workout.id)")
         }
     }
 

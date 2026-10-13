@@ -13,6 +13,7 @@ Templates, workout execution, and history work locally without an account. The o
 - Start a workout from a template and record the weight and actual reps for each set, with the original planned weight and reps shown alongside.
 - Mark sets complete and save finished workouts to history.
 - Search History by workout or exercise, filter by date range and template, and sort by date or name.
+- Rename a saved workout by swiping left in History and choosing Rename.
 - Delete a saved workout by swiping left in History and confirming Delete Workout.
 - Resume a saved active workout after reopening the app.
 - Follow rest countdowns, total workout time, and the next exercise and set on the Lock Screen and Dynamic Island with a Live Activity.
