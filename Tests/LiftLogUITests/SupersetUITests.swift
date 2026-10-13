@@ -124,6 +124,65 @@ final class SupersetUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecreatingOriginalSupersetDiscardsVersionChange() {
+        let app = launchFreshApp()
+        defer { app.terminate() }
+        beginTemplate(named: "Restored Superset", in: app)
+        addExercise("Bench Press", in: app)
+        addExercise("Squat", in: app)
+        openSupersetEditor(for: "Bench Press", in: app)
+        candidate("Squat", index: 2, in: app).tap()
+        app.buttons["saveSupersetButton"].tap()
+        app.buttons["saveTemplateButton"].tap()
+
+        openTemplateOptions(named: "Restored Superset", action: "Plan Next Workout", in: app)
+        let save = app.buttons["saveTemplateButton"]
+        XCTAssertFalse(save.isEnabled)
+        openSupersetEditor(for: "Bench Press", editing: true, in: app)
+        app.buttons["removeSupersetButton"].tap()
+        XCTAssertTrue(save.isEnabled)
+        XCTAssertEqual(save.label, "Save Version")
+        let summary = app.staticTexts["Update superset groups"]
+        reveal(summary, in: app)
+        attachScreenshot(named: "Removed superset enables Save Version", in: app)
+
+        openSupersetEditor(for: "Bench Press", in: app)
+        candidate("Squat", index: 2, in: app).tap()
+        app.buttons["saveSupersetButton"].tap()
+        XCTAssertFalse(save.isEnabled, "Restoring the original members is not a prescription change")
+        XCTAssertEqual(save.label, "Save")
+        let unchanged = app.staticTexts["Adjust a weight, rep target, exercise, superset, or rest period to create your next version."]
+        reveal(unchanged, in: app)
+        XCTAssertFalse(summary.exists, "The summary must use the same membership comparison as saving")
+        attachScreenshot(named: "Restored superset disables Save and clears changes", in: app)
+
+        addExercise("Deadlift", in: app)
+        XCTAssertTrue(save.isEnabled)
+        XCTAssertEqual(save.label, "Save Version")
+        reveal(app.staticTexts["Add Deadlift: 1 sets"], in: app)
+        XCTAssertFalse(summary.exists, "Adding an ungrouped exercise must not report a superset edit")
+        let remove = app.buttons["Remove Deadlift"]
+        reveal(remove, in: app)
+        remove.tap()
+        XCTAssertFalse(save.isEnabled, "Undoing the added exercise restores the saved prescription")
+
+        let name = app.textFields["templateNameField"]
+        reveal(name, in: app)
+        name.tap()
+        name.typeText(" Renamed")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(save.isEnabled)
+        XCTAssertEqual(save.label, "Save", "Renaming after undoing a group edit must not create a version")
+        save.tap()
+        relaunch(app)
+        assertNewestVersion(1, in: app)
+        openTemplateOptions(named: "Restored Superset Renamed", action: "Plan Next Workout", in: app)
+        XCTAssertFalse(save.isEnabled)
+        assertGroup("Superset A", exercise: "Bench Press", in: app)
+        assertGroup("Superset A", exercise: "Squat", in: app)
+    }
+
+    @MainActor
     func testDuplicateExerciseEntriesCanBeSelectedIndependently() {
         let app = launchFreshApp()
         defer { app.terminate() }

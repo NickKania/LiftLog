@@ -72,6 +72,78 @@ final class SupersetTests: XCTestCase {
         XCTAssertEqual(exercises[0].supersetID, exercises[1].supersetID)
     }
 
+    func testMembershipComparisonIgnoresGroupEntryAndSetIDsButDetectsDifferentPartners() {
+        var original = entries(5)
+        let first = UUID(), second = UUID()
+        for index in [0, 2] { original[index].supersetID = first }
+        for index in [1, 3] { original[index].supersetID = second }
+        let replacementFirst = UUID(), replacementSecond = UUID()
+        var recreated = original.map { entry in
+            TemplateExercise(exercise: entry.exercise,
+                             sets: entry.sets.map { TemplateSet(weight: $0.weight, targetReps: $0.targetReps) },
+                             supersetID: entry.supersetID.map { $0 == first ? replacementFirst : replacementSecond })
+        }
+        XCTAssertNotEqual(recreated.map(\.id), original.map(\.id))
+        XCTAssertNotEqual(recreated.map(\.sets), original.map(\.sets))
+        XCTAssertTrue(SupersetGrouping.sameMembership(original, recreated))
+        XCTAssertTrue(WorkoutStore.samePrescription(original, recreated))
+
+        recreated.swapAt(2, 3)
+        XCTAssertFalse(SupersetGrouping.sameMembership(original, recreated))
+        XCTAssertFalse(WorkoutStore.samePrescription(original, recreated))
+        XCTAssertTrue(SupersetGrouping.sameMembership(original, Array(original.dropLast())))
+        XCTAssertFalse(WorkoutStore.samePrescription(original, Array(original.dropLast())))
+        var ungrouped = original
+        for index in ungrouped.indices { ungrouped[index].supersetID = nil }
+        XCTAssertFalse(SupersetGrouping.sameMembership(original, ungrouped))
+        XCTAssertTrue(SupersetGrouping.sameMembership([TemplateExercise](), []))
+    }
+
+    func testMembershipComparisonDistinguishesRepeatedCatalogEntries() {
+        var original = (0..<4).map { _ in TemplateExercise(exercise: ExerciseCatalog.all[0]) }
+        let first = UUID(), second = UUID()
+        for index in [0, 1] { original[index].supersetID = first }
+        for index in [2, 3] { original[index].supersetID = second }
+        var changed = original
+        changed.swapAt(1, 2)
+        XCTAssertTrue(zip(original, changed).allSatisfy { $0.exercise == $1.exercise })
+        XCTAssertFalse(SupersetGrouping.sameMembership(original, changed))
+        XCTAssertFalse(WorkoutStore.samePrescription(original, changed))
+
+        let replacementFirst = UUID(), replacementSecond = UUID()
+        for index in changed.indices {
+            changed[index].supersetID = index < 2 ? replacementFirst : replacementSecond
+        }
+        XCTAssertTrue(SupersetGrouping.sameMembership(original, changed))
+        XCTAssertTrue(WorkoutStore.samePrescription(original, changed))
+    }
+
+    func testMembershipComparisonTreatsSingletonsAsUngrouped() {
+        var exercises = entries(3)
+        let group = UUID()
+        for index in 0..<2 { exercises[index].supersetID = group }
+        exercises[2].supersetID = UUID()
+        var normalized = exercises
+        SupersetGrouping.normalize(&normalized)
+        XCTAssertTrue(SupersetGrouping.sameMembership(exercises, normalized))
+        XCTAssertTrue(WorkoutStore.samePrescription(exercises, normalized))
+        XCTAssertNotNil(normalized[0].supersetID)
+        XCTAssertNil(normalized[2].supersetID)
+    }
+
+    func testAppendingUngroupedExerciseChangesPrescriptionWithoutChangingMembership() {
+        let original = groupedTemplate().exercises
+        let appended = original + [TemplateExercise(exercise: ExerciseCatalog.all[3])]
+        XCTAssertTrue(SupersetGrouping.sameMembership(original, appended))
+        XCTAssertTrue(SupersetGrouping.sameMembership(appended, original))
+        XCTAssertFalse(WorkoutStore.samePrescription(original, appended))
+        XCTAssertFalse(WorkoutStore.samePrescription(appended, original))
+
+        let ungrouped = entries(1)
+        XCTAssertTrue(SupersetGrouping.sameMembership([], ungrouped))
+        XCTAssertFalse(WorkoutStore.samePrescription([], ungrouped))
+    }
+
     func testLegacyExercisesDecodeWithoutSupersetAndGroupedExercisesRoundTrip() throws {
         let encoder = JSONEncoder(), decoder = JSONDecoder()
         let template = TemplateExercise(exercise: ExerciseCatalog.all[0], supersetID: UUID())
@@ -136,6 +208,36 @@ final class SupersetTests: XCTestCase {
         }
         try database.save(grouped)
         XCTAssertEqual(try database.load().templates, grouped.templates)
+    }
+
+    @MainActor
+    func testRecreatingSameSupersetInDraftDoesNotCreateVersionOrReplaceSavedIdentities() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let initial = groupedTemplate()
+        XCTAssertTrue(store.saveTemplate(initial))
+        let saved = try XCTUnwrap(store.templates.first { $0.id == initial.id })
+        var draft = saved
+        let anchorID = draft.exercises[0].id
+        let selectedIDs = Set(draft.exercises.prefix(2).map(\.id))
+        SupersetGrouping.update(&draft.exercises, anchorID: anchorID, selectedIDs: [anchorID])
+        XCTAssertTrue(draft.exercises.allSatisfy { $0.supersetID == nil })
+        SupersetGrouping.update(&draft.exercises, anchorID: anchorID, selectedIDs: selectedIDs)
+        XCTAssertNotEqual(draft.exercises[0].supersetID, saved.exercises[0].supersetID)
+        XCTAssertTrue(WorkoutStore.samePrescription(draft.exercises, saved.exercises))
+        XCTAssertTrue(store.saveTemplate(draft))
+        XCTAssertEqual(store.templates.first { $0.id == initial.id }, saved)
+
+        draft = try XCTUnwrap(store.templates.first { $0.id == initial.id })
+        SupersetGrouping.update(&draft.exercises, anchorID: anchorID, selectedIDs: [anchorID])
+        SupersetGrouping.update(&draft.exercises, anchorID: anchorID, selectedIDs: selectedIDs)
+        draft.name = "Renamed superset plan"
+        XCTAssertTrue(store.saveTemplate(draft))
+        let renamed = try XCTUnwrap(store.templates.first { $0.id == initial.id })
+        XCTAssertEqual(renamed.name, draft.name)
+        XCTAssertEqual(renamed.exercises, saved.exercises)
+        XCTAssertEqual(renamed.versions, saved.versions)
+        XCTAssertEqual(WorkoutStore(fileURL: url).templates.first { $0.id == initial.id }, renamed)
     }
 
     @MainActor

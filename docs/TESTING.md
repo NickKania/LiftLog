@@ -57,6 +57,8 @@ Run the targeted simulator suite with `-only-testing:LiftLogUITests/SupersetUITe
 
 Verification: all 251 core tests and all three superset UI cases passed on LiftLog Superset Verification (iPhone 17, iOS 26.5). The iOS test build succeeded. Picker and grouped-exercise screenshots were inspected; the decorative group icon is hidden from accessibility so group identifiers expose the actual superset label.
 
+PR #15 regression verification: all 256 core tests pass. A store regression reproduced the unwanted version before the fix; the store and editor now share group-membership comparison independent of group UUIDs. Targeted UI tests passed for restoring a removed group without enabling Save, renaming afterward without creating a version, and genuine membership edits still creating versions. The final regression also checks that adding an ungrouped exercise does not report a superset change. The final iOS build and regression rerun passed on the same isolated iPhone 17 simulator (iOS 26.5), with exported screenshots of the enabled and disabled save states.
+
 ### Apple Health opt-in
 
 `WorkoutHealthDataTests` covers session time windows, invalid dates/values, bounded interval series, and missing data. `AssistantHealthPrivacyTests` captures outgoing requests and tests explicit per-message consent, plain-workout isolation, canonical session resolution, chart scope, cancellation, account changes, deletion during reads, and exclusion from saved history, archives, and title requests. The reference UI suite includes Health-tag selection, cancellation/removal/new-chat behavior, untagged follow-ups, and native health-chart navigation. Its provider and network transport are synthetic and never read personal Health data.

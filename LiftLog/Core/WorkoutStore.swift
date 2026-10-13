@@ -558,9 +558,9 @@ final class WorkoutStore {
     }
 
     nonisolated static func samePrescription(_ left: [TemplateExercise], _ right: [TemplateExercise]) -> Bool {
-        guard left.count == right.count else { return false }
+        guard left.count == right.count, SupersetGrouping.sameMembership(left, right) else { return false }
         return zip(left, right).allSatisfy { lhs, rhs in
-            lhs.exercise == rhs.exercise && lhs.supersetID == rhs.supersetID && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
+            lhs.exercise == rhs.exercise && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
                 abs(a.weight - b.weight) <= max(1, abs(a.weight), abs(b.weight)) * 1e-12 && a.targetReps == b.targetReps
             }
         }

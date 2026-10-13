@@ -188,7 +188,7 @@ struct TemplateEditorView: View {
         }
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if name != original.name { result.append("Name: \(original.name) → \(name)") }
-        if supersetMemberships(draft.exercises) != supersetMemberships(original.exercises) {
+        if !SupersetGrouping.sameMembership(draft.exercises, original.exercises) {
             result.append("Update superset groups")
         }
         for item in original.exercises where !draft.exercises.contains(where: { $0.id == item.id }) {
@@ -213,13 +213,6 @@ struct TemplateEditorView: View {
             }
         }
         return result
-    }
-
-    private func supersetMemberships(_ exercises: [TemplateExercise]) -> [UUID: UUID] {
-        Dictionary(uniqueKeysWithValues: exercises.compactMap { exercise in
-            guard let groupID = exercise.supersetID else { return nil }
-            return (exercise.id, groupID)
-        })
     }
 
     private func restDescription(_ seconds: Int) -> String {
