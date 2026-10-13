@@ -124,6 +124,42 @@ final class SupersetUITests: XCTestCase {
     }
 
     @MainActor
+    func testUngroupedRemovalKeepsSupersetSummary() {
+        let app = launchFreshApp()
+        defer { app.terminate() }
+        beginTemplate(named: "Untouched Superset", in: app)
+        for exercise in ["Deadlift", "Bench Press", "Squat"] { addExercise(exercise, in: app) }
+        openSupersetEditor(for: "Bench Press", in: app)
+        candidate("Squat", index: 3, in: app).tap()
+        app.buttons["saveSupersetButton"].tap()
+        app.buttons["saveTemplateButton"].tap()
+
+        openTemplateOptions(named: "Untouched Superset", action: "Plan Next Workout", in: app)
+        let remove = app.buttons["Remove Deadlift"]
+        reveal(remove, in: app)
+        remove.tap()
+        let save = app.buttons["saveTemplateButton"]
+        XCTAssertTrue(save.isEnabled)
+        XCTAssertEqual(save.label, "Save Version")
+        let removalSummary = app.staticTexts["Remove Deadlift"]
+        for _ in 0..<6 {
+            if removalSummary.exists && removalSummary.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(removalSummary.isHittable)
+        XCTAssertFalse(app.staticTexts["Update superset groups"].exists,
+                       "Removing an ungrouped entry must not report a change to untouched superset members")
+        attachScreenshot(named: "Only removed exercise appears in change summary", in: app)
+        save.tap()
+        relaunch(app)
+        assertNewestVersion(2, in: app)
+        openTemplateOptions(named: "Untouched Superset", action: "Plan Next Workout", in: app)
+        XCTAssertFalse(save.isEnabled)
+        assertGroup("Superset A", exercise: "Bench Press", in: app)
+        assertGroup("Superset A", exercise: "Squat", in: app)
+    }
+
+    @MainActor
     func testRecreatingOriginalSupersetDiscardsVersionChange() {
         let app = launchFreshApp()
         defer { app.terminate() }
@@ -164,7 +200,9 @@ final class SupersetUITests: XCTestCase {
         let remove = app.buttons["Remove Deadlift"]
         reveal(remove, in: app)
         remove.tap()
-        XCTAssertFalse(save.isEnabled, "Undoing the added exercise restores the saved prescription")
+        let restored = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed,
+                       "Undoing the added exercise restores the saved prescription")
 
         let name = app.textFields["templateNameField"]
         reveal(name, in: app)
@@ -245,9 +283,11 @@ final class SupersetUITests: XCTestCase {
         add.tap()
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5))
-        search.tap()
-        search.typeText(name)
         let exercise = app.buttons["exercise-\(name)"]
+        if !exercise.isHittable {
+            search.tap()
+            search.typeText(name)
+        }
         XCTAssertTrue(exercise.waitForExistence(timeout: 5))
         exercise.tap()
         XCTAssertTrue(app.buttons["saveTemplateButton"].waitForExistence(timeout: 5))

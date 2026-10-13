@@ -85,6 +85,7 @@ final class SupersetTests: XCTestCase {
         }
         XCTAssertNotEqual(recreated.map(\.id), original.map(\.id))
         XCTAssertNotEqual(recreated.map(\.sets), original.map(\.sets))
+        XCTAssertNotEqual(SupersetGrouping.memberIDs(original), SupersetGrouping.memberIDs(recreated))
         XCTAssertTrue(SupersetGrouping.sameMembership(original, recreated))
         XCTAssertTrue(WorkoutStore.samePrescription(original, recreated))
 
@@ -142,6 +143,83 @@ final class SupersetTests: XCTestCase {
         let ungrouped = entries(1)
         XCTAssertTrue(SupersetGrouping.sameMembership([], ungrouped))
         XCTAssertFalse(WorkoutStore.samePrescription([], ungrouped))
+    }
+
+    func testMemberIDsIgnoreUngroupedRemovalBeforeBetweenAndAfterGroups() {
+        var original = entries(7)
+        let first = UUID(), second = UUID()
+        for index in [1, 3] { original[index].supersetID = first }
+        for index in [4, 5] { original[index].supersetID = second }
+        let expected: Set<Set<UUID>> = [
+            [original[1].id, original[3].id],
+            [original[4].id, original[5].id]
+        ]
+        XCTAssertEqual(SupersetGrouping.memberIDs(original), expected)
+        for index in [0, 2, 6] {
+            var removed = original
+            removed.remove(at: index)
+            XCTAssertEqual(SupersetGrouping.memberIDs(removed), expected)
+            XCTAssertFalse(WorkoutStore.samePrescription(original, removed))
+            XCTAssertFalse(WorkoutStore.samePrescription(removed, original))
+        }
+    }
+
+    func testMemberIDsIgnoreRecreatedGroupIDsEntryOrderAndSingletons() {
+        var original = entries(5)
+        let first = UUID(), second = UUID()
+        for index in [0, 2] { original[index].supersetID = first }
+        for index in [1, 3] { original[index].supersetID = second }
+        original[4].supersetID = UUID()
+        var recreated = original
+        let replacementFirst = UUID(), replacementSecond = UUID()
+        for index in 0..<4 {
+            recreated[index].supersetID = original[index].supersetID == first ? replacementFirst : replacementSecond
+        }
+        SupersetGrouping.normalize(&recreated)
+        XCTAssertEqual(SupersetGrouping.memberIDs(original), SupersetGrouping.memberIDs(recreated))
+        XCTAssertTrue(WorkoutStore.samePrescription(original, recreated))
+        recreated.reverse()
+        XCTAssertEqual(SupersetGrouping.memberIDs(original), SupersetGrouping.memberIDs(recreated))
+        XCTAssertTrue(SupersetGrouping.memberIDs([TemplateExercise]()).isEmpty)
+        XCTAssertTrue(SupersetGrouping.memberIDs([original[4]]).isEmpty)
+        XCTAssertTrue(SupersetGrouping.memberIDs(entries(2)).isEmpty)
+    }
+
+    func testMemberIDsDetectMovesAndRemovalsOfRepeatedCatalogEntries() {
+        var original = (0..<6).map { _ in TemplateExercise(exercise: ExerciseCatalog.all[0]) }
+        let first = UUID(), second = UUID()
+        for index in 0..<3 { original[index].supersetID = first }
+        for index in 3..<6 { original[index].supersetID = second }
+        let expected: Set<Set<UUID>> = [
+            Set(original.prefix(3).map(\.id)),
+            Set(original.suffix(3).map(\.id))
+        ]
+        XCTAssertEqual(SupersetGrouping.memberIDs(original), expected)
+
+        var moved = original
+        moved[2].supersetID = second
+        XCTAssertNotEqual(SupersetGrouping.memberIDs(original), SupersetGrouping.memberIDs(moved))
+        XCTAssertFalse(WorkoutStore.samePrescription(original, moved))
+        var removed = original
+        removed.removeFirst()
+        XCTAssertNotEqual(SupersetGrouping.memberIDs(original), SupersetGrouping.memberIDs(removed))
+        XCTAssertFalse(WorkoutStore.samePrescription(original, removed))
+
+        var reordered = original
+        reordered.swapAt(1, 4)
+        XCTAssertEqual(SupersetGrouping.memberIDs(original), SupersetGrouping.memberIDs(reordered))
+        XCTAssertFalse(SupersetGrouping.sameMembership(original, reordered))
+        XCTAssertFalse(WorkoutStore.samePrescription(original, reordered))
+    }
+
+    func testMemberIDsUseWorkoutEntryIdentitiesAndIgnoreOrphanedPartners() {
+        let group = UUID()
+        var exercises = (0..<3).map { WorkoutExercise(exercise: ExerciseCatalog.all[$0], supersetID: group) }
+        XCTAssertEqual(SupersetGrouping.memberIDs(exercises), [Set(exercises.map(\.id))])
+        exercises.removeLast()
+        XCTAssertEqual(SupersetGrouping.memberIDs(exercises), [Set(exercises.map(\.id))])
+        exercises.removeLast()
+        XCTAssertTrue(SupersetGrouping.memberIDs(exercises).isEmpty)
     }
 
     func testLegacyExercisesDecodeWithoutSupersetAndGroupedExercisesRoundTrip() throws {

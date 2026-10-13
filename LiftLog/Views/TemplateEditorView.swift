@@ -188,7 +188,7 @@ struct TemplateEditorView: View {
         }
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if name != original.name { result.append("Name: \(original.name) → \(name)") }
-        if !SupersetGrouping.sameMembership(draft.exercises, original.exercises) {
+        if SupersetGrouping.memberIDs(draft.exercises) != SupersetGrouping.memberIDs(original.exercises) {
             result.append("Update superset groups")
         }
         for item in original.exercises where !draft.exercises.contains(where: { $0.id == item.id }) {

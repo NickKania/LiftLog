@@ -5,6 +5,17 @@ protocol SupersetExercise: Identifiable where ID == UUID {
 }
 
 enum SupersetGrouping {
+    /// Groups stable entry IDs, ignoring group IDs, order, and groups with fewer than two members.
+    static func memberIDs<T: SupersetExercise>(_ exercises: [T]) -> Set<Set<UUID>> {
+        var groups: [UUID: Set<UUID>] = [:]
+        for exercise in exercises {
+            if let groupID = exercise.supersetID {
+                groups[groupID, default: []].insert(exercise.id)
+            }
+        }
+        return Set(groups.values.filter { $0.count >= 2 })
+    }
+
     /// Compares groups by ordered entry positions, ignoring IDs, orphans, and trailing ungrouped entries.
     static func sameMembership<T: SupersetExercise>(_ left: [T], _ right: [T]) -> Bool {
         func membership(_ exercises: [T]) -> [Int?] {
