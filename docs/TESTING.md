@@ -43,6 +43,12 @@ On a physical iPhone, complete a set and let rest expire with the app open. Veri
 
 The original chime is synthesized by `python3 scripts/generate_rest_chime.py`; its PCM WAV is bundled in the app and is short enough for notification playback.
 
+`WorkoutHistoryQueryTests` covers combined workout/exercise search, case and accent matching, template identities and renamed templates, calendar-day boundaries across daylight saving, all four sort orders with deterministic ties, and clearing filters without changing the selected sort. `WorkoutHistoryUITests` reuses the synthetic dashboard workout fixture to verify date/template/search combinations, no-match recovery, sorting, detail navigation, deleting a filtered result, and empty-history import access.
+
+In History, check the filter and sort menus at accessibility text sizes. Date ranges include today and the previous 6, 29, or 89 local calendar days. Verify that swiping a filtered result still deletes the selected session after confirmation and that importing workouts refreshes the current results.
+
+History verification: all 236 core tests pass, and all four history UI cases passed across targeted runs on the dedicated LiftLog History Verification simulator (iOS 26.5). The iOS build succeeds.
+
 History renaming is covered by three `WorkoutStoreFlowTests` cases for persistence, blank/missing-session validation, duplicate-name isolation, import identity preservation, and atomic save failure recovery. `WorkoutImportUITests.testRenameHistoryValidationCancellationAndPersistence` checks the swipe action, prefilled name, Cancel, disabled Save for blank names, detail navigation, relaunch, and duplicate import detection.
 
 Rename verification: all 234 core tests and all five History/import UI cases passed across targeted runs on LiftLog Import Verification (iOS 26.5). The native rename dialog was also visually inspected. A stale synthetic `LiftLogUITests.json` fixture was removed from the simulator before UI verification because the existing test reset only deletes the SQLite file.
