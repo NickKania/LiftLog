@@ -4,6 +4,7 @@ struct ActiveWorkoutView: View {
     @Environment(WorkoutStore.self) private var store
     @Environment(RestTimerAlerts.self) private var restAlerts
     @Environment(\.dismiss) private var dismiss
+    @State private var reorderWorkout: WorkoutSession?
     @State private var pickingExercise = false
     @State private var supersetEditor: SupersetEditorContext?
     @State private var confirmingFinish = false
@@ -18,7 +19,7 @@ struct ActiveWorkoutView: View {
                 ContentUnavailableView("Workout saved", systemImage: "checkmark.circle", description: Text("Find your completed sets in History."))
             }
         }
-        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil)
+        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && reorderWorkout == nil)
         .navigationTitle(store.activeWorkout?.name ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -35,6 +36,9 @@ struct ActiveWorkoutView: View {
                     .accessibilityIdentifier("finishWorkoutButton")
             }
             ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { hideKeyboard() } }
+        }
+        .sheet(item: $reorderWorkout) { workout in
+            WorkoutExerciseOrderView(workout: workout)
         }
         .sheet(isPresented: $pickingExercise) {
             ExercisePickerView { exercise in
@@ -103,6 +107,15 @@ struct ActiveWorkoutView: View {
             if workout.exercises.isEmpty {
                 Section {
                     ContentUnavailableView("Ready when you are", systemImage: "dumbbell", description: Text("Add your first exercise to start logging sets."))
+                }
+            }
+            if workout.exercises.count > 1 {
+                Section {
+                    Button("Reorder Exercises", systemImage: "arrow.up.arrow.down") {
+                        hideKeyboard()
+                        reorderWorkout = workout
+                    }
+                    .accessibilityIdentifier("reorderExercisesButton")
                 }
             }
             ForEach(workout.exercises) { exercise in
@@ -254,6 +267,67 @@ struct ActiveWorkoutView: View {
             guard let exerciseIndex = session.exercises.firstIndex(where: { $0.id == exerciseID }),
                   let setIndex = session.exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setID }) else { return }
             change(&session.exercises[exerciseIndex].sets[setIndex])
+        }
+    }
+}
+
+/// Keeps ordering as a draft; cancelling never writes to the workout or its template.
+private struct WorkoutExerciseOrderView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(WorkoutStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let workout: WorkoutSession
+    @State private var exercises: [WorkoutExercise]
+
+    init(workout: WorkoutSession) {
+        self.workout = workout
+        _exercises = State(initialValue: workout.exercises)
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(exercises) { exercise in
+                        HStack(spacing: 12) {
+                            Image(systemName: "dumbbell").foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
+                            Text(exercise.exercise.name)
+                                .font(.body)
+                        }
+                        .padding(.vertical, 6)
+                        .accessibilityIdentifier("reorderExercise-\(exercise.id)")
+                    }
+                    .onMove { offsets, destination in
+                        exercises.move(fromOffsets: offsets, toOffset: destination)
+                    }
+                } footer: {
+                    if store.templates.contains(where: { $0.id == workout.templateID }) {
+                        Text("Drag the handles to change the order. Saving also updates matching exercises in your template for future workouts. Logged sets and template targets stay the same.")
+                    } else {
+                        Text("Drag the handles to change the order. Your logged sets stay the same.")
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle(dynamicTypeSize.isAccessibilitySize ? "Reorder" : "Reorder Exercises")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("cancelExerciseOrderButton")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if store.reorderActiveWorkout(id: workout.id, exerciseIDs: exercises.map(\.id), expectedExerciseIDs: workout.exercises.map(\.id)) {
+                            dismiss()
+                        }
+                    }
+                    .disabled(exercises.map(\.id) == workout.exercises.map(\.id))
+                    .accessibilityIdentifier("saveExerciseOrderButton")
+                }
+            }
+            .workoutErrorAlert()
         }
     }
 }
