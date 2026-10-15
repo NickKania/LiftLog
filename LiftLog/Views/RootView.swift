@@ -89,6 +89,12 @@ struct SettingsView: View {
                 .accessibilityIdentifier("chatGPTSettingsLink")
             }
             CloudBackupSettingsView()
+            Section("About") {
+                NavigationLink("Credits & Licenses") {
+                    CatalogCreditsView()
+                }
+                .accessibilityIdentifier("catalogCreditsSettingsLink")
+            }
         }
         .workoutErrorAlert()
         .navigationTitle("Settings")
