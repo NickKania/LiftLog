@@ -20,6 +20,10 @@ Schema version 3 adds rest durations and active countdown deadlines. Missing res
 
 Schema version 4 adds nullable superset membership to exercise entries. Earlier SQLite databases and JSON snapshots load with ungrouped exercises; successful saves upgrade the working schema transactionally. Template-version payloads and backups retain superset membership.
 
+Schema version 5 adds an ordered `favorite_exercises` table containing unique exercise UUIDs, independent of saved exercise snapshots. Version-1–4 databases and old JSON snapshots load with no favorites; read-only backup loads leave their source files unchanged. The next successful save upgrades the working schema in the same transaction as the mutation. Favorite changes publish only after persistence succeeds. Orphan favorite IDs remain stored if a catalog identity is unavailable; discovery omits them until that identity is available again. SQLite backups include favorites, and restoring replaces them with the selected backup's values. Recently Trained is derived from completed history sets and requires no separate storage.
+
+Schema version 6 adds `exercise_instruction_overrides`, keyed by stable exercise UUID with an ordered JSON array of personal steps. Defaults stay in the bundled catalog. Version-1–5 databases and legacy JSON load with no overrides; saves migrate transactionally, while read-only backups remain untouched. Save and reset publish only after persistence succeeds. Overrides survive catalog retirement, are included in SQLite backups, and are replaced on restore without altering template versions or workout snapshots. Blank steps, duplicate IDs, more than 100 steps, and steps longer than 10,000 characters are rejected. Failed migrations roll back both schema and data.
+
 Existing templates receive an initial version from their saved prescription. Existing sessions retain their recorded values; missing version references or planned weights are left unknown rather than inferred from a template that may have changed. Versions preserve their original weight units, including in backups.
 
 ## Enable iCloud for a signed app

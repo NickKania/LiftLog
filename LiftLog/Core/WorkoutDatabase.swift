@@ -78,6 +78,15 @@ struct WorkoutDatabase {
             snapshot.personalExercises = try db.rows("SELECT * FROM personal_exercises ORDER BY position").map {
                 Exercise(id: try $0.uuid("id"), name: try $0.text("name"), category: try $0.text("category"))
             }
+            if schemaVersion >= 5 {
+                snapshot.favoriteExerciseIDs = try db.rows("SELECT id FROM favorite_exercises ORDER BY position").map { try $0.uuid("id") }
+            }
+            if schemaVersion >= 6 {
+                snapshot.exerciseInstructionOverrides = try db.rows("SELECT exercise_id, steps FROM exercise_instruction_overrides ORDER BY position").map {
+                    ExerciseInstructionOverride(exerciseID: try $0.uuid("exercise_id"),
+                                                steps: try JSONDecoder().decode([String].self, from: Data($0.text("steps").utf8)))
+                }
+            }
             try WorkoutStore.validate(snapshot)
             return snapshot
         }
@@ -96,8 +105,12 @@ struct WorkoutDatabase {
                 if schemaVersion == 1 { try migrateVersionTwo(db) }
                 if schemaVersion <= 2 { try migrateVersionThree(db) }
                 if schemaVersion <= 3 { try migrateVersionFour(db) }
+                if schemaVersion <= 4 { try migrateVersionFive(db) }
+                if schemaVersion <= 5 { try migrateVersionSix(db) }
                 try db.execute("DELETE FROM records")
                 try db.execute("DELETE FROM personal_exercises")
+                try db.execute("DELETE FROM favorite_exercises")
+                try db.execute("DELETE FROM exercise_instruction_overrides")
                 try db.execute("INSERT OR REPLACE INTO settings (id, unit) VALUES (1, ?)", [.text(snapshot.unit.rawValue)])
                 for (position, template) in snapshot.templates.enumerated() {
                     let key = "template:\(template.id.uuidString)"
@@ -123,6 +136,15 @@ struct WorkoutDatabase {
                 for (position, exercise) in snapshot.personalExercises.enumerated() {
                     try db.execute("INSERT INTO personal_exercises (id, position, name, category) VALUES (?, ?, ?, ?)",
                                    [.text(exercise.id.uuidString), .integer(Int64(position)), .text(exercise.name), .text(exercise.category)])
+                }
+                for (position, id) in snapshot.favoriteExerciseIDs.enumerated() {
+                    try db.execute("INSERT INTO favorite_exercises (id, position) VALUES (?, ?)",
+                                   [.text(id.uuidString), .integer(Int64(position))])
+                }
+                for (position, override) in snapshot.exerciseInstructionOverrides.enumerated() {
+                    let steps = String(decoding: try JSONEncoder().encode(override.steps), as: UTF8.self)
+                    try db.execute("INSERT INTO exercise_instruction_overrides (exercise_id, position, steps) VALUES (?, ?, ?)",
+                                   [.text(override.exerciseID.uuidString), .integer(Int64(position)), .text(steps)])
                 }
             }
         } catch {
@@ -154,7 +176,7 @@ struct WorkoutDatabase {
     private func checkFormat(_ db: SQLiteConnection) throws -> Int {
         let version = try db.rows("PRAGMA user_version").first?.integer("user_version")
         guard try db.rows("PRAGMA application_id").first?.integer("application_id") == Self.applicationID,
-              let version, (1...4).contains(version) else {
+              let version, (1...6).contains(version) else {
             throw DatabaseError(message: "This file is not a supported Lift Log database.")
         }
         return version
@@ -188,6 +210,18 @@ struct WorkoutDatabase {
     private func migrateVersionFour(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE exercise_entries ADD COLUMN superset_id TEXT")
         try db.execute("PRAGMA user_version = 4")
+    }
+
+    private func migrateVersionFive(_ db: SQLiteConnection) throws {
+        // Catalog identities can retire or return; favorites survive independently of exercise snapshots.
+        try db.execute("CREATE TABLE favorite_exercises (id TEXT PRIMARY KEY NOT NULL, position INTEGER UNIQUE NOT NULL)")
+        try db.execute("PRAGMA user_version = 5")
+    }
+
+    private func migrateVersionSix(_ db: SQLiteConnection) throws {
+        // No catalog foreign key: retired identities keep personal text for recovery/reset.
+        try db.execute("CREATE TABLE exercise_instruction_overrides (exercise_id TEXT PRIMARY KEY NOT NULL, position INTEGER UNIQUE NOT NULL, steps TEXT NOT NULL)")
+        try db.execute("PRAGMA user_version = 6")
     }
 
     private func createSchema(_ db: SQLiteConnection) throws {
