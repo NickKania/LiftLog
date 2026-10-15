@@ -83,3 +83,9 @@ Useful for a few missing illustrations, rather than a consistent replacement dat
 8. Add meaningful generator checks for disallowed licenses, missing authors/attribution where required, changed checksums, unreviewed mappings, asset-path/hash mismatches and accidental inclusion of blocked image directories. Content correctness still needs a human review beyond these mechanical checks.
 
 The product displays the pinned source steps as defaults without a user-facing review or approval requirement. Users may save personal edits separately from the source content and restore defaults. Source review status remains truthful audit metadata; displaying or customizing steps does not promote it to reviewed. Missing steps offer personal entry without fabricated defaults. Media coverage must not block this behavior.
+
+## Instruction presentation decision
+
+The current product deliberately exposes the pinned source guidance immediately, with optional personal edits and no review/approval task for the user. It contains 876 exercise records, of which 871 have nonempty instruction lists. Field presence is not a correctness assessment. The instruction section labels defaults as Default source steps and directly states that imported guidance has not been individually reviewed or professionally validated, including when personal edits derive from that guidance. Credits retain the same limitations; no source field is promoted from `pendingReview` by displaying or editing it.
+
+Complete field-level hashes, modifications and review states live in the generated, committed `vendor/free-exercise-db/exercise-provenance.json` audit. The app bundles the smaller runtime content plus source/record IDs and the attribution manifest. The generator validates both outputs together; moving the audit out of the bundle does not remove provenance or imply review approval.

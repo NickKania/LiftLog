@@ -149,6 +149,24 @@ final class ExerciseSearchTests: XCTestCase {
         XCTAssertEqual(Set(matches.map(\.id)).count, 2)
     }
 
+    func testFavoritePreferenceOrderDoesNotChangeAllExercisesSearchRelevance() {
+        let aliasFavorite = Exercise(name: "Romanian Deadlift")
+        let category = Exercise(name: "Custom movement", category: "RDL")
+        let substring = Exercise(name: "Single-Leg RDL")
+        let exact = Exercise(name: "RDL")
+        let directFavorite = Exercise(name: "RDL with pause")
+        let index = ExerciseDiscoveryIndex(exercises: [aliasFavorite, category, substring, exact, directFavorite], details: [:])
+        let query = ExerciseDiscoveryQuery(searchText: "rdl")
+        let matches = query.searchMatches(in: index)
+        XCTAssertEqual(matches.map(\.exercise), [exact, substring, directFavorite, aliasFavorite, category])
+
+        let favorites = [aliasFavorite.id, directFavorite.id]
+        let sections = query.results(searchMatches: matches, in: index, favoriteExerciseIDs: favorites)
+        XCTAssertEqual(sections.map(\.kind), [.favorites, .allExercises])
+        XCTAssertEqual(sections.map(\.exercises), [[aliasFavorite, directFavorite], [exact, substring, category]])
+        XCTAssertEqual(query.results(in: index, favoriteExerciseIDs: favorites), sections)
+    }
+
     func testBundledCatalogSupportsAcronymsAndLegacySourceNamesOffline() {
         let ohp = ExerciseDiscoveryQuery(searchText: "ohp").searchMatches(in: .catalog)
         XCTAssertEqual(ohp.first?.exercise.name, "Overhead Press")

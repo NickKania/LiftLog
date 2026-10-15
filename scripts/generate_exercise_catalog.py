@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate offline catalog, details, and credits from committed, pinned inputs."""
+"""Generate offline catalog, details, credits, and a separate provenance audit."""
 import argparse
 import hashlib
 import json
@@ -10,6 +10,11 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "vendor/free-exercise-db"
 OUTPUT = ROOT / "LiftLog/Core/Resources/exercise-catalog.json"
+GENERATED_PATHS = {
+    name: Path("LiftLog/Core/Resources") / name
+    for name in ["exercise-catalog.json", "exercise-details.json", "exercise-attribution.json"]
+}
+GENERATED_PATHS["exercise-provenance.json"] = Path("vendor/free-exercise-db/exercise-provenance.json")
 # Permanent namespace: IDs depend on upstream IDs, never names or array positions.
 NAMESPACE = uuid.UUID("e668353b-034f-4874-a79b-076dcabf47c8")
 MUSCLE_CATEGORIES = {
@@ -124,7 +129,7 @@ def generate_resources(source=SOURCE, root=ROOT):
             raise ValueError(f"Unmapped {mapping} label: {value!r}")
         return required_text(mappings[mapping][value], f"normalized {mapping}")
 
-    catalog, details = [], {}
+    catalog, details, audit = [], {}, {}
     for entry in entries:
         override = legacy.get(entry["id"], {})
         exercise_id = override.get("id", str(uuid.uuid5(NAMESPACE, entry["id"])))
@@ -146,6 +151,11 @@ def generate_resources(source=SOURCE, root=ROOT):
             "mechanic": normalize(entry["mechanic"], "mechanic"),
             "source": {
                 "sourceID": policy["sourceID"], "sourceRecordID": entry["id"],
+            },
+        }
+        record_audit = {
+            "source": {
+                **detail["source"],
                 "sourceURL": f'{metadata["repository"]}/blob/{metadata["commit"]}/{metadata["file"]}',
                 "sourceRecordSHA256": content_hash(entry),
             },
@@ -160,11 +170,12 @@ def generate_resources(source=SOURCE, root=ROOT):
                 modifications = ["Empty instruction steps omitted; remaining wording and order preserved."]
             elif changed:
                 modifications = ["Normalized using the committed explicit label mapping."]
-            detail["provenance"][field] = {
+            record_audit["provenance"][field] = {
                 "sourceField": original, "contentSHA256": content_hash(entry[original]),
                 "modifications": modifications, "reviewStatus": policy["reviewStatus"],
             }
         details[exercise_id] = detail
+        audit[exercise_id] = record_audit
     # Keep the original ten in place for starter templates; sort everything else.
     starters = {f"00000000-0000-0000-0000-{i:012d}": i for i in range(1, 11)}
     if not set(starters).issubset({entry["id"] for entry in catalog}):
@@ -183,7 +194,8 @@ def generate_resources(source=SOURCE, root=ROOT):
                           "compatibilityMappingsSHA256": policy["compatibilityMappings"]["sha256"],
                           "normalizationSHA256": sha256((source / "normalization.json").read_bytes())})
     outputs = {"exercise-catalog.json": catalog, "exercise-details.json": {key: details[key] for key in sorted(details)},
-               "exercise-attribution.json": {"schemaVersion": 1, "sources": [source_credit]}}
+               "exercise-attribution.json": {"schemaVersion": 1, "sources": [source_credit]},
+               "exercise-provenance.json": {"schemaVersion": 1, "records": {key: audit[key] for key in sorted(audit)}}}
     for output in outputs.values():
         validate_no_media(output)
     return {name: formatted(value) for name, value in outputs.items()}
@@ -194,17 +206,24 @@ def generate():
     return generate_resources()["exercise-catalog.json"]
 
 
+def stale_outputs(outputs, root=ROOT):
+    """Check runtime resources and the nonbundled audit against the same inputs."""
+    return [name for name, result in outputs.items()
+            if not (root / GENERATED_PATHS[name]).exists()
+            or (root / GENERATED_PATHS[name]).read_text(encoding="utf-8") != result]
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="Verify all committed generated resources")
+    parser.add_argument("--check", action="store_true", help="Verify runtime resources and the nonbundled provenance audit")
     args = parser.parse_args()
     results = generate_resources()
     if args.check:
-        stale = [name for name, result in results.items() if not (OUTPUT.parent / name).exists() or (OUTPUT.parent / name).read_text(encoding="utf-8") != result]
+        stale = stale_outputs(results)
         if stale:
             raise SystemExit(f"Generated resources are stale: {', '.join(stale)}; run scripts/generate_exercise_catalog.py")
-        print("Catalog, details, and attribution match the pinned inputs and content policy.")
+        print("Catalog, details, attribution, and provenance audit match the pinned inputs and content policy.")
     else:
         for name, result in results.items():
-            (OUTPUT.parent / name).write_text(result, encoding="utf-8")
-        print(f"Generated {len(json.loads(results['exercise-catalog.json']))} exercises, details, and attribution.")
+            (ROOT / GENERATED_PATHS[name]).write_text(result, encoding="utf-8")
+        print(f"Generated {len(json.loads(results['exercise-catalog.json']))} exercises, details, attribution, and provenance audit.")

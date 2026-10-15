@@ -51,7 +51,7 @@ final class ExerciseDetailTests: XCTestCase {
         XCTAssertEqual(sitUp.instructions.last, "Repeat for the recommended amount of repetitions.")
     }
 
-    func testEveryFieldResolvesToPinnedSourceLicenseAndPendingReview() throws {
+    func testEveryDetailResolvesToPinnedSourceLicenseAndPendingReview() throws {
         let manifest = ExerciseCatalog.attribution
         XCTAssertEqual(manifest.schemaVersion, 1)
         XCTAssertEqual(manifest.sources.count, 1)
@@ -66,18 +66,22 @@ final class ExerciseDetailTests: XCTestCase {
         XCTAssertFalse(source.credit.isEmpty)
         XCTAssertFalse(source.author.isEmpty)
         XCTAssertFalse(source.excludedContent.isEmpty)
-        let fields: Set<String> = ["equipment", "primaryMuscles", "secondaryMuscles", "instructions", "type", "level", "force", "mechanic"]
-        let hex = CharacterSet(charactersIn: "0123456789abcdef")
         for detail in ExerciseCatalog.details.values {
             XCTAssertEqual(detail.source.sourceID, source.id)
-            XCTAssertTrue(detail.source.sourceURL.absoluteString.contains(source.revision))
-            XCTAssertEqual(detail.source.sourceRecordSHA256.count, 64)
-            XCTAssertEqual(Set(detail.provenance.keys), fields)
-            for provenance in detail.provenance.values {
-                XCTAssertEqual(provenance.reviewStatus, "pendingReview")
-                XCTAssertEqual(provenance.contentSHA256.count, 64)
-                XCTAssertTrue(provenance.contentSHA256.unicodeScalars.allSatisfy(hex.contains))
-            }
+            XCTAssertFalse(detail.source.sourceRecordID.isEmpty)
         }
+    }
+
+    func testRuntimeDetailsEncodeContentAndSourceReferencesWithoutAuditFields() throws {
+        let detail = try detail("Barbell_Bench_Press_-_Medium_Grip")
+        let data = try JSONEncoder().encode(detail)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(Set(object.keys), [
+            "equipment", "primaryMuscles", "secondaryMuscles", "instructions",
+            "type", "level", "force", "mechanic", "source"
+        ])
+        let source = try XCTUnwrap(object["source"] as? [String: Any])
+        XCTAssertEqual(Set(source.keys), ["sourceID", "sourceRecordID"])
+        XCTAssertEqual(try JSONDecoder().decode(ExerciseDetail.self, from: data), detail)
     }
 }

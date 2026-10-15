@@ -1,8 +1,12 @@
 # Local-first training implementation plan
 
-Last reconciled with the working checkout: **October 14, 2026**. Milestone 0 and Milestone 1C are implemented. Other milestones remain incomplete; existing foundations and outstanding scope are identified below. “Implemented” describes this checkout, including uncommitted work, and does not imply a released build.
+Last reconciled with the working checkout: **October 15, 2026**. Milestone 0 and Milestone 1C are implemented. Other milestones remain incomplete; existing foundations and outstanding scope are identified below. “Implemented” describes this checkout, including uncommitted work, and does not imply a released build.
 
 Based on weight-app commit `997aef7` and the [openGym v1.4.1 source](https://github.com/DuarteSantos8/openGym/tree/464355ef43d4c8f8a4e0bb6db9c2af7f240593b5), researched October 11, 2026. The implementation remains native SwiftUI with local SQLite. Adopt useful training behavior while preserving versioned prescriptions and trustworthy actual-work records.
+
+## Checkout baseline and dependencies
+
+This status describes PR #17 after merge commit `6a7be64`, which incorporated `main` at `e0d28a5`. Exercise reordering and source-template-entry links were delivered by PR #16, which is already merged into `main`; this branch inherits those features from that base. PR #17 adds catalog discovery on top of that history. The older `997aef7` reference above records the original research baseline, not the current implementation baseline.
 
 ## Implementation status
 
@@ -43,7 +47,7 @@ Based on weight-app commit `997aef7` and the [openGym v1.4.1 source](https://git
 - [x] Provide offline Credits & Licenses, including the full license, at the bottom of Settings.
 - [x] Exclude catalog photographs and document unresolved media rights separately from declared text/data licensing.
 
-Remaining content work: imported instructions and metadata retain `pendingReview` provenance; implementation completion does not mean each source field has been professionally reviewed. Default steps are visible immediately, with optional personal editing and no user review/approval gate. Photo-rights clearance is not an outstanding implementation requirement because redistributed catalog photos remain excluded from this plan.
+Remaining content work: imported instructions and metadata retain `pendingReview` provenance; implementation completion does not mean each source field has been professionally reviewed. Default source steps are visible immediately, with an adjacent notice that imported guidance has not been individually reviewed or professionally validated. Personal editing remains optional, with no user review/approval gate. This is an explicit product choice; provenance remains pending review. Photo-rights clearance is not an outstanding implementation requirement because redistributed catalog photos remain excluded from this plan.
 
 Acceptance: reproducible generation from committed snapshots, no catalog network requests, existing identities unchanged, unknown/disallowed media absent, credits accessible offline. Every surfaced new instruction has recorded source/license and content review status. A separate reviewer can trace it back to a pinned input.
 
@@ -73,8 +77,8 @@ Acceptance: results agree across mixed pounds/kilograms, exercise identity varia
 
 - [x] Combine equipment, muscle and activity-type filters with search, including explicit Unknown values and clear/reset actions.
 - [x] Inspect metadata, source credits and missing-content states without automatically adding an exercise.
-- [x] Show default source steps immediately; edit/add/remove/reorder personal steps in a draft, cancel changes or reset to defaults, and save across relaunch and backup/restore.
-- [x] Save favorites independently of template drafts and show Recently Trained from completed history sets.
+- [x] Show default source steps immediately with adjacent review-status context; edit/add/remove/reorder personal steps in a draft, cancel changes or reset to defaults, and save across relaunch and backup/restore.
+- [x] Save favorites independently of template drafts in persisted preference order, and show Recently Trained from completed history sets ordered by finish time.
 - [x] Search source names and common abbreviations (OHP, RDL, DB, BB), with alias explanations and distinct exercise identities.
 - [x] Offer bounded typo-tolerant results labeled Possible Matches/Similar spelling while retaining filters, the typed query and explicit custom creation.
 - [x] Suggest similar movements from recorded metadata, with search/browse alternatives and explicit replacement confirmation.

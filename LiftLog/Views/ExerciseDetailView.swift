@@ -49,10 +49,18 @@ struct ExerciseDetailView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("exerciseInstructionsUnavailable")
                 } else {
-                    Text(hasPersonalInstructions ? "Your personal steps" : "Default steps")
+                    Text(hasPersonalInstructions ? "Your personal steps" : "Default source steps")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("exerciseInstructionsSource")
+                    if detail?.instructions.isEmpty == false {
+                        Text(hasPersonalInstructions
+                             ? "Personal steps may include imported source guidance, which has not been individually reviewed or professionally validated."
+                             : "Imported source guidance. These steps have not been individually reviewed or professionally validated.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("exerciseInstructionsReviewNotice")
+                    }
                     ForEach(instructionRows) { row in
                         HStack(alignment: .top, spacing: 12) {
                             Text("\(row.number).")

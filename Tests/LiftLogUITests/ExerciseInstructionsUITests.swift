@@ -13,7 +13,11 @@ final class ExerciseInstructionsUITests: XCTestCase {
         let firstStep = instructionStep(1, in: app)
         scrollTo(firstStep, in: app)
         XCTAssertTrue(firstStep.label.contains("Lie back on a flat bench"))
-        XCTAssertEqual(app.staticTexts["exerciseInstructionsSource"].label, "Default steps")
+        XCTAssertEqual(app.staticTexts["exerciseInstructionsSource"].label, "Default source steps")
+        let notice = app.staticTexts["exerciseInstructionsReviewNotice"]
+        scrollTo(notice, in: app, upward: false)
+        XCTAssertTrue(notice.isHittable, "Source limitations must be visible beside the usable steps")
+        XCTAssertEqual(notice.label, "Imported source guidance. These steps have not been individually reviewed or professionally validated.")
         XCTAssertFalse(app.staticTexts["exerciseInstructionsUnavailable"].exists)
         XCTAssertFalse(app.staticTexts["Instructions await review"].exists)
         XCTAssertTrue(app.buttons["editExerciseInstructionsButton"].exists)
@@ -34,6 +38,9 @@ final class ExerciseInstructionsUITests: XCTestCase {
         replaceText(in: instructionField(1, in: app), with: "My saved bench setup.", app: app)
         app.buttons["saveExerciseInstructionsButton"].tap()
         assertFirstStep("My saved bench setup.", source: "Your personal steps", in: app)
+        let personalNotice = app.staticTexts["exerciseInstructionsReviewNotice"]
+        scrollTo(personalNotice, in: app, upward: false)
+        XCTAssertEqual(personalNotice.label, "Personal steps may include imported source guidance, which has not been individually reviewed or professionally validated.")
 
         relaunch(app)
         openDetail("Bench Press", in: app)
@@ -55,12 +62,12 @@ final class ExerciseInstructionsUITests: XCTestCase {
         let restored = instructionStep(1, in: app)
         scrollTo(restored, in: app)
         XCTAssertTrue(restored.label.contains("Lie back on a flat bench"))
-        XCTAssertEqual(app.staticTexts["exerciseInstructionsSource"].label, "Default steps")
+        XCTAssertEqual(app.staticTexts["exerciseInstructionsSource"].label, "Default source steps")
         relaunch(app)
         openDetail("Bench Press", in: app)
         scrollTo(restored, in: app)
         XCTAssertTrue(restored.label.contains("Lie back on a flat bench"))
-        XCTAssertEqual(app.staticTexts["exerciseInstructionsSource"].label, "Default steps")
+        XCTAssertEqual(app.staticTexts["exerciseInstructionsSource"].label, "Default source steps")
     }
 
     @MainActor
@@ -77,13 +84,12 @@ final class ExerciseInstructionsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["saveExerciseInstructionsButton"].waitForExistence(timeout: 5))
 
         app.buttons["saveExerciseInstructionsButton"].tap()
-        let error = app.alerts["Unable to save"]
-        XCTAssertTrue(error.waitForExistence(timeout: 5), "A blank step must be rejected without dismissing the draft")
-        keepScreenshot(of: app, named: "Empty personal instruction validation")
-        error.buttons["OK"].tap()
+        assertInlineValidation("Each instruction step must contain text and be no longer than 10,000 characters.", in: app)
+        keepScreenshot(of: app, named: "Empty personal instruction inline validation")
         let first = instructionField(1, in: app)
         first.tap()
         first.typeText("Set up carefully.")
+        XCTAssertFalse(validationNotice(in: app).exists)
         tap("addExerciseInstructionButton", in: app)
         let second = instructionField(2, in: app)
         scrollTo(second, in: app)
@@ -115,16 +121,110 @@ final class ExerciseInstructionsUITests: XCTestCase {
         let app = launchApp(largeText: true)
         defer { app.terminate() }
         openDetail("Bench Press", in: app)
+        let notice = app.staticTexts["exerciseInstructionsReviewNotice"]
+        scrollTo(notice, in: app)
+        XCTAssertTrue(notice.isHittable)
+        keepScreenshot(of: app, named: "Default source notice accessibility XXXL")
         scrollTo(instructionStep(1, in: app), in: app)
         keepScreenshot(of: app, named: "Default exercise steps accessibility XXXL")
         openEditor(in: app)
+        let editorNotice = app.staticTexts["exerciseInstructionsEditorReviewNotice"]
+        scrollTo(editorNotice, in: app)
+        XCTAssertTrue(editorNotice.isHittable)
+        keepScreenshot(of: app, named: "Exercise instruction editor source notice accessibility XXXL")
         let first = instructionField(1, in: app)
+        scrollTo(first, in: app)
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         keepScreenshot(of: app, named: "Exercise instruction editor accessibility XXXL")
         scrollTo(app.buttons["addExerciseInstructionButton"], in: app)
         keepScreenshot(of: app, named: "Exercise instruction editor controls accessibility XXXL")
         app.buttons["cancelExerciseInstructionsButton"].tap()
         XCTAssertTrue(app.navigationBars["Exercise Details"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testRemovingCustomPersonalStepsRequiresConfirmationAndSave() {
+        let app = launchApp()
+        defer { app.terminate() }
+        let name = "Instructions Sled Practice"
+        createCustomExercise(name, in: app)
+        openDetail(name, in: app)
+        tap("addExerciseInstructionsButton", in: app)
+        let first = instructionField(1, in: app)
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        first.tap()
+        first.typeText("My custom movement setup.")
+        app.buttons["saveExerciseInstructionsButton"].tap()
+        assertFirstStep("My custom movement setup.", source: "Your personal steps", in: app)
+        XCTAssertFalse(app.staticTexts["exerciseInstructionsReviewNotice"].exists)
+
+        openEditor(in: app)
+        XCTAssertFalse(app.buttons["resetExerciseInstructionsButton"].exists)
+        tap("removePersonalExerciseInstructionsButton", in: app)
+        let removalConfirmation = app.buttons["removePersonalExerciseInstructionsConfirmButton"].firstMatch
+        XCTAssertTrue(removalConfirmation.waitForExistence(timeout: 5))
+        keepScreenshot(of: app, named: "Custom personal steps removal confirmation")
+        cancelRemovalConfirmation(in: app)
+        XCTAssertEqual(instructionField(1, in: app).value as? String, "My custom movement setup.")
+
+        removePersonalStepsFromDraft(in: app)
+        XCTAssertFalse(instructionField(1, in: app).exists)
+        XCTAssertTrue(app.staticTexts["No steps in this draft."].exists)
+        app.buttons["cancelExerciseInstructionsButton"].tap()
+        assertFirstStep("My custom movement setup.", source: "Your personal steps", in: app)
+        relaunch(app)
+        openDetail(name, in: app)
+        assertFirstStep("My custom movement setup.", source: "Your personal steps", in: app)
+
+        openEditor(in: app)
+        removePersonalStepsFromDraft(in: app)
+        keepScreenshot(of: app, named: "Custom personal steps pending removal draft")
+        app.buttons["saveExerciseInstructionsButton"].tap()
+        assertNoInstructions(in: app)
+        relaunch(app)
+        openDetail(name, in: app)
+        assertNoInstructions(in: app)
+        keepScreenshot(of: app, named: "Custom exercise after saved removal and relaunch")
+    }
+
+    @MainActor
+    func testDeletingAllStepsShowsInlineValidationAndCanRecoverWithoutLosingSavedSteps() {
+        let app = launchApp()
+        defer { app.terminate() }
+        openDetail("Iron Cross", in: app)
+        tap("addExerciseInstructionsButton", in: app)
+        let first = instructionField(1, in: app)
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        first.tap()
+        first.typeText("Saved setup remains until a valid save.")
+        app.buttons["saveExerciseInstructionsButton"].tap()
+        assertFirstStep("Saved setup remains until a valid save.", source: "Your personal steps", in: app)
+
+        openEditor(in: app)
+        tap("deleteExerciseInstruction-1", in: app)
+        app.buttons["saveExerciseInstructionsButton"].tap()
+        assertInlineValidation("Add between 1 and 100 instruction steps.", in: app)
+        keepScreenshot(of: app, named: "Deleting all steps shows inline validation")
+        app.buttons["cancelExerciseInstructionsButton"].tap()
+        assertFirstStep("Saved setup remains until a valid save.", source: "Your personal steps", in: app)
+        relaunch(app)
+        openDetail("Iron Cross", in: app)
+        assertFirstStep("Saved setup remains until a valid save.", source: "Your personal steps", in: app)
+
+        openEditor(in: app)
+        tap("deleteExerciseInstruction-1", in: app)
+        app.buttons["saveExerciseInstructionsButton"].tap()
+        assertInlineValidation("Add between 1 and 100 instruction steps.", in: app)
+        tap("addExerciseInstructionButton", in: app)
+        let recovered = instructionField(1, in: app)
+        scrollTo(recovered, in: app)
+        recovered.tap()
+        recovered.typeText("Recovered valid setup.")
+        app.buttons["saveExerciseInstructionsButton"].tap()
+        assertFirstStep("Recovered valid setup.", source: "Your personal steps", in: app)
+        relaunch(app)
+        openDetail("Iron Cross", in: app)
+        assertFirstStep("Recovered valid setup.", source: "Your personal steps", in: app)
     }
 
     @MainActor
@@ -168,6 +268,72 @@ final class ExerciseInstructionsUITests: XCTestCase {
         scrollTo(edit, in: app, upward: false)
         edit.tap()
         XCTAssertTrue(app.buttons["saveExerciseInstructionsButton"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func createCustomExercise(_ name: String, in app: XCUIApplication) {
+        app.buttons["startEmptyWorkoutButton"].tap()
+        tap("addExerciseButton", in: app)
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText(name + "\n")
+        tap("addCustomExerciseButton", in: app)
+        XCTAssertTrue(app.buttons["addSet-\(name)"].waitForExistence(timeout: 5))
+        tap("minimizeWorkoutButton", in: app)
+        XCTAssertTrue(app.buttons["createTemplateButton"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func validationNotice(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: "exerciseInstructionsValidation").firstMatch
+    }
+
+    @MainActor
+    private func assertInlineValidation(_ message: String, in app: XCUIApplication) {
+        let notice = validationNotice(in: app)
+        XCTAssertTrue(notice.waitForExistence(timeout: 5), "Invalid input must stay in the editor with inline feedback")
+        XCTAssertTrue(notice.isHittable, "Saving invalid steps must reveal the inline feedback")
+        XCTAssertEqual(notice.label, message)
+        XCTAssertFalse(app.alerts["Unable to save"].exists, "Draft validation must not trigger the global storage alert")
+        XCTAssertTrue(app.buttons["saveExerciseInstructionsButton"].exists)
+    }
+
+    @MainActor
+    private func assertNoInstructions(in app: XCUIApplication) {
+        let unavailable = app.staticTexts["exerciseInstructionsUnavailable"]
+        XCTAssertTrue(app.navigationBars["Exercise Details"].waitForExistence(timeout: 5))
+        scrollTo(unavailable, in: app)
+        XCTAssertEqual(unavailable.label, "No default steps available")
+        XCTAssertFalse(instructionStep(1, in: app).exists)
+        XCTAssertTrue(app.buttons["addExerciseInstructionsButton"].exists)
+    }
+
+    @MainActor
+    private func cancelRemovalConfirmation(in app: XCUIApplication) {
+        let confirm = app.buttons["removePersonalExerciseInstructionsConfirmButton"].firstMatch
+        XCTAssertTrue(confirm.exists)
+        let cancel = app.buttons["cancelExerciseInstructionsResetButton"].firstMatch
+        if cancel.exists && cancel.isHittable {
+            cancel.tap()
+        } else {
+            // iOS 26 presents this native confirmation as a popover without a
+            // Cancel row. Its observed upper-center frame leaves the bottom
+            // leading list margin available for the system's outside-tap dismissal.
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.9)).tap()
+        }
+        XCTAssertTrue(confirm.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["saveExerciseInstructionsButton"].exists)
+    }
+
+    @MainActor
+    private func removePersonalStepsFromDraft(in app: XCUIApplication) {
+        tap("removePersonalExerciseInstructionsButton", in: app)
+        let confirm = app.buttons["removePersonalExerciseInstructionsConfirmButton"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["No steps in this draft."].waitForExistence(timeout: 5))
+        XCTAssertFalse(validationNotice(in: app).exists)
     }
 
     @MainActor

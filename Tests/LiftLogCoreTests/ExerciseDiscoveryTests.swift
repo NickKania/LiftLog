@@ -104,6 +104,28 @@ final class ExerciseDiscoveryTests: XCTestCase {
         XCTAssertEqual(history.first?.exercises.first?.exercise, favorite)
     }
 
+    func testFavoritesPreservePersistedOrderWhileIgnoringDuplicatesUnavailableAndFilteredIDs() throws {
+        let first = Exercise(name: "Bench Press")
+        let excludedEquipment = Exercise(name: "Dumbbell Press")
+        let third = Exercise(name: "Incline Press")
+        let excludedSearch = Exercise(name: "Squat")
+        let other = Exercise(name: "Floor Press")
+        let exercises = [first, excludedEquipment, third, excludedSearch, other]
+        var details = try Dictionary(uniqueKeysWithValues: exercises.map { ($0.id, try detail()) })
+        details[excludedEquipment.id] = try detail(equipment: "Dumbbell")
+        let index = ExerciseDiscoveryIndex(exercises: exercises, details: details)
+        let preference = [excludedSearch.id, third.id, UUID(), first.id, third.id, excludedEquipment.id]
+        let decoded = try JSONDecoder().decode([UUID].self, from: JSONEncoder().encode(preference))
+
+        let unfiltered = ExerciseDiscoveryQuery().results(in: index, favoriteExerciseIDs: decoded)
+        XCTAssertEqual(unfiltered.map(\.exercises), [[excludedSearch, third, first, excludedEquipment], [other]])
+        let query = ExerciseDiscoveryQuery(searchText: "press", equipment: .value("Barbell"))
+        let filtered = query.results(in: index, favoriteExerciseIDs: decoded)
+        XCTAssertEqual(filtered.map(\.kind), [.favorites, .allExercises])
+        XCTAssertEqual(filtered.map(\.exercises), [[third, first], [other]])
+        XCTAssertEqual(decoded, preference)
+    }
+
     func testRecentsRequireCompletedSetsInFinishedHistoryAndAvailableCatalogIdentity() {
         let completed = Exercise(name: "Completed")
         let incomplete = Exercise(name: "Incomplete")
@@ -119,16 +141,39 @@ final class ExerciseDiscoveryTests: XCTestCase {
         XCTAssertEqual(ExerciseDiscoveryQuery.recentExerciseIDs(in: history, availableIDs: availableIDs), [completed.id])
         XCTAssertEqual(ExerciseDiscoveryQuery.recentExerciseIDs(in: [], availableIDs: availableIDs), [])
         XCTAssertEqual(ExerciseDiscoveryQuery.recentExerciseIDs(in: history, availableIDs: availableIDs, limit: 0), [])
+        XCTAssertEqual(ExerciseDiscoveryQuery.recentExerciseIDs(in: history, availableIDs: availableIDs, limit: -1), [])
     }
 
-    func testRecentsUseLatestSessionDateStableSessionTiesAndExerciseOrderWithLimit() throws {
+    func testRecentsUseLatestFinishForLongImportedSessionsRatherThanStartTime() {
+        let importedExercise = Exercise(name: "Long imported workout")
+        let shorterExercise = Exercise(name: "Later starting workout")
+        let unfinishedExercise = Exercise(name: "Unfinished workout")
+        let imported = WorkoutSession(name: "Synthetic import", startedAt: Date(timeIntervalSince1970: 100),
+                                      finishedAt: Date(timeIntervalSince1970: 500), importSourceKey: "synthetic-import",
+                                      exercises: [performed(importedExercise)])
+        let shorter = WorkoutSession(startedAt: Date(timeIntervalSince1970: 300),
+                                     finishedAt: Date(timeIntervalSince1970: 400), exercises: [performed(shorterExercise)])
+        let unfinished = session([performed(unfinishedExercise)], at: Date(timeIntervalSince1970: 600), finished: false)
+        let availableIDs = Set([importedExercise.id, shorterExercise.id, unfinishedExercise.id])
+        let history = [shorter, unfinished, imported]
+
+        XCTAssertEqual(ExerciseDiscoveryQuery.recentExerciseIDs(in: history, availableIDs: availableIDs),
+                       [importedExercise.id, shorterExercise.id])
+        XCTAssertEqual(ExerciseDiscoveryQuery.recentExerciseIDs(in: history.reversed(), availableIDs: availableIDs, limit: 1),
+                       [importedExercise.id])
+    }
+
+    func testRecentsUseStableSessionTiesAndExerciseOrderWhileDeduplicatingBeforeLimit() throws {
         let exercises = (0..<11).map { Exercise(name: "Exercise \($0)") }
         let firstID = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
         let secondID = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000002"))
+        let tiedFinish = Date(timeIntervalSince1970: 400)
         let history = [
             session(exercises.map(performed), at: Date(timeIntervalSince1970: 100)),
-            session([performed(exercises[2]), performed(exercises[0])], at: Date(timeIntervalSince1970: 200), id: secondID),
-            session([performed(exercises[1]), performed(exercises[2])], at: Date(timeIntervalSince1970: 200), id: firstID)
+            WorkoutSession(id: secondID, startedAt: Date(timeIntervalSince1970: 300), finishedAt: tiedFinish,
+                           exercises: [performed(exercises[2]), performed(exercises[0])]),
+            WorkoutSession(id: firstID, startedAt: Date(timeIntervalSince1970: 200), finishedAt: tiedFinish,
+                           exercises: [performed(exercises[1]), performed(exercises[2]), performed(exercises[1])])
         ]
         let ids = ExerciseDiscoveryQuery.recentExerciseIDs(in: history, availableIDs: Set(exercises.map(\.id)))
         XCTAssertEqual(ids, [1, 2, 0, 3, 4, 5, 6, 7].map { exercises[$0].id })

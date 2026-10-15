@@ -151,8 +151,11 @@ struct ExerciseDiscoveryQuery {
     ) -> [ExerciseDiscoverySection] {
         let matches = searchMatches.map(\.exercise)
         let matchingIDs = Set(matches.map(\.id))
-        let favoriteIDs = Set(favoriteExerciseIDs)
-        let favorites = matches.filter { favoriteIDs.contains($0.id) }
+        var seenFavorites = Set<UUID>()
+        let favorites = favoriteExerciseIDs
+            .filter { matchingIDs.contains($0) && seenFavorites.insert($0).inserted }
+            .compactMap { index.exercisesByID[$0] }
+        let favoriteIDs = Set(favorites.map(\.id))
         let recent = Self.recentExerciseIDs(in: history, availableIDs: Set(index.exercisesByID.keys), limit: recentLimit)
             .filter { matchingIDs.contains($0) && !favoriteIDs.contains($0) }
             .compactMap { index.exercisesByID[$0] }
@@ -165,18 +168,20 @@ struct ExerciseDiscoveryQuery {
         ].filter { !$0.exercises.isEmpty }
     }
 
-    /// Latest completed session first, with stable session-ID ties and original
+    /// Latest finish time first, with stable session-ID ties and original
     /// exercise order within a session. Recompute from history after deletion or reload.
     static func recentExerciseIDs(in history: [WorkoutSession], availableIDs: Set<UUID>, limit: Int = 8) -> [UUID] {
         guard limit > 0 else { return [] }
-        let completed = history.filter { $0.finishedAt != nil }.sorted {
-            if $0.startedAt != $1.startedAt { return $0.startedAt > $1.startedAt }
-            return $0.id.uuidString < $1.id.uuidString
+        let completed = history.compactMap { workout in
+            workout.finishedAt.map { (workout: workout, finishedAt: $0) }
+        }.sorted {
+            if $0.finishedAt != $1.finishedAt { return $0.finishedAt > $1.finishedAt }
+            return $0.workout.id.uuidString < $1.workout.id.uuidString
         }
         var seen = Set<UUID>()
         var result: [UUID] = []
-        for workout in completed {
-            for item in workout.exercises {
+        for completedWorkout in completed {
+            for item in completedWorkout.workout.exercises {
                 let id = item.exercise.id
                 guard item.sets.contains(where: \.isCompleted), availableIDs.contains(id), seen.insert(id).inserted else { continue }
                 result.append(id)

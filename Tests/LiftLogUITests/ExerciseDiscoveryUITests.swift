@@ -103,6 +103,45 @@ final class ExerciseDiscoveryUITests: XCTestCase {
     }
 
     @MainActor
+    func testFavoritesPreserveSavedOrderAcrossSearchFiltersAndRelaunch() {
+        let app = launchApp()
+        defer { app.terminate() }
+        openTemplatePicker(in: app)
+
+        // Save in the opposite order to these exercises' bundled catalog order.
+        for name in ["Overhead Press", "Bench Press"] {
+            search(name, in: app)
+            openDetail(name, in: app)
+            let favorite = app.buttons["exerciseFavoriteButton"]
+            XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+            XCTAssertEqual(favorite.label, "Add to Favorites")
+            favorite.tap()
+            XCTAssertEqual(favorite.label, "Remove from Favorites")
+            backToPicker(in: app)
+        }
+
+        search("", in: app)
+        assertOverheadBeforeBenchInFavorites(in: app)
+        keepScreenshot(of: app, named: "Favorites preserve saved order in unfiltered picker")
+        search("press", in: app)
+        assertOverheadBeforeBenchInFavorites(in: app)
+        setFilters(equipment: "Barbell", muscle: "Triceps", type: "Strength", in: app)
+        assertOverheadBeforeBenchInFavorites(in: app)
+        app.buttons["exercisePickerCancelButton"].tap()
+        app.navigationBars["New Template"].buttons["Cancel"].tap()
+
+        relaunch(app)
+        openTemplatePicker(in: app)
+        assertOverheadBeforeBenchInFavorites(in: app)
+        search("press", in: app)
+        assertOverheadBeforeBenchInFavorites(in: app)
+        keepScreenshot(of: app, named: "Favorites preserve saved order during search after relaunch")
+        setFilters(equipment: "Barbell", muscle: "Triceps", type: "Strength", in: app)
+        assertOverheadBeforeBenchInFavorites(in: app)
+        keepScreenshot(of: app, named: "Favorites preserve saved order with search and metadata filters after relaunch")
+    }
+
+    @MainActor
     func testRecentsComeFromCompletedHistoryAndExcludeUncompletedExercises() {
         let app = launchApp()
         defer { app.terminate() }
@@ -263,7 +302,18 @@ final class ExerciseDiscoveryUITests: XCTestCase {
         let exercise = app.buttons["exercise-\(name)"]
         scrollTo(exercise, in: app)
         exercise.tap()
-        XCTAssertTrue(app.buttons["addSet-\(name)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Add Exercise"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["finishWorkoutButton"].waitForExistence(timeout: 5))
+        let editor = app.collectionViews["activeWorkoutEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        let addSet = editor.buttons["addSet-\(name)"]
+        // The active workout List creates lower exercise rows as they scroll
+        // into view. Reveal the added exercise on its owning list first.
+        for _ in 0..<15 {
+            if addSet.isHittable { break }
+            editor.swipeUp()
+        }
+        XCTAssertTrue(addSet.isHittable, "The added exercise must be visible in the active workout")
     }
 
     @MainActor
@@ -312,6 +362,21 @@ final class ExerciseDiscoveryUITests: XCTestCase {
             XCTAssertTrue(picker.label.contains(option) || (picker.value as? String) == option, "\(identifier) should retain \(option)")
         }
         app.buttons["exerciseFiltersDoneButton"].tap()
+    }
+
+    @MainActor
+    private func assertOverheadBeforeBenchInFavorites(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(app.staticTexts["exerciseSection-favorites"].waitForExistence(timeout: 5), file: file, line: line)
+        let overhead = app.buttons["exercise-Overhead Press"]
+        let bench = app.buttons["exercise-Bench Press"]
+        XCTAssertTrue(overhead.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(bench.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertEqual(app.buttons.matching(identifier: "exercise-Overhead Press").count, 1, file: file, line: line)
+        XCTAssertEqual(app.buttons.matching(identifier: "exercise-Bench Press").count, 1, file: file, line: line)
+        XCTAssertTrue(overhead.isHittable, file: file, line: line)
+        XCTAssertTrue(bench.isHittable, file: file, line: line)
+        XCTAssertLessThan(overhead.frame.minY, bench.frame.minY,
+                          "Favorites must keep the saved Overhead Press then Bench Press order", file: file, line: line)
     }
 
     @MainActor

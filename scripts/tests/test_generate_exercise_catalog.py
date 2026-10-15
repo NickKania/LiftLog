@@ -46,23 +46,66 @@ class CatalogGenerationTests(unittest.TestCase):
                          "1f2e839263c66baeaf1bb41639814b9e641e9ba7b8f845893fe1d4a04c61cb6f")
         self.assertEqual(len(json.loads(outputs["exercise-details.json"])), 876)
         for name, content in outputs.items():
-            self.assertEqual(content, (catalog.OUTPUT.parent / name).read_text())
+            self.assertEqual(content, (catalog.ROOT / catalog.GENERATED_PATHS[name]).read_text())
+
+    def test_runtime_details_are_lean_and_audit_stays_outside_the_bundle(self):
+        outputs = self.generate()
+        details = json.loads(outputs["exercise-details.json"])
+        for detail in details.values():
+            self.assertEqual(set(detail), set(catalog.DETAIL_FIELDS) | {"source"})
+            self.assertEqual(set(detail["source"]), {"sourceID", "sourceRecordID"})
+        self.assertEqual(list((catalog.ROOT / "LiftLog/Core/Resources").rglob("exercise-provenance.json")), [])
+        for name, path in catalog.GENERATED_PATHS.items():
+            if name == "exercise-provenance.json":
+                self.assertFalse(path.is_relative_to("LiftLog/Core"))
+            else:
+                self.assertTrue(path.is_relative_to("LiftLog/Core/Resources"))
+
+    def test_check_detects_missing_or_changed_runtime_and_audit_outputs(self):
+        outputs = self.generate()
+        for name, content in outputs.items():
+            (self.root / catalog.GENERATED_PATHS[name]).write_text(content)
+        self.assertEqual(catalog.stale_outputs(outputs, self.root), [])
+        for name, content in outputs.items():
+            with self.subTest(output=name):
+                path = self.root / catalog.GENERATED_PATHS[name]
+                path.unlink()
+                self.assertEqual(catalog.stale_outputs(outputs, self.root), [name])
+                path.write_text(content + " ")
+                self.assertEqual(catalog.stale_outputs(outputs, self.root), [name])
+                path.write_text(content)
 
     def test_fields_preserve_full_lists_unknowns_and_ordered_source_words(self):
         outputs = self.generate()
         ids = {row["sourceID"]: row["id"] for row in json.loads(outputs["exercise-catalog.json"])}
         details = json.loads(outputs["exercise-details.json"])
+        audit = json.loads(outputs["exercise-provenance.json"])
+        self.assertEqual(audit["schemaVersion"], 1)
+        self.assertEqual(set(audit["records"]), set(details))
         for original in self.read("exercises.json"):
             detail = details[ids[original["id"]]]
+            record_audit = audit["records"][ids[original["id"]]]
             self.assertEqual(detail["instructions"], [step for step in original["instructions"] if step.strip()])
             for field in ["primaryMuscles", "secondaryMuscles"]:
                 self.assertEqual(detail[field], [self.read("normalization.json")["muscles"][muscle] for muscle in original[field]])
-            self.assertEqual(detail["source"]["sourceRecordSHA256"], catalog.content_hash(original))
+            self.assertEqual(detail["source"], {key: record_audit["source"][key] for key in ["sourceID", "sourceRecordID"]})
+            self.assertEqual(detail["source"]["sourceRecordID"], original["id"])
+            self.assertEqual(record_audit["source"]["sourceRecordSHA256"], catalog.content_hash(original))
+            self.assertEqual(set(record_audit["provenance"]), set(catalog.DETAIL_FIELDS))
             for field, source_field in catalog.DETAIL_FIELDS.items():
-                provenance = detail["provenance"][field]
+                provenance = record_audit["provenance"][field]
                 self.assertEqual(provenance["sourceField"], source_field)
                 self.assertEqual(provenance["contentSHA256"], catalog.content_hash(original[source_field]))
                 self.assertEqual(provenance["reviewStatus"], "pendingReview")
+                if field == "type":
+                    modifications = ["Source category renamed to type; label normalized."]
+                elif detail[field] == original[source_field]:
+                    modifications = []
+                elif field == "instructions":
+                    modifications = ["Empty instruction steps omitted; remaining wording and order preserved."]
+                else:
+                    modifications = ["Normalized using the committed explicit label mapping."]
+                self.assertEqual(provenance["modifications"], modifications)
         self.assertIsNone(details[ids["Adductor_Groin"]]["equipment"])
         self.assertEqual(details[ids["3_4_Sit-Up"]]["equipment"], "Bodyweight")
         self.assertEqual(details[ids["Iron_Cross"]]["instructions"], [])
@@ -80,7 +123,9 @@ class CatalogGenerationTests(unittest.TestCase):
         self.assertTrue(source["author"] and source["credit"] and source["licenseScope"])
         for detail in json.loads(outputs["exercise-details.json"]).values():
             self.assertEqual(detail["source"]["sourceID"], source["id"])
-            self.assertIn(metadata["commit"], detail["source"]["sourceURL"])
+        for record in json.loads(outputs["exercise-provenance.json"])["records"].values():
+            self.assertEqual(record["source"]["sourceID"], source["id"])
+            self.assertEqual(record["source"]["sourceURL"], source["sourceURL"])
 
     def test_changed_source_and_license_checksums_are_rejected(self):
         (self.source / "exercises.json").write_text("[]")

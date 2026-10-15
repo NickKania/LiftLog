@@ -11,26 +11,14 @@ struct ExerciseDetail: Codable, Equatable {
     var level: String?
     var force: String?
     var mechanic: String?
-    var source: ExerciseRecordProvenance
-    var provenance: [String: ExerciseFieldProvenance]
+    var source: ExerciseRecordSource
 }
 
-/// Each field inherits this record and the license, author, revision, and credit of
-/// the matching `ExerciseContentSource` in the generated attribution manifest.
-struct ExerciseRecordProvenance: Codable, Equatable {
+/// Resolves runtime content to its source credit and upstream record. Full record
+/// and field provenance remain in the generated, nonbundled vendor audit.
+struct ExerciseRecordSource: Codable, Equatable {
     var sourceID: String
     var sourceRecordID: String
-    var sourceURL: URL
-    var sourceRecordSHA256: String
-}
-
-struct ExerciseFieldProvenance: Codable, Equatable {
-    var sourceField: String
-    /// Hash of the original source field before normalization. See the generator
-    /// for canonical JSON encoding; null and empty lists have distinct hashes.
-    var contentSHA256: String
-    var modifications: [String]
-    var reviewStatus: String
 }
 
 struct ExerciseAttributionManifest: Codable, Equatable {

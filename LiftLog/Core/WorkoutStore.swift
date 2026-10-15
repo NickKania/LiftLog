@@ -732,7 +732,8 @@ final class WorkoutStore {
         }
     }
 
-    nonisolated private static func validateInstructionSteps(_ steps: [String]) throws {
+    /// Shared validation for persisted instructions and editor drafts.
+    nonisolated static func validateInstructionSteps(_ steps: [String]) throws {
         guard !steps.isEmpty, steps.count <= 100 else {
             throw StoreError.invalid("Add between 1 and 100 instruction steps.")
         }

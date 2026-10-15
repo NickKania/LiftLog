@@ -6,6 +6,7 @@ struct ExerciseInstructionsEditor: View {
     @State private var steps: [DraftStep]
     @State private var showingResetConfirmation = false
     @State private var resetDraft = false
+    @State private var validationMessage: String?
     let exercise: Exercise
     private let defaultInstructions: [String]
     private let hadPersonalInstructions: Bool
@@ -18,109 +19,143 @@ struct ExerciseInstructionsEditor: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                Text(exercise.name)
-                    .font(.headline)
-                if steps.isEmpty {
-                    Text("No steps in this draft.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Step \(index + 1)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        TextField("Describe this step", text: textBinding(for: step.id), axis: .vertical)
-                            .lineLimit(3...12)
-                            .accessibilityLabel("Step \(index + 1)")
-                            .accessibilityIdentifier("exerciseInstructionField-\(index + 1)")
-                        HStack(spacing: 16) {
-                            Button {
-                                move(step.id, by: -1)
-                            } label: {
-                                Image(systemName: "arrow.up")
-                                    .frame(minWidth: 44, minHeight: 44)
-                            }
-                            .disabled(index == 0)
-                            .accessibilityLabel("Move step \(index + 1) up")
-                            .accessibilityIdentifier("moveExerciseInstructionUp-\(index + 1)")
-                            Button {
-                                move(step.id, by: 1)
-                            } label: {
-                                Image(systemName: "arrow.down")
-                                    .frame(minWidth: 44, minHeight: 44)
-                            }
-                            .disabled(index == steps.count - 1)
-                            .accessibilityLabel("Move step \(index + 1) down")
-                            .accessibilityIdentifier("moveExerciseInstructionDown-\(index + 1)")
-                            Spacer(minLength: 0)
-                            Button(role: .destructive) {
-                                steps.removeAll { $0.id == step.id }
-                            } label: {
-                                Image(systemName: "trash")
-                                    .frame(minWidth: 44, minHeight: 44)
-                            }
-                            .accessibilityLabel("Remove step \(index + 1)")
-                            .accessibilityIdentifier("deleteExerciseInstruction-\(index + 1)")
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                    .padding(.vertical, 4)
-                }
-                Button("Add Step", systemImage: "plus.circle") {
-                    steps.append(DraftStep(text: ""))
-                }
-                .frame(minHeight: 44)
-                .accessibilityIdentifier("addExerciseInstructionButton")
-            } header: {
-                Text("Personal instructions")
-            } footer: {
-                Text("Your changes apply to this exercise locally throughout the app. The original default steps are preserved. Save to keep your changes, or Cancel to discard them.")
-            }
-
-            if hadPersonalInstructions || !defaultInstructions.isEmpty {
+        ScrollViewReader { scrollProxy in
+            List {
                 Section {
-                    Button("Reset to Default Steps", systemImage: "arrow.counterclockwise", role: .destructive) {
-                        hideKeyboard()
-                        showingResetConfirmation = true
+                    Text(exercise.name)
+                        .font(.headline)
+                        .id("exerciseInstructionsEditorTop")
+                    if let validationMessage {
+                        Label(validationMessage, systemImage: "exclamationmark.circle")
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(validationMessage)
+                            .accessibilityIdentifier("exerciseInstructionsValidation")
                     }
-                    .accessibilityIdentifier("resetExerciseInstructionsButton")
+                    if !defaultInstructions.isEmpty {
+                        Text(hadPersonalInstructions && !resetDraft
+                             ? "Personal steps may include imported source guidance, which has not been individually reviewed or professionally validated."
+                             : "Imported source guidance. These steps have not been individually reviewed or professionally validated.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("exerciseInstructionsEditorReviewNotice")
+                    }
+                    if steps.isEmpty {
+                        Text("No steps in this draft.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Step \(index + 1)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            TextField("Describe this step", text: textBinding(for: step.id), axis: .vertical)
+                                .lineLimit(3...12)
+                                .accessibilityLabel("Step \(index + 1)")
+                                .accessibilityIdentifier("exerciseInstructionField-\(index + 1)")
+                            HStack(spacing: 16) {
+                                Button {
+                                    move(step.id, by: -1)
+                                } label: {
+                                    Image(systemName: "arrow.up")
+                                        .frame(minWidth: 44, minHeight: 44)
+                                }
+                                .disabled(index == 0)
+                                .accessibilityLabel("Move step \(index + 1) up")
+                                .accessibilityIdentifier("moveExerciseInstructionUp-\(index + 1)")
+                                Button {
+                                    move(step.id, by: 1)
+                                } label: {
+                                    Image(systemName: "arrow.down")
+                                        .frame(minWidth: 44, minHeight: 44)
+                                }
+                                .disabled(index == steps.count - 1)
+                                .accessibilityLabel("Move step \(index + 1) down")
+                                .accessibilityIdentifier("moveExerciseInstructionDown-\(index + 1)")
+                                Spacer(minLength: 0)
+                                Button(role: .destructive) {
+                                    steps.removeAll { $0.id == step.id }
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .frame(minWidth: 44, minHeight: 44)
+                                }
+                                .accessibilityLabel("Remove step \(index + 1)")
+                                .accessibilityIdentifier("deleteExerciseInstruction-\(index + 1)")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    Button("Add Step", systemImage: "plus.circle") {
+                        steps.append(DraftStep(text: ""))
+                    }
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("addExerciseInstructionButton")
+                } header: {
+                    Text("Personal instructions")
                 } footer: {
-                    Text("Reset replaces this draft with the original defaults. Save to apply the reset.")
+                    Text(defaultInstructions.isEmpty
+                         ? "Your changes apply to this exercise locally throughout the app. Save to keep your changes, or Cancel to discard them."
+                         : "Your changes apply to this exercise locally throughout the app. The original default steps are preserved. Save to keep your changes, or Cancel to discard them.")
+                }
+
+                if hadPersonalInstructions || !defaultInstructions.isEmpty {
+                    Section {
+                        Button(defaultInstructions.isEmpty ? "Remove Personal Steps" : "Reset to Default Steps", systemImage: defaultInstructions.isEmpty ? "trash" : "arrow.counterclockwise", role: .destructive) {
+                            hideKeyboard()
+                            showingResetConfirmation = true
+                        }
+                        .accessibilityIdentifier(defaultInstructions.isEmpty ? "removePersonalExerciseInstructionsButton" : "resetExerciseInstructionsButton")
+                    } footer: {
+                        Text(defaultInstructions.isEmpty
+                             ? "No default steps are available. Remove Personal Steps clears this draft. Save to remove your saved steps, or Cancel to keep them."
+                             : "Reset replaces this draft with the original defaults. Save to apply the reset.")
+                    }
                 }
             }
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .navigationTitle("Edit Steps")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden()
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
-                    .accessibilityIdentifier("cancelExerciseInstructionsButton")
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("Edit Steps")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("cancelExerciseInstructionsButton")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        save()
+                        if validationMessage != nil {
+                            scrollProxy.scrollTo("exerciseInstructionsEditorTop", anchor: .top)
+                        }
+                    }
                     .bold()
                     .accessibilityIdentifier("saveExerciseInstructionsButton")
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { hideKeyboard() }
+                }
             }
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") { hideKeyboard() }
+            .confirmationDialog(defaultInstructions.isEmpty ? "Remove personal steps from this draft?" : "Reset this draft to the default steps?", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
+                Button(defaultInstructions.isEmpty ? "Remove from Draft" : "Reset Draft", role: .destructive) {
+                    steps = defaultInstructions.map { DraftStep(text: $0) }
+                    resetDraft = true
+                    validationMessage = nil
+                }
+                .accessibilityIdentifier(defaultInstructions.isEmpty ? "removePersonalExerciseInstructionsConfirmButton" : "resetExerciseInstructionsConfirmButton")
+                Button("Cancel", role: .cancel) {}
+                    .accessibilityIdentifier("cancelExerciseInstructionsResetButton")
+            } message: {
+                Text(defaultInstructions.isEmpty
+                     ? "There are no default steps to restore. Save will remove your personal steps for this exercise throughout the app. Canceling the editor keeps your saved steps."
+                     : "Your saved personal steps stay unchanged until you tap Save.")
             }
+            .accessibilityIdentifier("exerciseInstructionsEditor")
+            .onChange(of: steps.map(\.text)) { _, _ in validationMessage = nil }
         }
-        .confirmationDialog("Reset this draft to the default steps?", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
-            Button("Reset Draft", role: .destructive) {
-                steps = defaultInstructions.map { DraftStep(text: $0) }
-                resetDraft = true
-            }
-            .accessibilityIdentifier("resetExerciseInstructionsConfirmButton")
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your saved personal steps stay unchanged until you tap Save.")
-        }
-        .accessibilityIdentifier("exerciseInstructionsEditor")
     }
 
     private func textBinding(for id: UUID) -> Binding<String> {
@@ -147,6 +182,12 @@ struct ExerciseInstructionsEditor: View {
         if resetDraft && instructions == defaultInstructions {
             saved = store.resetExerciseInstructions(for: exercise.id)
         } else {
+            do {
+                try WorkoutStore.validateInstructionSteps(instructions.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+            } catch {
+                validationMessage = error.localizedDescription
+                return
+            }
             saved = store.setExerciseInstructions(instructions, for: exercise.id)
         }
         if saved { dismiss() }
