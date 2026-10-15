@@ -43,7 +43,7 @@ final class WorkoutStore {
                 let saved = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: legacyURL))
                 guard (1...2).contains(saved.version) else { throw StoreError.invalid("This workout file uses an unsupported version.") }
                 try Self.validate(saved)
-                let migrated = Self.backfillingVersions(Self.backfillingCatalog(saved))
+                let migrated = Self.backfillingExerciseReferences(Self.backfillingVersions(Self.backfillingCatalog(saved)))
                 // Publish a complete database only after migration succeeds. Keep the original JSON.
                 let staging = self.fileURL.deletingLastPathComponent().appendingPathComponent("migration-\(UUID().uuidString).sqlite")
                 defer { try? FileManager.default.removeItem(at: staging) }
@@ -194,7 +194,7 @@ final class WorkoutStore {
                 exercises: source?.exercises.map { item in
                     WorkoutExercise(exercise: item.exercise, sets: item.sets.map {
                         WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
-                    }, supersetID: item.supersetID)
+                    }, supersetID: item.supersetID, templateExerciseID: item.id)
                 } ?? [],
                 restSeconds: source?.restSeconds ?? 120
             )
@@ -242,6 +242,9 @@ final class WorkoutStore {
             // Logged values may change; targets remain the prescription originally started.
             for exerciseIndex in updated.exercises.indices {
                 guard let original = activeWorkout.exercises.first(where: { $0.id == updated.exercises[exerciseIndex].id }) else { continue }
+                // A replacement belongs only to this session, even when its entry ID is reused.
+                updated.exercises[exerciseIndex].templateExerciseID =
+                    updated.exercises[exerciseIndex].exercise.id == original.exercise.id ? original.templateExerciseID : nil
                 // A different movement never inherits the original prescription,
                 // including through callers that retain an entry ID during replacement.
                 if original.exercise.id != updated.exercises[exerciseIndex].exercise.id {
@@ -267,6 +270,61 @@ final class WorkoutStore {
             }
             updated.restTimer = WorkoutRestTimer.updated(previous: activeWorkout, current: updated, now: now)
             next.activeWorkout = updated
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    /// Session entries eligible to reorder the current template. Check movement identity too
+    /// so stale links saved by older versions cannot move a different template exercise.
+    func templateLinkedExerciseIDs(in workout: WorkoutSession) -> Set<UUID> {
+        guard let template = templates.first(where: { $0.id == workout.templateID }) else { return [] }
+        let entries = Dictionary(uniqueKeysWithValues: template.exercises.map { ($0.id, $0.exercise.id) })
+        return Set(workout.exercises.filter { item in
+            guard let sourceID = item.templateExerciseID else { return false }
+            return entries[sourceID] == item.exercise.id
+        }.map(\.id))
+    }
+
+    /// Saves only the exercise order, using the latest logged values and template prescription.
+    @discardableResult
+    func reorderActiveWorkout(id: UUID, exerciseIDs: [UUID], expectedExerciseIDs: [UUID]) -> Bool {
+        do {
+            guard var workout = activeWorkout, workout.id == id,
+                  workout.exercises.map(\.id) == expectedExerciseIDs else {
+                throw StoreError.invalid("This workout changed after you opened the exercise order. Reopen Reorder Exercises and try again.")
+            }
+            guard exerciseIDs.count == expectedExerciseIDs.count,
+                  Set(exerciseIDs) == Set(expectedExerciseIDs) else {
+                throw StoreError.invalid("The exercise order must include every workout exercise exactly once.")
+            }
+            guard exerciseIDs != expectedExerciseIDs else { return true }
+            let entries = Dictionary(uniqueKeysWithValues: workout.exercises.map { ($0.id, $0) })
+            workout.exercises = exerciseIDs.compactMap { entries[$0] }
+            var next = snapshot
+            if let templateIndex = next.templates.firstIndex(where: { $0.id == workout.templateID }) {
+                var template = next.templates[templateIndex]
+                let templateEntries = Dictionary(uniqueKeysWithValues: template.exercises.map { ($0.id, $0) })
+                let linkedIDs = templateLinkedExerciseIDs(in: workout)
+                let orderedIDs = workout.exercises.filter { linkedIDs.contains($0.id) }.compactMap(\.templateExerciseID)
+                guard Set(orderedIDs).count == orderedIDs.count else {
+                    throw StoreError.invalid("The workout contains duplicate template exercise references.")
+                }
+                let matchingIDs = Set(orderedIDs)
+                var ordered = orderedIDs.makeIterator()
+                let originalIDs = template.exercises.map(\.id)
+                // Template-only entries keep their positions; session-only additions stay local.
+                for index in template.exercises.indices where matchingIDs.contains(template.exercises[index].id) {
+                    if let entryID = ordered.next(), let entry = templateEntries[entryID] {
+                        template.exercises[index] = entry
+                    }
+                }
+                if template.exercises.map(\.id) != originalIDs {
+                    template.versions.append(WorkoutTemplateVersion(number: template.versions.count + 1,
+                        name: template.name, exercises: template.exercises, unit: unit, restSeconds: template.restSeconds))
+                    next.templates[templateIndex] = template
+                }
+            }
+            next.activeWorkout = workout
             return commit(next)
         } catch { return fail(error) }
     }
@@ -461,7 +519,33 @@ final class WorkoutStore {
         return next
     }
 
-    /// Legacy sessions retain unknown provenance and targets. Only template plans gain a baseline.
+    /// Legacy sessions have no source entry IDs. Only unambiguous matches are safe to infer.
+    nonisolated static func backfillingExerciseReferences(_ snapshot: WorkoutSnapshot) -> WorkoutSnapshot {
+        var next = snapshot
+        guard var workout = next.activeWorkout,
+              let template = next.templates.first(where: { $0.id == workout.templateID }) else { return next }
+        let source: [TemplateExercise]
+        if let versionID = workout.templateVersionID {
+            guard let version = template.versions.first(where: { $0.id == versionID }) else { return next }
+            source = version.exercises
+        } else {
+            // Pre-version sessions can safely match unique movement identities in the
+            // surviving template, without inventing version attribution or set targets.
+            source = template.exercises
+        }
+        let sessionGroups = Dictionary(grouping: workout.exercises, by: { $0.exercise.id })
+        let sourceGroups = Dictionary(grouping: source, by: { $0.exercise.id })
+        for index in workout.exercises.indices where workout.exercises[index].templateExerciseID == nil {
+            let catalogID = workout.exercises[index].exercise.id
+            if sessionGroups[catalogID]?.count == 1, let matches = sourceGroups[catalogID], matches.count == 1 {
+                workout.exercises[index].templateExerciseID = matches[0].id
+            }
+        }
+        next.activeWorkout = workout
+        return next
+    }
+
+    /// Legacy sessions retain unknown version provenance and targets. Only template plans gain a baseline.
     private static func backfillingVersions(_ snapshot: Snapshot) -> Snapshot {
         var next = snapshot
         for index in next.templates.indices where next.templates[index].versions.isEmpty {

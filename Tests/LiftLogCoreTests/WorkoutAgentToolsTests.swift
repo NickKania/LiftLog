@@ -424,4 +424,31 @@ final class WorkoutAgentToolsTests: XCTestCase {
         XCTAssertEqual(payload["offset"] as? Int, 1)
         XCTAssertEqual((payload["exercises"] as? [[String: Any]])?.count, 2)
     }
+
+    @MainActor func testAssistantReplacementClearsTemplateLinkButSetEditsRetainIt() async throws {
+        let url = file()
+        let persisted = WorkoutStore(fileURL: url)
+        let template = persisted.templates[0]
+        XCTAssertTrue(persisted.startWorkout(template: template))
+        let tools = WorkoutAgentTools(store: persisted)
+        let initial = try XCTUnwrap(persisted.activeWorkout)
+        let entry = initial.exercises[0]
+        let setEdit = try XCTUnwrap(tools.execute(name: "propose_edit_exercise", arguments: json(editArgs(initial,
+            operation: "update", entryID: entry.id, exerciseID: entry.exercise.id))).proposal)
+        XCTAssertEqual(setEdit.afterWorkout?.exercises[0].templateExerciseID, entry.templateExerciseID)
+        try tools.applyProposal(setEdit.id)
+        XCTAssertEqual(persisted.activeWorkout?.exercises[0].templateExerciseID, entry.templateExerciseID)
+        let current = try XCTUnwrap(persisted.activeWorkout)
+        let replacement = try XCTUnwrap(tools.execute(name: "propose_edit_exercise", arguments: json(editArgs(current,
+            operation: "update", entryID: entry.id, exerciseID: persisted.exercises[2].id))).proposal)
+        XCTAssertNil(replacement.afterWorkout?.exercises[0].templateExerciseID)
+        try tools.applyProposal(replacement.id)
+        XCTAssertNil(persisted.activeWorkout?.exercises[0].templateExerciseID)
+        let reload = WorkoutStore(fileURL: url)
+        let changed = try XCTUnwrap(reload.activeWorkout)
+        XCTAssertNil(changed.exercises[0].templateExerciseID)
+        let order = Array(changed.exercises.dropFirst().map(\.id)) + [entry.id]
+        XCTAssertTrue(reload.reorderActiveWorkout(id: changed.id, exerciseIDs: order, expectedExerciseIDs: changed.exercises.map(\.id)))
+        XCTAssertEqual(reload.templates[0], template, "Moving a replacement alone must not move the old template entry")
+    }
 }

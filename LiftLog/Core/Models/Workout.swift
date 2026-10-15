@@ -56,12 +56,15 @@ struct WorkoutExercise: Codable, Equatable, SupersetExercise {
     var exercise: Exercise
     var sets: [WorkoutSet]
     var supersetID: UUID?
+    /// Stable source entry identity, including repeated occurrences of a catalog exercise.
+    var templateExerciseID: UUID?
 
-    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil) {
+    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil, templateExerciseID: UUID? = nil) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
         self.supersetID = supersetID
+        self.templateExerciseID = templateExerciseID
     }
 
     /// Numeric edits apply only to remaining sets, preserving completed results.

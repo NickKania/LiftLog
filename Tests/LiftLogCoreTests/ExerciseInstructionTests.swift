@@ -21,7 +21,8 @@ final class ExerciseInstructionTests: XCTestCase {
     private func downgrade(_ url: URL, to version: Int) throws {
         let db = try SQLiteConnection(url: url)
         try db.execute("DROP TABLE exercise_instruction_overrides")
-        if version < 5 { try db.execute("DROP TABLE favorite_exercises") }
+        if version < 6 { try db.execute("DROP TABLE favorite_exercises") }
+        if version < 5 { try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id") }
         if version < 4 { try db.execute("ALTER TABLE exercise_entries DROP COLUMN superset_id") }
         if version < 3 {
             try db.execute("ALTER TABLE records DROP COLUMN rest_seconds")
@@ -200,8 +201,8 @@ final class ExerciseInstructionTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: url), before)
     }
 
-    func testV1ThroughV5ReadOnlyBackupsStayUnchangedAndSavesUpgradeToV6() throws {
-        for version in 1...5 {
+    func testV1ThroughV6ReadOnlyBackupsStayUnchangedAndSavesUpgradeToV7() throws {
+        for version in 1...6 {
             let url = try file()
             let database = WorkoutDatabase(url: url)
             try database.save(snapshot())
@@ -216,12 +217,12 @@ final class ExerciseInstructionTests: XCTestCase {
             next.exerciseInstructionOverrides = [.init(exerciseID: UUID(), steps: ["An apostrophe's cue", "Second\nline"])]
             try database.save(next)
             XCTAssertEqual(try database.load().exerciseInstructionOverrides, next.exerciseInstructionOverrides)
-            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 6)
+            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 7)
             XCTAssertEqual(try Data(contentsOf: backup), bytes)
         }
     }
 
-    func testFailedV6MigrationRollsBackSchemaAndRecordsThenRetries() throws {
+    func testFailedV7MigrationRollsBackSchemaAndRecordsThenRetries() throws {
         let url = try file()
         let database = WorkoutDatabase(url: url)
         let original = snapshot()

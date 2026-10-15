@@ -190,6 +190,7 @@ final class WorkoutAgentTools {
                 let existing = after.exercises[index]
                 replacement.supersetID = existing.supersetID
                 if existing.exercise.id == replacement.exercise.id {
+                    replacement.templateExerciseID = existing.templateExerciseID
                     for setIndex in replacement.sets.indices where existing.sets.indices.contains(setIndex) {
                         replacement.sets[setIndex].id = existing.sets[setIndex].id
                         replacement.sets[setIndex].targetReps = existing.sets[setIndex].targetReps

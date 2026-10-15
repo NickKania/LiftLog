@@ -21,6 +21,7 @@ final class ExerciseFavoritesTests: XCTestCase {
         let db = try SQLiteConnection(url: url)
         try db.execute("DROP TABLE exercise_instruction_overrides")
         try db.execute("DROP TABLE favorite_exercises")
+        if version < 5 { try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id") }
         if version < 4 { try db.execute("ALTER TABLE exercise_entries DROP COLUMN superset_id") }
         if version < 3 {
             try db.execute("ALTER TABLE records DROP COLUMN rest_seconds")
@@ -169,7 +170,7 @@ final class ExerciseFavoritesTests: XCTestCase {
             next.favoriteExerciseIDs = [UUID()]
             try database.save(next)
             XCTAssertEqual(try database.load().favoriteExerciseIDs, next.favoriteExerciseIDs)
-            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 6)
+            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 7)
             XCTAssertEqual(try Data(contentsOf: backup), bytes)
         }
     }

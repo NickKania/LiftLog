@@ -11,6 +11,18 @@ struct WorkoutDatabase {
         let db = try SQLiteConnection(url: url, readOnly: !recoverInterruptedWrite, create: false)
         return try db.readTransaction {
             let schemaVersion = try checkFormat(db)
+            // Versions 5–6 also existed on the catalog feature branch before merge.
+            // Inspect its shape so both lineages load without changing read-only backups.
+            let entryColumns = try db.rows("PRAGMA table_info(exercise_entries)").map { try $0.text("name") }
+            let hasTemplateLinks = schemaVersion >= 5 && entryColumns.contains("template_exercise_id")
+            let tables = try db.rows("SELECT name FROM sqlite_master WHERE type = 'table'").map { try $0.text("name") }
+            let hasFavorites = tables.contains("favorite_exercises")
+            let hasInstructions = tables.contains("exercise_instruction_overrides")
+            guard (schemaVersion < 5 || hasTemplateLinks || hasFavorites),
+                  (schemaVersion < 6 || (hasFavorites && (hasTemplateLinks || hasInstructions))),
+                  (schemaVersion < 7 || (hasTemplateLinks && hasFavorites && hasInstructions)) else {
+                throw DatabaseError(message: "The workout database is missing required exercise data storage.")
+            }
             guard try db.rows("PRAGMA quick_check").first?.text("quick_check") == "ok",
                   try db.rows("PRAGMA foreign_key_check").isEmpty else {
                 throw DatabaseError(message: "The workout database failed its integrity check.")
@@ -57,7 +69,8 @@ struct WorkoutDatabase {
                                        isCompleted: try set.integer("completed") == 1)
                         }
                         return WorkoutExercise(id: try entry.uuid("id"), exercise: try exercise(entry), sets: sets,
-                                               supersetID: schemaVersion >= 4 ? try entry.optional("superset_id", read: entry.uuid) : nil)
+                                               supersetID: schemaVersion >= 4 ? try entry.optional("superset_id", read: entry.uuid) : nil,
+                                               templateExerciseID: hasTemplateLinks ? try entry.optional("template_exercise_id", read: entry.uuid) : nil)
                     }
                     let session = WorkoutSession(
                         id: id, templateID: try row.optional("template_id", read: row.uuid),
@@ -78,15 +91,18 @@ struct WorkoutDatabase {
             snapshot.personalExercises = try db.rows("SELECT * FROM personal_exercises ORDER BY position").map {
                 Exercise(id: try $0.uuid("id"), name: try $0.text("name"), category: try $0.text("category"))
             }
-            if schemaVersion >= 5 {
+            if schemaVersion >= 5 && hasFavorites {
                 snapshot.favoriteExerciseIDs = try db.rows("SELECT id FROM favorite_exercises ORDER BY position").map { try $0.uuid("id") }
             }
-            if schemaVersion >= 6 {
+            if schemaVersion >= 6 && hasInstructions {
                 snapshot.exerciseInstructionOverrides = try db.rows("SELECT exercise_id, steps FROM exercise_instruction_overrides ORDER BY position").map {
                     ExerciseInstructionOverride(exerciseID: try $0.uuid("exercise_id"),
                                                 steps: try JSONDecoder().decode([String].self, from: Data($0.text("steps").utf8)))
                 }
             }
+            // Pre-merge catalog files can contain replacements. Without source IDs,
+            // keep those entries workout-only rather than inferring a template link.
+            if schemaVersion < 5 { snapshot = WorkoutStore.backfillingExerciseReferences(snapshot) }
             try WorkoutStore.validate(snapshot)
             return snapshot
         }
@@ -105,8 +121,11 @@ struct WorkoutDatabase {
                 if schemaVersion == 1 { try migrateVersionTwo(db) }
                 if schemaVersion <= 2 { try migrateVersionThree(db) }
                 if schemaVersion <= 3 { try migrateVersionFour(db) }
-                if schemaVersion <= 4 { try migrateVersionFive(db) }
-                if schemaVersion <= 5 { try migrateVersionSix(db) }
+                if schemaVersion <= 6 {
+                    try migrateVersionFive(db)
+                    try migrateVersionSix(db)
+                    try migrateVersionSeven(db)
+                }
                 try db.execute("DELETE FROM records")
                 try db.execute("DELETE FROM personal_exercises")
                 try db.execute("DELETE FROM favorite_exercises")
@@ -176,7 +195,7 @@ struct WorkoutDatabase {
     private func checkFormat(_ db: SQLiteConnection) throws -> Int {
         let version = try db.rows("PRAGMA user_version").first?.integer("user_version")
         guard try db.rows("PRAGMA application_id").first?.integer("application_id") == Self.applicationID,
-              let version, (1...6).contains(version) else {
+              let version, (1...7).contains(version) else {
             throw DatabaseError(message: "This file is not a supported Lift Log database.")
         }
         return version
@@ -213,15 +232,23 @@ struct WorkoutDatabase {
     }
 
     private func migrateVersionFive(_ db: SQLiteConnection) throws {
-        // Catalog identities can retire or return; favorites survive independently of exercise snapshots.
-        try db.execute("CREATE TABLE favorite_exercises (id TEXT PRIMARY KEY NOT NULL, position INTEGER UNIQUE NOT NULL)")
+        // Preserve main's v5 source links and accept catalog-branch v5/v6 files.
+        if try !db.rows("PRAGMA table_info(exercise_entries)").contains(where: { try $0.text("name") == "template_exercise_id" }) {
+            try db.execute("ALTER TABLE exercise_entries ADD COLUMN template_exercise_id TEXT")
+        }
         try db.execute("PRAGMA user_version = 5")
     }
 
     private func migrateVersionSix(_ db: SQLiteConnection) throws {
-        // No catalog foreign key: retired identities keep personal text for recovery/reset.
-        try db.execute("CREATE TABLE exercise_instruction_overrides (exercise_id TEXT PRIMARY KEY NOT NULL, position INTEGER UNIQUE NOT NULL, steps TEXT NOT NULL)")
+        // IF NOT EXISTS retains favorites from pre-merge catalog databases.
+        try db.execute("CREATE TABLE IF NOT EXISTS favorite_exercises (id TEXT PRIMARY KEY NOT NULL, position INTEGER UNIQUE NOT NULL)")
         try db.execute("PRAGMA user_version = 6")
+    }
+
+    private func migrateVersionSeven(_ db: SQLiteConnection) throws {
+        // No catalog foreign key: retired identities keep personal text for recovery/reset.
+        try db.execute("CREATE TABLE IF NOT EXISTS exercise_instruction_overrides (exercise_id TEXT PRIMARY KEY NOT NULL, position INTEGER UNIQUE NOT NULL, steps TEXT NOT NULL)")
+        try db.execute("PRAGMA user_version = 7")
     }
 
     private func createSchema(_ db: SQLiteConnection) throws {
@@ -283,7 +310,7 @@ struct WorkoutDatabase {
                   .text(session.unit.rawValue), .optional(session.importSourceKey), .optional(session.templateVersionID?.uuidString), .optional(session.templateVersionNumber), .integer(Int64(session.restSeconds)),
                   .optional(try session.restTimer.map { String(decoding: try JSONEncoder().encode($0), as: UTF8.self) })])
         for (position, entry) in session.exercises.enumerated() {
-            try saveEntry(db, key: key, id: entry.id, exercise: entry.exercise, position: position, supersetID: entry.supersetID)
+            try saveEntry(db, key: key, id: entry.id, exercise: entry.exercise, position: position, supersetID: entry.supersetID, templateExerciseID: entry.templateExerciseID)
             for (position, set) in entry.sets.enumerated() {
                 try saveSet(db, key: key, entryID: entry.id, id: set.id, position: position, weight: set.weight,
                             reps: set.reps, targetReps: set.targetReps, targetWeight: set.targetWeight, completed: set.isCompleted)
@@ -291,9 +318,9 @@ struct WorkoutDatabase {
         }
     }
 
-    private func saveEntry(_ db: SQLiteConnection, key: String, id: UUID, exercise: Exercise, position: Int, supersetID: UUID?) throws {
-        try db.execute("INSERT INTO exercise_entries (record_key, id, position, exercise_id, exercise_name, exercise_category, superset_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       [.text(key), .text(id.uuidString), .integer(Int64(position)), .text(exercise.id.uuidString), .text(exercise.name), .text(exercise.category), .optional(supersetID?.uuidString)])
+    private func saveEntry(_ db: SQLiteConnection, key: String, id: UUID, exercise: Exercise, position: Int, supersetID: UUID?, templateExerciseID: UUID? = nil) throws {
+        try db.execute("INSERT INTO exercise_entries (record_key, id, position, exercise_id, exercise_name, exercise_category, superset_id, template_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       [.text(key), .text(id.uuidString), .integer(Int64(position)), .text(exercise.id.uuidString), .text(exercise.name), .text(exercise.category), .optional(supersetID?.uuidString), .optional(templateExerciseID?.uuidString)])
     }
 
     private func saveSet(_ db: SQLiteConnection, key: String, entryID: UUID, id: UUID, position: Int, weight: Double, reps: Int?, targetReps: Int?, targetWeight: Double?, completed: Bool) throws {
