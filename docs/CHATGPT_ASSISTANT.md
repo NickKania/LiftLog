@@ -67,7 +67,7 @@ The native sign-in flow uses a loopback listener on `127.0.0.1` and an in-app sy
 
 The client discovers the selected account's model catalog and sends streaming requests to the public Responses API with `store: false`. It sends required conversation context explicitly. A stream must reach `response.completed` before tool calls are accepted; interrupted or failed requests are not successful answers. Tools are limited to the app's explicit workout operations, with bounded execution and validated arguments.
 
-A model call can prepare a change but cannot approve it. Proposal application checks that the relevant workout state still matches the reviewed version, then validates and persists it. Invalid, stale, discarded, or previously applied proposals cannot overwrite current data. A failed disk write leaves the original workout intact.
+A model call can prepare a change but cannot approve it. Proposal application checks that the relevant workout state still matches the reviewed version, then validates and persists it. Invalid, stale, discarded, or previously applied proposals cannot overwrite current data. A failed disk write leaves the original workout intact. Updating set prescriptions for the same movement keeps the session entry’s template link in both the reviewed proposal and saved workout. Replacing the movement clears that link, even when the tool retains the session entry ID, so later exercise reordering cannot move the old movement in its source template. Native exercise replacement follows the same rule.
 
 ## Template progression
 

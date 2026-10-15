@@ -173,6 +173,7 @@ final class WorkoutRestTimerTests: XCTestCase {
             try db.execute("ALTER TABLE records DROP COLUMN rest_seconds")
             try db.execute("ALTER TABLE records DROP COLUMN rest_timer")
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN superset_id")
+            try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id")
             try db.execute("PRAGMA user_version = 2")
             try db.execute("CREATE TRIGGER reject_records BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'failed upgrade'); END")
         }
@@ -190,7 +191,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         let store = WorkoutStore(fileURL: url)
         XCTAssertNil(store.errorMessage)
         XCTAssertTrue(store.setUnit(.kg))
-        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 4)
+        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 5)
     }
 
     @MainActor

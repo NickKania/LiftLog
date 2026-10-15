@@ -4,6 +4,7 @@ struct ActiveWorkoutView: View {
     @Environment(WorkoutStore.self) private var store
     @Environment(RestTimerAlerts.self) private var restAlerts
     @Environment(\.dismiss) private var dismiss
+    @State private var reorderWorkout: WorkoutSession?
     @State private var pickingExercise = false
     @State private var supersetEditor: SupersetEditorContext?
     @State private var confirmingFinish = false
@@ -18,7 +19,7 @@ struct ActiveWorkoutView: View {
                 ContentUnavailableView("Workout saved", systemImage: "checkmark.circle", description: Text("Find your completed sets in History."))
             }
         }
-        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil)
+        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && reorderWorkout == nil)
         .navigationTitle(store.activeWorkout?.name ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -35,6 +36,9 @@ struct ActiveWorkoutView: View {
                     .accessibilityIdentifier("finishWorkoutButton")
             }
             ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { hideKeyboard() } }
+        }
+        .sheet(item: $reorderWorkout) { workout in
+            WorkoutExerciseOrderView(workout: workout)
         }
         .sheet(isPresented: $pickingExercise) {
             ExercisePickerView { exercise in
@@ -103,6 +107,15 @@ struct ActiveWorkoutView: View {
             if workout.exercises.isEmpty {
                 Section {
                     ContentUnavailableView("Ready when you are", systemImage: "dumbbell", description: Text("Add your first exercise to start logging sets."))
+                }
+            }
+            if workout.exercises.count > 1 {
+                Section {
+                    Button("Reorder Exercises", systemImage: "arrow.up.arrow.down") {
+                        hideKeyboard()
+                        reorderWorkout = workout
+                    }
+                    .accessibilityIdentifier("reorderExercisesButton")
                 }
             }
             ForEach(workout.exercises) { exercise in
@@ -254,6 +267,108 @@ struct ActiveWorkoutView: View {
             guard let exerciseIndex = session.exercises.firstIndex(where: { $0.id == exerciseID }),
                   let setIndex = session.exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setID }) else { return }
             change(&session.exercises[exerciseIndex].sets[setIndex])
+        }
+    }
+}
+
+/// Keeps ordering as a draft; cancelling never writes to the workout or its template.
+private struct WorkoutExerciseOrderView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(WorkoutStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let workout: WorkoutSession
+    @State private var exercises: [WorkoutExercise]
+
+    init(workout: WorkoutSession) {
+        self.workout = workout
+        _exercises = State(initialValue: workout.exercises)
+    }
+
+    private var linkedExerciseIDs: Set<UUID> {
+        store.templateLinkedExerciseIDs(in: workout)
+    }
+
+    private var templateOrderMessage: String {
+        if linkedExerciseIDs.count < 2 {
+            return "This order saves to this workout only. Fewer than two exercises are linked to the current template, so its order will stay the same."
+        }
+        if linkedExerciseIDs.count < exercises.count {
+            return "Only exercises marked Template linked can update your template’s order. Exercises marked Workout only stay local. Logged sets and template targets stay the same."
+        }
+        return "Saving also updates your template’s exercise order for future workouts. Logged sets and template targets stay the same."
+    }
+
+    private func setSummary(_ exercise: WorkoutExercise) -> String {
+        guard !exercise.sets.isEmpty else { return "No sets" }
+        let hasTargets = exercise.sets.allSatisfy { $0.targetWeight != nil && $0.targetReps != nil }
+        let values = exercise.sets.map { set in
+            let weight = hasTargets ? (set.targetWeight ?? set.weight) : set.weight
+            let reps = hasTargets ? (set.targetReps ?? set.reps) : set.reps
+            return "\(weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue) × \(reps.formatted()) reps"
+        }
+        let description = Set(values).count == 1 ? (values.first ?? "") : values.joined(separator: "; ")
+        return "\(hasTargets ? "Targets" : "Current sets"): \(description)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(exercises) { exercise in
+                        let number = (workout.exercises.firstIndex { $0.id == exercise.id } ?? 0) + 1
+                        let group = SupersetStyle.group(for: exercise, in: workout.exercises)
+                        let linked = linkedExerciseIDs.contains(exercise.id)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(exercise.exercise.name).font(.body.weight(.semibold))
+                            Text("Entry \(number) · \(exercise.sets.count) \(exercise.sets.count == 1 ? "set" : "sets")")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text(setSummary(exercise)).font(.subheadline).foregroundStyle(.secondary)
+                            if let group {
+                                Label(group.label, systemImage: "link")
+                                    .font(.caption.weight(.semibold)).foregroundStyle(group.color)
+                            } else {
+                                Text("No superset").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Text(linked ? "Template linked" : "Workout only")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 6)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(exercise.exercise.name), entry \(number)")
+                        .accessibilityValue("\(exercise.sets.count) sets. \(setSummary(exercise)). \(group?.label ?? "No superset"). \(linked ? "Template linked" : "Workout only")")
+                        .accessibilityIdentifier("reorderExercise-\(exercise.id)")
+                    }
+                    .onMove { offsets, destination in
+                        exercises.move(fromOffsets: offsets, toOffset: destination)
+                    }
+                } footer: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Drag handles to reorder. Entry numbers stay with their original exercises.")
+                        Text(templateOrderMessage)
+                            .accessibilityIdentifier("exerciseOrderTemplateMessage")
+                        Text("Superset labels show which exercises belong together. Moving an individual exercise keeps its superset membership.")
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle(dynamicTypeSize.isAccessibilitySize ? "Reorder" : "Reorder Exercises")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("cancelExerciseOrderButton")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if store.reorderActiveWorkout(id: workout.id, exerciseIDs: exercises.map(\.id), expectedExerciseIDs: workout.exercises.map(\.id)) {
+                            dismiss()
+                        }
+                    }
+                    .disabled(exercises.map(\.id) == workout.exercises.map(\.id))
+                    .accessibilityIdentifier("saveExerciseOrderButton")
+                }
+            }
+            .workoutErrorAlert()
         }
     }
 }

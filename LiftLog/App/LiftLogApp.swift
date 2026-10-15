@@ -30,6 +30,12 @@ struct LiftLogApp: App {
             HealthDashboardUITestFixture.seedWorkouts(in: workoutStore)
         }
         #endif
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+           ProcessInfo.processInfo.arguments.contains("--exercise-order-ui-fixture") {
+            ExerciseOrderUITestFixture.seed(in: workoutStore)
+        }
+        #endif
         let accountStore: ChatGPTAccountStore
         #if DEBUG
         accountStore = AssistantUITestFixture.isEnabled ? AssistantUITestFixture.makeAccounts() : ChatGPTAccountStore()

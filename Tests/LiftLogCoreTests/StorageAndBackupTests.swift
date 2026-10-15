@@ -53,9 +53,11 @@ final class StorageAndBackupTests: XCTestCase {
         let folder = try directory()
         let legacy = folder.appendingPathComponent("workouts.json")
         let database = folder.appendingPathComponent("workouts.sqlite")
-        let saved = snapshot()
+        var saved = snapshot()
         let original = try JSONEncoder().encode(saved)
         try original.write(to: legacy)
+        // The migration adds only an unambiguous entry link; recorded data stays intact.
+        saved.activeWorkout?.exercises[0].templateExerciseID = saved.templates[0].exercises[0].id
         let store = WorkoutStore(fileURL: database)
         XCTAssertNil(store.errorMessage)
         assertEqual(try WorkoutDatabase(url: database).load(), saved, backfilledVersions: true)
