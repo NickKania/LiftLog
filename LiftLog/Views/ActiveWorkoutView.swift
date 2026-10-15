@@ -284,28 +284,69 @@ private struct WorkoutExerciseOrderView: View {
         _exercises = State(initialValue: workout.exercises)
     }
 
+    private var linkedExerciseIDs: Set<UUID> {
+        store.templateLinkedExerciseIDs(in: workout)
+    }
+
+    private var templateOrderMessage: String {
+        if linkedExerciseIDs.count < 2 {
+            return "This order saves to this workout only. Fewer than two exercises are linked to the current template, so its order will stay the same."
+        }
+        if linkedExerciseIDs.count < exercises.count {
+            return "Only exercises marked Template linked can update your template’s order. Exercises marked Workout only stay local. Logged sets and template targets stay the same."
+        }
+        return "Saving also updates your template’s exercise order for future workouts. Logged sets and template targets stay the same."
+    }
+
+    private func setSummary(_ exercise: WorkoutExercise) -> String {
+        guard !exercise.sets.isEmpty else { return "No sets" }
+        let hasTargets = exercise.sets.allSatisfy { $0.targetWeight != nil && $0.targetReps != nil }
+        let values = exercise.sets.map { set in
+            let weight = hasTargets ? (set.targetWeight ?? set.weight) : set.weight
+            let reps = hasTargets ? (set.targetReps ?? set.reps) : set.reps
+            return "\(weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue) × \(reps.formatted()) reps"
+        }
+        let description = Set(values).count == 1 ? (values.first ?? "") : values.joined(separator: "; ")
+        return "\(hasTargets ? "Targets" : "Current sets"): \(description)"
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     ForEach(exercises) { exercise in
-                        HStack(spacing: 12) {
-                            Image(systemName: "dumbbell").foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
-                            Text(exercise.exercise.name)
-                                .font(.body)
+                        let number = (workout.exercises.firstIndex { $0.id == exercise.id } ?? 0) + 1
+                        let group = SupersetStyle.group(for: exercise, in: workout.exercises)
+                        let linked = linkedExerciseIDs.contains(exercise.id)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(exercise.exercise.name).font(.body.weight(.semibold))
+                            Text("Entry \(number) · \(exercise.sets.count) \(exercise.sets.count == 1 ? "set" : "sets")")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text(setSummary(exercise)).font(.subheadline).foregroundStyle(.secondary)
+                            if let group {
+                                Label(group.label, systemImage: "link")
+                                    .font(.caption.weight(.semibold)).foregroundStyle(group.color)
+                            } else {
+                                Text("No superset").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Text(linked ? "Template linked" : "Workout only")
+                                .font(.caption).foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 6)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(exercise.exercise.name), entry \(number)")
+                        .accessibilityValue("\(exercise.sets.count) sets. \(setSummary(exercise)). \(group?.label ?? "No superset"). \(linked ? "Template linked" : "Workout only")")
                         .accessibilityIdentifier("reorderExercise-\(exercise.id)")
                     }
                     .onMove { offsets, destination in
                         exercises.move(fromOffsets: offsets, toOffset: destination)
                     }
                 } footer: {
-                    if store.templates.contains(where: { $0.id == workout.templateID }) {
-                        Text("Drag the handles to change the order. Saving also updates matching exercises in your template for future workouts. Logged sets and template targets stay the same.")
-                    } else {
-                        Text("Drag the handles to change the order. Your logged sets stay the same.")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Drag handles to reorder. Entry numbers stay with their original exercises.")
+                        Text(templateOrderMessage)
+                            .accessibilityIdentifier("exerciseOrderTemplateMessage")
+                        Text("Superset labels show which exercises belong together. Moving an individual exercise keeps its superset membership.")
                     }
                 }
             }

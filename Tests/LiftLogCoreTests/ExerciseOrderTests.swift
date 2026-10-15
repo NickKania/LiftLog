@@ -206,4 +206,88 @@ final class ExerciseOrderTests: XCTestCase {
         XCTAssertNil(try JSONDecoder().decode(WorkoutExercise.self, from: legacyData).templateExerciseID)
         XCTAssertEqual(try JSONDecoder().decode(WorkoutSession.self, from: JSONEncoder().encode(original)), original)
     }
+    @MainActor
+    func testLegacyJSONWithoutVersionLinksUniqueEntriesAndUpdatesTemplateAfterRelaunch() async throws {
+        let url = try file()
+        let entries = (0..<3).map { TemplateExercise(exercise: ExerciseCatalog.all[$0]) }
+        let template = WorkoutTemplate(name: "Legacy plan", exercises: entries)
+        let active = WorkoutSession(templateID: template.id, exercises: entries.map { WorkoutExercise(exercise: $0.exercise) })
+        let snapshot = WorkoutSnapshot(templates: [template], history: [], activeWorkout: active, unit: .lb)
+        let legacyURL = url.deletingPathExtension().appendingPathExtension("json")
+        let bytes = try JSONEncoder().encode(snapshot)
+        try bytes.write(to: legacyURL)
+        let migrated = WorkoutStore(fileURL: url)
+        XCTAssertNil(migrated.errorMessage)
+        XCTAssertEqual(migrated.activeWorkout?.exercises.map(\.templateExerciseID), entries.map { Optional($0.id) })
+        XCTAssertNil(migrated.activeWorkout?.templateVersionID)
+        let reloaded = WorkoutStore(fileURL: url)
+        XCTAssertTrue(reorder(try XCTUnwrap(reloaded.activeWorkout), in: reloaded))
+        XCTAssertEqual(reloaded.templates.first?.exercises.map(\.id), entries.reversed().map(\.id))
+        XCTAssertEqual(try Data(contentsOf: legacyURL), bytes)
+    }
+
+    @MainActor
+    func testV1ReadOnlyLoadAndRestoreLinksUniqueEntriesWithoutInventingVersionOrTargets() async throws {
+        let url = try file()
+        let entries = (0..<3).map { TemplateExercise(exercise: ExerciseCatalog.all[$0]) }
+        let template = WorkoutTemplate(name: "Legacy plan", exercises: entries)
+        let active = WorkoutSession(templateID: template.id, exercises: entries.map { WorkoutExercise(exercise: $0.exercise) })
+        let snapshot = WorkoutSnapshot(templates: [template], history: [], activeWorkout: active, unit: .lb)
+        try WorkoutDatabase(url: url).save(snapshot)
+        do {
+            let db = try SQLiteConnection(url: url)
+            for statement in ["DROP TABLE template_versions", "ALTER TABLE records DROP COLUMN template_version_id",
+                "ALTER TABLE records DROP COLUMN template_version_number", "ALTER TABLE workout_sets DROP COLUMN target_weight",
+                "ALTER TABLE records DROP COLUMN rest_seconds", "ALTER TABLE records DROP COLUMN rest_timer",
+                "ALTER TABLE exercise_entries DROP COLUMN superset_id", "ALTER TABLE exercise_entries DROP COLUMN template_exercise_id",
+                "PRAGMA user_version = 1"] { try db.execute(statement) }
+        }
+        let bytes = try Data(contentsOf: url)
+        let loaded = try WorkoutDatabase(url: url).load()
+        XCTAssertEqual(loaded.activeWorkout?.exercises.map(\.templateExerciseID), entries.map { Optional($0.id) })
+        XCTAssertNil(loaded.activeWorkout?.templateVersionID)
+        XCTAssertNil(loaded.activeWorkout?.exercises[0].sets[0].targetWeight)
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+        let restored = WorkoutStore(fileURL: try file())
+        try restored.restoreDatabase(from: url)
+        XCTAssertTrue(reorder(try XCTUnwrap(restored.activeWorkout), in: restored))
+        XCTAssertEqual(restored.templates.first?.exercises.map(\.id), entries.reversed().map(\.id))
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
+
+    @MainActor
+    func testStaleMovementLinksAreExcludedAndOnlyEligibleEntriesAffectTemplateOrder() async throws {
+        let url = try file(), initial = plan()
+        let store = WorkoutStore(fileURL: url)
+        XCTAssertTrue(store.saveTemplate(initial))
+        XCTAssertTrue(store.startWorkout(template: initial))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].exercise = ExerciseCatalog.all[2]
+        // Reproduce an older app's persisted invalid link without passing the fixed update API.
+        try WorkoutDatabase(url: url).save(WorkoutSnapshot(templates: store.templates, history: [], activeWorkout: active, unit: .lb))
+        let reloaded = WorkoutStore(fileURL: url)
+        XCTAssertEqual(reloaded.templateLinkedExerciseIDs(in: active), Set(active.exercises.dropFirst().map(\.id)))
+        let order = active.exercises.dropFirst().map(\.id) + [active.exercises[0].id]
+        XCTAssertTrue(reloaded.reorderActiveWorkout(id: active.id, exerciseIDs: order, expectedExerciseIDs: active.exercises.map(\.id)))
+        XCTAssertEqual(reloaded.templates, store.templates)
+        XCTAssertTrue(reloaded.deleteTemplate(id: initial.id))
+        XCTAssertTrue(reloaded.templateLinkedExerciseIDs(in: active).isEmpty)
+    }
+
+    func testPreVersionBackfillSkipsAmbiguousDuplicatesAndMissingTemplates() {
+        let template = plan()
+        let active = WorkoutSession(templateID: template.id, exercises: template.exercises.map { WorkoutExercise(exercise: $0.exercise) })
+        let snapshot = WorkoutSnapshot(templates: [template], history: [], activeWorkout: active, unit: .lb)
+        let inferred = WorkoutStore.backfillingExerciseReferences(snapshot)
+        XCTAssertNil(inferred.activeWorkout?.exercises[0].templateExerciseID)
+        XCTAssertEqual(inferred.activeWorkout?.exercises[1].templateExerciseID, template.exercises[1].id)
+        XCTAssertNil(inferred.activeWorkout?.exercises[2].templateExerciseID)
+        XCTAssertNil(inferred.activeWorkout?.templateVersionID)
+        XCTAssertNil(inferred.activeWorkout?.templateVersionNumber)
+        XCTAssertNil(inferred.activeWorkout?.exercises[1].sets[0].targetReps)
+        var missing = snapshot
+        missing.templates = []
+        XCTAssertEqual(WorkoutStore.backfillingExerciseReferences(missing).activeWorkout, active)
+    }
+
 }

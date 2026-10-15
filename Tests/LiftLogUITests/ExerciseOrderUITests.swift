@@ -58,8 +58,87 @@ final class ExerciseOrderUITests: XCTestCase {
     }
 
     @MainActor
+    func testDuplicateTargetsAndSupersetsStayIdentifiableAfterMoving() {
+        continueAfterFailure = false
+        let app = fixtureApp()
+        defer { app.terminate() }
+        let first = entry("Bench Press", number: 1, in: app)
+        let third = entry("Bench Press", number: 3, in: app)
+        let fourth = entry("Bench Press", number: 4, in: app)
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        XCTAssertTrue(third.waitForExistence(timeout: 5))
+        XCTAssertTrue((first.value as? String ?? "").contains("100 lb × 5 reps"))
+        XCTAssertTrue((first.value as? String ?? "").contains("Superset A"))
+        XCTAssertTrue((third.value as? String ?? "").contains("50 lb × 12 reps"))
+        XCTAssertTrue((third.value as? String ?? "").contains("No superset"))
+        reveal(fourth, in: app)
+        XCTAssertTrue((fourth.value as? String ?? "").contains("100 lb × 5 reps"))
+        reveal(first, in: app)
+        let handle = app.cells.containing(.any, identifier: third.identifier).buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reorder Bench Press")).firstMatch
+        handle.press(forDuration: 0.5, thenDragTo: first)
+        XCTAssertLessThan(third.frame.minY, first.frame.minY)
+        XCTAssertTrue((first.value as? String ?? "").contains("Superset A"), "Group identity stays with its original member")
+        XCTAssertTrue((entry("Barbell Row", number: 2, in: app).value as? String ?? "").contains("Superset A"))
+        XCTAssertTrue((third.value as? String ?? "").contains("50 lb × 12 reps"))
+        app.buttons["saveExerciseOrderButton"].tap()
+        app.terminate()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        app.buttons["resumeWorkoutButton"].tap()
+        app.buttons["reorderExercisesButton"].tap()
+        let reloadedFirst = entry("Bench Press", number: 1, in: app)
+        XCTAssertTrue(reloadedFirst.waitForExistence(timeout: 5))
+        XCTAssertTrue((reloadedFirst.value as? String ?? "").contains("50 lb × 12 reps"))
+        XCTAssertTrue((entry("Bench Press", number: 2, in: app).value as? String ?? "").contains("Superset A"))
+    }
+
+    @MainActor
+    func testUnlinkedEntriesShowWorkoutOnlyAndDoNotPromiseTemplateUpdate() {
+        continueAfterFailure = false
+        let app = fixtureApp(unlinked: true)
+        defer { app.terminate() }
+        XCTAssertTrue((entry("Bench Press", number: 1, in: app).value as? String ?? "").contains("Workout only"))
+        let message = app.staticTexts["exerciseOrderTemplateMessage"]
+        for _ in 0..<5 where !message.exists || !message.isHittable { app.swipeUp() }
+        XCTAssertTrue(message.waitForExistence(timeout: 5))
+        XCTAssertTrue(message.label.contains("this workout only"))
+        XCTAssertTrue(message.label.contains("its order will stay the same"))
+    }
+
+    @MainActor
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<5 {
+            if element.exists && element.isHittable { return }
+            app.swipeUp()
+        }
+        for _ in 0..<5 {
+            if element.exists && element.isHittable { return }
+            app.swipeDown()
+        }
+        XCTAssertTrue(element.exists && element.isHittable)
+    }
+
+    @MainActor
+    private func fixtureApp(unlinked: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--exercise-order-ui-fixture"]
+        if unlinked { app.launchArguments.append("--exercise-order-unlinked-ui-fixture") }
+        app.launch()
+        XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 10))
+        app.buttons["resumeWorkoutButton"].tap()
+        XCTAssertTrue(app.buttons["reorderExercisesButton"].waitForExistence(timeout: 5))
+        app.buttons["reorderExercisesButton"].tap()
+        return app
+    }
+
+    @MainActor
+    private func entry(_ name: String, number: Int, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ AND identifier BEGINSWITH %@", "\(name), entry \(number)", "reorderExercise-")).firstMatch
+    }
+
+    @MainActor
     private func moveCurlToTop(in app: XCUIApplication) {
-        let handle = app.buttons["Reorder Dumbbell Curl"]
+        let handle = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reorder Dumbbell Curl")).firstMatch
         XCTAssertTrue(handle.waitForExistence(timeout: 5))
         let target = row("Bench Press", in: app)
         handle.press(forDuration: 0.5, thenDragTo: target)
@@ -68,7 +147,7 @@ final class ExerciseOrderUITests: XCTestCase {
 
     @MainActor
     private func row(_ name: String, in app: XCUIApplication) -> XCUIElement {
-        app.staticTexts.matching(NSPredicate(format: "label == %@ AND identifier BEGINSWITH %@", name, "reorderExercise-")).firstMatch
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ AND identifier BEGINSWITH %@", name + ", entry ", "reorderExercise-")).firstMatch
     }
 
     @MainActor
