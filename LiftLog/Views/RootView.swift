@@ -114,7 +114,6 @@ struct WorkoutHomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Make every set count.").font(.title2.bold())
                     Text("Choose a routine or build your workout as you go.")
                         .foregroundStyle(.secondary)
                 }
