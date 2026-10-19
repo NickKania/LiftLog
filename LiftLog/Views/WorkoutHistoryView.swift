@@ -196,6 +196,7 @@ private struct HistoryStatLabelStyle: LabelStyle {
 
 struct WorkoutDetailView: View {
     let workout: WorkoutSession
+    @State private var showingSummary = false
 
     var body: some View {
         List {
@@ -207,6 +208,10 @@ struct WorkoutDetailView: View {
                     LabeledContent("Template version", value: String(version))
                         .accessibilityIdentifier("historyTemplateVersion")
                 }
+            }
+            Section {
+                Button("Workout Summary", systemImage: "sparkles") { showingSummary = true }
+                    .accessibilityIdentifier("workoutSummaryHistoryButton")
             }
             ForEach(workout.exercises) { exercise in
                 let group = SupersetStyle.group(for: exercise, in: workout.exercises)
@@ -235,6 +240,9 @@ struct WorkoutDetailView: View {
         }
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingSummary) {
+            NavigationStack { WorkoutSummaryView(workoutID: workout.id) }
+        }
     }
 
     private func plannedPrescription(_ set: WorkoutSet) -> String {

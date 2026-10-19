@@ -25,7 +25,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
         NSHealthUpdateUsageDescription: Lift Log uses Apple Health to read selected workout measurements. Lift Log does not save or update data in Apple Health.
-        NSHealthShareUsageDescription: Lift Log reads heart rate, active energy, and steps when you load Apple Health in the Health dashboard or send an Apple Health tag to the assistant. Dashboard readings stay on your device. Tagged readings are sent with your assistant message.
+        NSHealthShareUsageDescription: Lift Log reads heart rate, active energy, and steps when you load Apple Health, send an Apple Health tag, or include Apple Health in a workout summary. Dashboard readings stay on your device. Readings selected for assistant messages or summaries are sent to OpenAI for that request.
         CFBundleURLTypes:
           - CFBundleURLName: workout
             CFBundleURLSchemes:

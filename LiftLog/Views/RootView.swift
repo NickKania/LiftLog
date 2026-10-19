@@ -5,6 +5,8 @@ struct RootView: View {
     @Environment(ChatGPTAccountStore.self) private var chatGPT
     @Environment(WorkoutAssistant.self) private var assistant
     @State private var showWorkout = false
+    @State private var pendingSummaryID: UUID?
+    @State private var summaryWorkout: WorkoutSession?
 
     var body: some View {
         TabView {
@@ -21,8 +23,20 @@ struct RootView: View {
             NavigationStack { AssistantView() }
                 .tabItem { Label("Assistant", systemImage: "sparkles") }
         }
-        .fullScreenCover(isPresented: $showWorkout) {
-            NavigationStack { ActiveWorkoutView() }
+        .fullScreenCover(isPresented: $showWorkout, onDismiss: {
+            if let id = pendingSummaryID {
+                summaryWorkout = store.history.first { $0.id == id }
+                pendingSummaryID = nil
+            }
+        }) {
+            NavigationStack {
+                ActiveWorkoutView { pendingSummaryID = $0 }
+            }
+        }
+        .sheet(item: $summaryWorkout) { workout in
+            NavigationStack {
+                WorkoutSummaryView(workoutID: workout.id, automaticallyGenerate: true)
+            }
         }
         .onOpenURL { url in
             if url.scheme == "liftlog", url.host == "workout", store.activeWorkout != nil {
@@ -73,6 +87,10 @@ struct SettingsView: View {
                     Button("Reload models") { Task { await assistant.refreshModels() } }
                     if let error = assistant.errorMessage { Text(error).font(.footnote).foregroundStyle(.secondary) }
                 }
+                NavigationLink("Workout summaries") {
+                    WorkoutSummarySettingsView()
+                }
+                .accessibilityIdentifier("workoutSummarySettingsLink")
             } header: {
                 Text("Assistant")
             } footer: {

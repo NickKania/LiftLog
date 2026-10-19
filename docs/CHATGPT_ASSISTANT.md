@@ -15,6 +15,18 @@ OpenAI's [current preview limitations](https://developers.openai.com/siwc/token-
 3. Select an available model and ask a question, such as "Graph my training volume" or "Create a three-exercise upper-body workout."
 4. Inspect a proposed workout change and choose Apply or Discard. Creating an active workout will not replace an existing active session.
 
+### Completed workout summaries
+
+Finishing a workout opens **Workout Summary** after the completed sets have saved locally. Its recorded stats are available offline and without an account. Open the same screen later from a workout in History. Closing a summary does not change the saved workout.
+
+Choose **Generate insights** with an eligible ChatGPT connection to get feedback on progress, opportunities to improve, and next-session reps or weight. The request includes the saved workout, original planned targets when available, and up to eight earlier comparable sessions. Records retain their original units. Advice does not edit workouts or templates; limited evidence and missing measurements must be acknowledged.
+
+**Settings → Assistant → Workout summaries** contains the built-in prompt, a draft editor for personal instructions, and an optional automatic-generation setting. Save commits the prompt; Cancel discards edits; restoring the default changes the draft until saved. Prompts are limited to 6,000 characters. The automatic setting starts disabled. Enabling it authorizes workout-only insights after future completions using the assistant's default model or an available fallback. It never enables automatic Health sharing.
+
+For one summary request, turn on **Include Apple Health** and choose the generate action. This explicitly reads and sends available heart rate, active energy, and steps for that workout's recorded time window. Summary payloads aggregate the full scoped series into at most 120 buckets per metric, averaging heart rate and preserving energy and step totals. Health access is read-only. Missing or failed readings are reported as unavailable, and workout-only insights remain possible. Each new request requires its own Health selection; merely finishing or opening a summary never reads Health.
+
+Summary requests and replies are transient: dismissing the screen or changing the connected account cancels and clears them. They never enter saved chats, title generation, future inference context, or workout backups. Reopening a summary can generate fresh advice from the current saved records. Automatic generation is optional and independent of the local workout save.
+
 The assistant can inspect templates, the current session, exercise definitions, and completed workout history. It can propose new templates and active workouts, or add, edit, and remove exercises in existing templates and the active session. Completed history remains a record of performed exercise; the assistant cannot invent completed workouts or mark sets completed. The assistant cannot rewrite an active exercise entry containing completed sets, but it can propose removing that entry; the review shows the recorded sets before removal.
 
 ### Tagging templates and workouts

@@ -22,6 +22,8 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 | Rest between sets | Set a template rest period (default two minutes); completing a set starts or restarts a countdown when sets remain; skip, undo, finish, and discard cancel it | `WorkoutRestTimerTests`; `RestTimerUITests` |
 | Resume training | Minimize or relaunch, then resume with saved values and completion state | `LiftLogUITests` relaunch tests; core persistence tests |
 | Finish and review | Complete sets, confirm finish, open history; omit incomplete sets | `LiftLogUITests` template-to-history test; core completion filtering/history tests |
+| Review workout insights | See saved stats after completion or from History; explicitly generate training feedback, optionally include Health for one request, or opt into future automatic workout-only insights | `WorkoutSummaryContextTests`; `WorkoutSummaryStoreTests`; `WorkoutSummaryUITests` |
+| Customize summary coaching | Edit the summary prompt in Settings; Save or Cancel a draft, restore the default, and retain local preferences across relaunch | `WorkoutSummaryContextTests`; `WorkoutSummaryUITests` |
 | Rename a completed workout | Swipe left in History, choose Rename, edit the name, then Save or Cancel | `WorkoutImportUITests` rename test; core history rename persistence, validation, and save failure tests |
 | Discard training | Cancel discard to keep training, or confirm to clear the session without history | `WorkflowUITests` discard test; core discard test |
 | Back up or restore | Enable automatic backups, save on demand, or confirm replacement from a selected iCloud snapshot | `StorageAndBackupTests`; physical-device iCloud checks |

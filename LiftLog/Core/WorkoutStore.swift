@@ -12,11 +12,15 @@ final class WorkoutStore {
     private(set) var favoriteExerciseIDs: [UUID] = []
     private(set) var exerciseInstructionOverrides: [ExerciseInstructionOverride] = []
     private(set) var defaultAssistantModel: String?
+    private(set) var workoutSummaryPrompt: String
+    private(set) var automaticWorkoutSummaries: Bool
     var exercises: [Exercise] { ExerciseCatalog.all + personalExercises }
     var errorMessage: String?
 
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private var defaultAssistantModelKey = ""
+    @ObservationIgnored private var workoutSummaryPromptKey = ""
+    @ObservationIgnored private var automaticWorkoutSummariesKey = ""
     @ObservationIgnored private var loadFailure: String?
     /// Advances only after a successful atomic save; review drafts bind to this revision.
     @ObservationIgnored private(set) var revision: UInt64 = 0
@@ -28,7 +32,29 @@ final class WorkoutStore {
     init(fileURL: URL? = nil, legacyFileURL: URL? = nil, cloudBackup: CloudBackupManager? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL
         self.defaultAssistantModelKey = "defaultAssistantModel.\(self.fileURL.standardizedFileURL.path)"
+        // iOS may relocate the application container during an update. Production
+        // preferences use a stable scope; explicitly injected stores stay isolated.
+        let summaryPreferenceScope = fileURL == nil ? "default" : self.fileURL.standardizedFileURL.path
+        self.workoutSummaryPromptKey = "workoutSummaryPrompt.\(summaryPreferenceScope)"
+        self.automaticWorkoutSummariesKey = "automaticWorkoutSummaries.\(summaryPreferenceScope)"
+        self.workoutSummaryPrompt = UserDefaults.standard.string(forKey: workoutSummaryPromptKey)
+            ?? WorkoutSummaryPrompt.defaultPrompt
+        self.automaticWorkoutSummaries = UserDefaults.standard.bool(forKey: automaticWorkoutSummariesKey)
         self.defaultAssistantModel = UserDefaults.standard.string(forKey: defaultAssistantModelKey)
+        #if DEBUG
+        let uiTestingFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LiftLogUITests.sqlite").standardizedFileURL
+        if self.fileURL.standardizedFileURL == uiTestingFileURL,
+           ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+           ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
+            UserDefaults.standard.removeObject(forKey: defaultAssistantModelKey)
+            UserDefaults.standard.removeObject(forKey: workoutSummaryPromptKey)
+            UserDefaults.standard.removeObject(forKey: automaticWorkoutSummariesKey)
+            self.defaultAssistantModel = nil
+            self.workoutSummaryPrompt = WorkoutSummaryPrompt.defaultPrompt
+            self.automaticWorkoutSummaries = false
+        }
+        #endif
         self.cloudBackup = cloudBackup ?? CloudBackupManager(databaseURL: self.fileURL, available: fileURL == nil)
         let legacyURL = legacyFileURL ?? self.fileURL.deletingPathExtension().appendingPathExtension("json")
         do {
@@ -437,6 +463,33 @@ final class WorkoutStore {
         defaultAssistantModel = normalized
         if let normalized { UserDefaults.standard.set(normalized, forKey: defaultAssistantModelKey) }
         else { UserDefaults.standard.removeObject(forKey: defaultAssistantModelKey) }
+        return true
+    }
+
+    /// Sets the user-level summary instructions. Blank input restores the immutable default.
+    @discardableResult
+    func setWorkoutSummaryPrompt(_ prompt: String) -> Bool {
+        let normalized: String?
+        if prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            normalized = nil
+        } else {
+            normalized = prompt
+        }
+        if let normalized, normalized.count > WorkoutSummaryPrompt.maximumLength { return false }
+        if let normalized {
+            workoutSummaryPrompt = normalized
+            UserDefaults.standard.set(normalized, forKey: workoutSummaryPromptKey)
+        } else {
+            workoutSummaryPrompt = WorkoutSummaryPrompt.defaultPrompt
+            UserDefaults.standard.removeObject(forKey: workoutSummaryPromptKey)
+        }
+        return true
+    }
+
+    @discardableResult
+    func setAutomaticWorkoutSummaries(_ enabled: Bool) -> Bool {
+        automaticWorkoutSummaries = enabled
+        UserDefaults.standard.set(enabled, forKey: automaticWorkoutSummariesKey)
         return true
     }
 

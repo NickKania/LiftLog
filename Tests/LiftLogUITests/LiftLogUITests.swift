@@ -124,6 +124,8 @@ final class LiftLogUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["setTargetReps-1"].firstMatch.label, "Target: 6")
         app.buttons["finishWorkoutButton"].tap()
         app.buttons["confirmFinishWorkoutButton"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["closeWorkoutSummaryButton"].waitForExistence(timeout: 5))
+        app.buttons["closeWorkoutSummaryButton"].tap()
         XCTAssertTrue(app.buttons["createTemplateButton"].waitForExistence(timeout: 5))
         app.tabBars.buttons["History"].tap()
         XCTAssertTrue(app.staticTexts["Smoke Routine"].waitForExistence(timeout: 5))

@@ -186,6 +186,8 @@ final class WorkflowUITests: XCTestCase {
         app.buttons["completeSet-1"].firstMatch.tap()
         app.buttons["finishWorkoutButton"].tap()
         app.buttons["confirmFinishWorkoutButton"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["closeWorkoutSummaryButton"].waitForExistence(timeout: 5))
+        app.buttons["closeWorkoutSummaryButton"].tap()
         app.tabBars.buttons["History"].tap()
         app.buttons["historyWorkout-Upper Body"].tap()
         XCTAssertTrue(app.staticTexts["historySetPlan-1"].waitForExistence(timeout: 5))

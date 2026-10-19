@@ -9,6 +9,7 @@ struct LiftLogApp: App {
     @State private var backgroundBackup = BackupBackgroundActivity()
     @State private var chatGPT: ChatGPTAccountStore
     @State private var assistant: WorkoutAssistant
+    @State private var workoutSummary: WorkoutSummaryStore
 
     init() {
         let workoutStore: WorkoutStore
@@ -54,8 +55,30 @@ struct LiftLogApp: App {
         #else
         workoutAssistant = Self.makeAssistant(store: workoutStore, accounts: accountStore)
         #endif
-        accountStore.onConnectionChange = { [weak workoutAssistant] in workoutAssistant?.accountWillChange() }
+        let summaryStore: WorkoutSummaryStore
+        #if DEBUG
+        if WorkoutSummaryUITestFixture.isEnabled {
+            summaryStore = WorkoutSummaryUITestFixture.makeStore(store: workoutStore, accounts: accountStore)
+        } else {
+            summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore)
+        }
+        #else
+        summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore)
+        #endif
+        accountStore.onConnectionChange = { [weak workoutAssistant, weak summaryStore] in
+            workoutAssistant?.accountWillChange()
+            summaryStore?.accountWillChange()
+        }
         _assistant = State(initialValue: workoutAssistant)
+        _workoutSummary = State(initialValue: summaryStore)
+    }
+
+    private static func makeWorkoutSummary(store: WorkoutStore, accounts: ChatGPTAccountStore) -> WorkoutSummaryStore {
+        WorkoutSummaryStore(store: store, accessToken: {
+            try await accounts.accessToken()
+        }, accountIdentity: {
+            "\(accounts.currentAccount?.id ?? "none"):\(accounts.revision):\(accounts.canUsePlan)"
+        }, healthDataProvider: AppleHealthDataProvider())
     }
 
     private static func makeAssistant(store: WorkoutStore, accounts: ChatGPTAccountStore) -> WorkoutAssistant {
@@ -87,6 +110,7 @@ struct LiftLogApp: App {
                 .environment(store)
                 .environment(chatGPT)
                 .environment(assistant)
+                .environment(workoutSummary)
                 .environment(restAlerts)
                 .tint(.blue)
                 .task {

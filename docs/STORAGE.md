@@ -8,6 +8,8 @@ Assistant conversations are saved separately in `Application Support/LiftLog/ass
 
 Workout SQLite backups and restores do not include or replace this local chat archive. Deleting the app removes locally saved chats.
 
+Completed-workout summary inputs, Apple Health snapshots, and generated replies are memory-only and never enter the chat archive or workout database. The customizable summary prompt and opt-in automatic-generation preference use device-local UserDefaults with stable production keys so app-container relocation does not reset them. Injected stores use separate path-scoped keys for isolation. Preferences survive relaunch, are not included in SQLite backups, and require no schema change.
+
 ## Upgrade from JSON
 
 When no SQLite database exists, the app reads an existing `workouts.json`, validates it, and builds the database in a staging file before installing it. The original JSON remains untouched. Legacy template `reps` fields and snapshots without personal exercises or target reps are supported. Once SQLite exists, the legacy JSON never replaces it. Damaged data blocks writes and displays an error rather than resetting workouts.
