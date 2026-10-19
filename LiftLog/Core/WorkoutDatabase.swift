@@ -70,7 +70,8 @@ struct WorkoutDatabase {
                         }
                         return WorkoutExercise(id: try entry.uuid("id"), exercise: try exercise(entry), sets: sets,
                                                supersetID: schemaVersion >= 4 ? try entry.optional("superset_id", read: entry.uuid) : nil,
-                                               templateExerciseID: hasTemplateLinks ? try entry.optional("template_exercise_id", read: entry.uuid) : nil)
+                                               templateExerciseID: hasTemplateLinks ? try entry.optional("template_exercise_id", read: entry.uuid) : nil,
+                                               notes: schemaVersion >= 8 ? try entry.optional("notes", read: entry.text) : nil)
                     }
                     let session = WorkoutSession(
                         id: id, templateID: try row.optional("template_id", read: row.uuid),
@@ -81,7 +82,8 @@ struct WorkoutDatabase {
                         finishedAt: try row.optional("finished_at") { Date(timeIntervalSinceReferenceDate: try row.number($0)) },
                         unit: recordedUnit, importSourceKey: try row.optional("import_source_key", read: row.text), exercises: exercises,
                         restSeconds: schemaVersion >= 3 ? try row.integer("rest_seconds") : 120,
-                        restTimer: schemaVersion >= 3 ? try row.optional("rest_timer") { try JSONDecoder().decode(WorkoutRestTimer.self, from: Data(row.text($0).utf8)) } : nil
+                        restTimer: schemaVersion >= 3 ? try row.optional("rest_timer") { try JSONDecoder().decode(WorkoutRestTimer.self, from: Data(row.text($0).utf8)) } : nil,
+                        notes: schemaVersion >= 8 ? try row.optional("notes", read: row.text) : nil
                     )
                     if try row.text("kind") == "active" { snapshot.activeWorkout = session }
                     else { snapshot.history.append(session) }
@@ -98,6 +100,15 @@ struct WorkoutDatabase {
                 snapshot.exerciseInstructionOverrides = try db.rows("SELECT exercise_id, steps FROM exercise_instruction_overrides ORDER BY position").map {
                     ExerciseInstructionOverride(exerciseID: try $0.uuid("exercise_id"),
                                                 steps: try JSONDecoder().decode([String].self, from: Data($0.text("steps").utf8)))
+                }
+            }
+            if schemaVersion >= 8 {
+                snapshot.historyRecovery = try db.rows("SELECT id, payload FROM history_recovery ORDER BY id").map { row in
+                    let previous = try JSONDecoder().decode(WorkoutSession.self, from: Data(row.text("payload").utf8))
+                    guard previous.id == (try row.uuid("id")) else {
+                        throw DatabaseError(message: "A history recovery record has inconsistent identity.")
+                    }
+                    return previous
                 }
             }
             // Pre-merge catalog files can contain replacements. Without source IDs,
@@ -126,11 +137,17 @@ struct WorkoutDatabase {
                     try migrateVersionSix(db)
                     try migrateVersionSeven(db)
                 }
+                if schemaVersion <= 7 { try migrateVersionEight(db) }
+                try db.execute("DELETE FROM history_recovery")
                 try db.execute("DELETE FROM records")
                 try db.execute("DELETE FROM personal_exercises")
                 try db.execute("DELETE FROM favorite_exercises")
                 try db.execute("DELETE FROM exercise_instruction_overrides")
                 try db.execute("INSERT OR REPLACE INTO settings (id, unit) VALUES (1, ?)", [.text(snapshot.unit.rawValue)])
+                for previous in snapshot.historyRecovery {
+                    let payload = String(decoding: try JSONEncoder().encode(previous), as: UTF8.self)
+                    try db.execute("INSERT INTO history_recovery (id, payload) VALUES (?, ?)", [.text(previous.id.uuidString), .text(payload)])
+                }
                 for (position, template) in snapshot.templates.enumerated() {
                     let key = "template:\(template.id.uuidString)"
                     try db.execute("INSERT INTO records (record_key, id, kind, position, name, rest_seconds) VALUES (?, ?, 'template', ?, ?, ?)",
@@ -195,7 +212,7 @@ struct WorkoutDatabase {
     private func checkFormat(_ db: SQLiteConnection) throws -> Int {
         let version = try db.rows("PRAGMA user_version").first?.integer("user_version")
         guard try db.rows("PRAGMA application_id").first?.integer("application_id") == Self.applicationID,
-              let version, (1...7).contains(version) else {
+              let version, (1...8).contains(version) else {
             throw DatabaseError(message: "This file is not a supported Lift Log database.")
         }
         return version
@@ -251,6 +268,13 @@ struct WorkoutDatabase {
         try db.execute("PRAGMA user_version = 7")
     }
 
+    private func migrateVersionEight(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE records ADD COLUMN notes TEXT")
+        try db.execute("ALTER TABLE exercise_entries ADD COLUMN notes TEXT")
+        try db.execute("CREATE TABLE history_recovery (id TEXT PRIMARY KEY NOT NULL, payload TEXT NOT NULL)")
+        try db.execute("PRAGMA user_version = 8")
+    }
+
     private func createSchema(_ db: SQLiteConnection) throws {
         let statements = [
             "PRAGMA application_id = \(Self.applicationID)",
@@ -303,14 +327,14 @@ struct WorkoutDatabase {
     private func saveSession(_ db: SQLiteConnection, session: WorkoutSession, kind: String, position: Int) throws {
         let key = "session:\(session.id.uuidString)"
         try db.execute("""
-            INSERT INTO records (record_key, id, kind, position, name, template_id, started_at, finished_at, unit, import_source_key, template_version_id, template_version_number, rest_seconds, rest_timer)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO records (record_key, id, kind, position, name, template_id, started_at, finished_at, unit, import_source_key, template_version_id, template_version_number, rest_seconds, rest_timer, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [.text(key), .text(session.id.uuidString), .text(kind), .integer(Int64(position)), .text(session.name),
                   .optional(session.templateID?.uuidString), .date(session.startedAt), .date(session.finishedAt),
                   .text(session.unit.rawValue), .optional(session.importSourceKey), .optional(session.templateVersionID?.uuidString), .optional(session.templateVersionNumber), .integer(Int64(session.restSeconds)),
-                  .optional(try session.restTimer.map { String(decoding: try JSONEncoder().encode($0), as: UTF8.self) })])
+                  .optional(try session.restTimer.map { String(decoding: try JSONEncoder().encode($0), as: UTF8.self) }), .optional(session.notes)])
         for (position, entry) in session.exercises.enumerated() {
-            try saveEntry(db, key: key, id: entry.id, exercise: entry.exercise, position: position, supersetID: entry.supersetID, templateExerciseID: entry.templateExerciseID)
+            try saveEntry(db, key: key, id: entry.id, exercise: entry.exercise, position: position, supersetID: entry.supersetID, templateExerciseID: entry.templateExerciseID, notes: entry.notes)
             for (position, set) in entry.sets.enumerated() {
                 try saveSet(db, key: key, entryID: entry.id, id: set.id, position: position, weight: set.weight,
                             reps: set.reps, targetReps: set.targetReps, targetWeight: set.targetWeight, completed: set.isCompleted)
@@ -318,9 +342,9 @@ struct WorkoutDatabase {
         }
     }
 
-    private func saveEntry(_ db: SQLiteConnection, key: String, id: UUID, exercise: Exercise, position: Int, supersetID: UUID?, templateExerciseID: UUID? = nil) throws {
-        try db.execute("INSERT INTO exercise_entries (record_key, id, position, exercise_id, exercise_name, exercise_category, superset_id, template_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                       [.text(key), .text(id.uuidString), .integer(Int64(position)), .text(exercise.id.uuidString), .text(exercise.name), .text(exercise.category), .optional(supersetID?.uuidString), .optional(templateExerciseID?.uuidString)])
+    private func saveEntry(_ db: SQLiteConnection, key: String, id: UUID, exercise: Exercise, position: Int, supersetID: UUID?, templateExerciseID: UUID? = nil, notes: String? = nil) throws {
+        try db.execute("INSERT INTO exercise_entries (record_key, id, position, exercise_id, exercise_name, exercise_category, superset_id, template_exercise_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                       [.text(key), .text(id.uuidString), .integer(Int64(position)), .text(exercise.id.uuidString), .text(exercise.name), .text(exercise.category), .optional(supersetID?.uuidString), .optional(templateExerciseID?.uuidString), .optional(notes)])
     }
 
     private func saveSet(_ db: SQLiteConnection, key: String, entryID: UUID, id: UUID, position: Int, weight: Double, reps: Int?, targetReps: Int?, targetWeight: Double?, completed: Bool) throws {

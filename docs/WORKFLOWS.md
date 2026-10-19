@@ -24,6 +24,7 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 | Finish and review | Complete sets, confirm finish, open history; omit incomplete sets | `LiftLogUITests` template-to-history test; core completion filtering/history tests |
 | Review workout insights | See saved stats after completion or from History; explicitly generate training feedback, optionally include Health for one request, or opt into future automatic workout-only insights | `WorkoutSummaryContextTests`; `WorkoutSummaryStoreTests`; `WorkoutSummaryUITests` |
 | Customize summary coaching | Edit the summary prompt in Settings; Save or Cancel a draft, restore the default, and retain local preferences across relaunch | `WorkoutSummaryContextTests`; `WorkoutSummaryUITests` |
+| Correct or add completed history | Open a workout → Edit, or History → Add Past Workout; independently edit completed rows, dates and notes, review, then save; Cancel discards the draft and Undo Last Correction restores the previous complete record after relaunch | `WorkoutHistoryEditingTests`; `WorkoutHistoryEditingUITests` |
 | Rename a completed workout | Swipe left in History, choose Rename, edit the name, then Save or Cancel | `WorkoutImportUITests` rename test; core history rename persistence, validation, and save failure tests |
 | Discard training | Cancel discard to keep training, or confirm to clear the session without history | `WorkflowUITests` discard test; core discard test |
 | Back up or restore | Enable automatic backups, save on demand, or confirm replacement from a selected iCloud snapshot | `StorageAndBackupTests`; physical-device iCloud checks |
@@ -38,7 +39,8 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 5. **Finish:** require completed work; filter incomplete sets and empty exercises; prepend the finished snapshot to history and clear the active session in the same commit.
 6. **Discard:** clear the active session without recording history, then permit a new workout.
 7. **Unit change:** convert template loads and persist the preference; leave active and finished session snapshots intact.
-8. **Save failure:** report an error and retain prior in-memory state; allow a later valid operation to recover after the storage problem is removed.
+8. **History correction/manual entry:** validate a separate completed-record draft, compare the captured original for corrections, preserve source identities and targets, then commit the record and its recovery slot atomically. Manual entries leave active workouts and templates unchanged. Undo restores the prior full record and removes its recovery slot.
+9. **Save failure:** report an error and retain prior in-memory state; allow a later valid operation to recover after the storage problem is removed.
 
 `StorageAndBackupTests` covers JSON migration, SQLite rollback, unsupported database versions, standalone WAL backups, complete restore, damaged local recovery, corrupt backup rejection, edit blocking, offline backup failure, remote metadata listing, and per-installation retention.
 

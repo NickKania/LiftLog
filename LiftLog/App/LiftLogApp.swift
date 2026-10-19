@@ -19,6 +19,10 @@ struct LiftLogApp: App {
             if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
                 try? FileManager.default.removeItem(at: url)
             }
+            if ProcessInfo.processInfo.arguments.contains("--history-long-workout-ui-fixture") {
+                do { try HealthDashboardUITestFixture.seedLongWorkoutIfNeeded(at: url) }
+                catch { preconditionFailure("Could not seed the synthetic long workout: \(error.localizedDescription)") }
+            }
             workoutStore = WorkoutStore(fileURL: url)
         } else {
             workoutStore = WorkoutStore()

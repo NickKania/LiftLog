@@ -184,6 +184,7 @@ final class ExerciseOrderTests: XCTestCase {
         do {
             let db = try SQLiteConnection(url: url)
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id")
+            try db.removeHistoryEditingSchema()
             try db.execute("PRAGMA user_version = 4")
             try db.execute("CREATE TRIGGER reject_records BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'failed migration'); END")
         }
@@ -236,6 +237,7 @@ final class ExerciseOrderTests: XCTestCase {
         try WorkoutDatabase(url: url).save(snapshot)
         do {
             let db = try SQLiteConnection(url: url)
+            try db.removeHistoryEditingSchema()
             for statement in ["DROP TABLE template_versions", "ALTER TABLE records DROP COLUMN template_version_id",
                 "ALTER TABLE records DROP COLUMN template_version_number", "ALTER TABLE workout_sets DROP COLUMN target_weight",
                 "ALTER TABLE records DROP COLUMN rest_seconds", "ALTER TABLE records DROP COLUMN rest_timer",

@@ -33,6 +33,7 @@ final class ExerciseFavoritesTests: XCTestCase {
             try db.execute("ALTER TABLE records DROP COLUMN template_version_number")
             try db.execute("ALTER TABLE workout_sets DROP COLUMN target_weight")
         }
+        try db.removeHistoryEditingSchema()
         try db.execute("PRAGMA user_version = \(version)")
     }
 
@@ -170,7 +171,7 @@ final class ExerciseFavoritesTests: XCTestCase {
             next.favoriteExerciseIDs = [UUID()]
             try database.save(next)
             XCTAssertEqual(try database.load().favoriteExerciseIDs, next.favoriteExerciseIDs)
-            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 7)
+            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 8)
             XCTAssertEqual(try Data(contentsOf: backup), bytes)
         }
     }

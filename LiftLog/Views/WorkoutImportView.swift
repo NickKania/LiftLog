@@ -237,7 +237,7 @@ struct WorkoutImportView: View {
             .accessibilityLabel("\(selectedIDs.contains(candidate.id) ? "Deselect" : "Select") \(workout.name)")
             .accessibilityIdentifier("importSelection-\(candidate.id)")
             NavigationLink {
-                WorkoutDetailView(workout: workout)
+                WorkoutRecordView(workout: workout)
             } label: {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(workout.name).font(.headline)
