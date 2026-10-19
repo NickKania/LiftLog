@@ -1,48 +1,5 @@
 import SwiftUI
 
-struct ExercisePickerView: View {
-    @Environment(WorkoutStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
-    @State private var search = ""
-    let onSelect: (Exercise) -> Void
-
-    private var matches: [Exercise] {
-        store.exercises.filter { Exercise.normalizedName(search).isEmpty || Exercise.normalizedName($0.name).contains(Exercise.normalizedName(search)) }
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(matches) { exercise in
-                    Button {
-                        onSelect(exercise)
-                        dismiss()
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(exercise.name).foregroundStyle(.primary)
-                            Text(exercise.category).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    .accessibilityIdentifier("exercise-\(exercise.name)")
-                }
-                if !Exercise.normalizedName(search).isEmpty && !store.exercises.contains(where: { Exercise.normalizedName($0.name) == Exercise.normalizedName(search) }) {
-                    Section {
-                        Button {
-                            onSelect(Exercise(name: search.trimmingCharacters(in: .whitespacesAndNewlines), category: "Custom"))
-                            dismiss()
-                        } label: { Label("Add “\(search)”", systemImage: "plus.circle") }
-                        .accessibilityIdentifier("addCustomExerciseButton")
-                    }
-                }
-            }
-            .searchable(text: $search, prompt: "Find or create an exercise")
-            .navigationTitle("Add Exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
-        }
-    }
-}
-
 /// Text stays local while a number is incomplete, so typing a decimal never resets the field.
 struct SetInputRow: View {
     let number: Int

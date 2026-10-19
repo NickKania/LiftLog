@@ -12,8 +12,11 @@ final class PersonalCatalogUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["History"].waitForExistence(timeout: 10))
         app.tabBars.buttons["History"].tap()
         app.buttons["importWorkoutsButton"].tap()
+        XCTAssertTrue(app.staticTexts["selectedImportFile"].waitForExistence(timeout: 5), "The synthetic CSV must load before reviewing an import")
         let action = app.buttons["reviewOrImportButton"]
         XCTAssertTrue(action.waitForExistence(timeout: 5))
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: action)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
         action.tap()
         XCTAssertTrue(app.navigationBars["Review Import"].waitForExistence(timeout: 5))
         action.tap()

@@ -256,7 +256,7 @@ final class SupersetTests: XCTestCase {
             XCTAssertEqual(actual.history, snapshot.history)
             XCTAssertEqual(actual.activeWorkout, snapshot.activeWorkout)
         }
-        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 5)
+        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 7)
     }
 
     func testV3DatabaseReadsWithoutMutationAndV4MigrationRollsBackThenSucceeds() throws {
@@ -266,6 +266,8 @@ final class SupersetTests: XCTestCase {
         try database.save(original)
         do {
             let db = try SQLiteConnection(url: url)
+            try db.execute("DROP TABLE exercise_instruction_overrides")
+            try db.execute("DROP TABLE favorite_exercises")
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN superset_id")
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id")
             try db.execute("PRAGMA user_version = 3")

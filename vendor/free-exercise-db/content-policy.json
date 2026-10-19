@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "sourceID": "free-exercise-db",
+  "name": "free-exercise-db",
+  "author": "free-exercise-db contributors (individual authors not identified in the snapshot)",
+  "licenseID": "Unlicense",
+  "licenseURL": "https://unlicense.org/",
+  "licenseFile": "LiftLog/Core/Resources/free-exercise-db-LICENSE.txt",
+  "licenseSHA256": "6b0382b16279f26ff69014300541967a356a666eb0b91b422f6862f6b7dad17e",
+  "licenseScope": "Declared repository license for exercise text and metadata; photographs are excluded because their origins and rights are unresolved.",
+  "credit": "Exercise text and metadata from yuhonas/free-exercise-db and its contributors.",
+  "modifications": [
+    "Equipment and muscle labels normalized with explicit mappings.",
+    "Source activity category exposed as exercise type.",
+    "Empty instruction steps omitted; remaining wording and order preserved.",
+    "Original Lift Log identities and starter labels retained through reviewed compatibility mappings.",
+    "Photographs and all source image references excluded."
+  ],
+  "reviewStatus": "pendingReview",
+  "reviewNote": "The repository declares text and metadata under the Unlicense. Instructions and exercise metadata have not been individually reviewed for correctness or professional suitability.",
+  "excludedContent": [
+    "Photographs are not bundled or downloaded; their origins and royalty-free status are unresolved."
+  ],
+  "compatibilityMappings": {
+    "reviewStatus": "reviewed",
+    "sha256": "7ae1dfa59bca23bd4f840337580cc964551a6bff2b91f6367b3391379286fdec"
+  },
+  "mediaPolicy": "excluded"
+}

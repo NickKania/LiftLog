@@ -7,6 +7,7 @@ struct ActiveWorkoutView: View {
     @State private var reorderWorkout: WorkoutSession?
     @State private var pickingExercise = false
     @State private var supersetEditor: SupersetEditorContext?
+    @State private var swapContext: WorkoutExerciseSwapContext?
     @State private var confirmingFinish = false
     @State private var confirmingDiscard = false
     @State private var invalidSets: Set<UUID> = []
@@ -19,7 +20,7 @@ struct ActiveWorkoutView: View {
                 ContentUnavailableView("Workout saved", systemImage: "checkmark.circle", description: Text("Find your completed sets in History."))
             }
         }
-        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && reorderWorkout == nil)
+        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && swapContext == nil && reorderWorkout == nil)
         .navigationTitle(store.activeWorkout?.name ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -50,6 +51,13 @@ struct ActiveWorkoutView: View {
                 mutate { session in
                     SupersetGrouping.update(&session.exercises, anchorID: context.id, selectedIDs: selectedIDs)
                 }
+            }
+        }
+        .sheet(item: $swapContext) { context in
+            ExerciseSwapView(originalExercise: context.entry.exercise, scope: .workout) { replacement in
+                guard store.replaceActiveExercise(in: context.sessionID, expectedEntry: context.entry, with: replacement.id) else { return false }
+                context.entry.sets.forEach { invalidSets.remove($0.id) }
+                return true
             }
         }
         .alert("Finish workout?", isPresented: $confirmingFinish) {
@@ -161,6 +169,13 @@ struct ActiveWorkoutView: View {
                         SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                         Spacer()
                         Menu {
+                            Button("Replace Exercise", systemImage: "arrow.triangle.2.circlepath") {
+                                hideKeyboard()
+                                swapContext = WorkoutExerciseSwapContext(sessionID: workout.id, entry: exercise)
+                            }
+                            .disabled(exercise.sets.contains(where: \.isCompleted))
+                            .accessibilityHint(exercise.sets.contains(where: \.isCompleted) ? "Completed sets must be kept. Only exercises with no completed sets can be replaced." : "Review a replacement for this workout only")
+                            .accessibilityIdentifier("replaceExerciseButton")
                             Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
                                 hideKeyboard()
                                 supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: workout.exercises, name: { $0.exercise.name })
@@ -174,7 +189,7 @@ struct ActiveWorkoutView: View {
                                     SupersetGrouping.normalize(&session.exercises)
                                 }
                             }
-                        } label: { Image(systemName: "ellipsis").padding(6) }
+                        } label: { Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44) }
                         .accessibilityLabel("Options for \(exercise.exercise.name)")
                         .accessibilityIdentifier("workoutExerciseMenu-\(exercise.id)")
                     }
@@ -192,6 +207,7 @@ struct ActiveWorkoutView: View {
                     .accessibilityIdentifier("discardWorkoutButton")
             }
         }
+        .accessibilityIdentifier("activeWorkoutEditor")
     }
 
     private var restNotificationHint: some View {
@@ -269,6 +285,12 @@ struct ActiveWorkoutView: View {
             change(&session.exercises[exerciseIndex].sets[setIndex])
         }
     }
+}
+
+private struct WorkoutExerciseSwapContext: Identifiable {
+    let sessionID: UUID
+    let entry: WorkoutExercise
+    var id: UUID { entry.id }
 }
 
 /// Keeps ordering as a draft; cancelling never writes to the workout or its template.

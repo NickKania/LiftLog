@@ -9,6 +9,8 @@ final class WorkoutStore {
     private(set) var activeWorkout: WorkoutSession?
     private(set) var unit: WeightUnit = .lb
     private(set) var personalExercises: [Exercise] = []
+    private(set) var favoriteExerciseIDs: [UUID] = []
+    private(set) var exerciseInstructionOverrides: [ExerciseInstructionOverride] = []
     private(set) var defaultAssistantModel: String?
     var exercises: [Exercise] { ExerciseCatalog.all + personalExercises }
     var errorMessage: String?
@@ -59,6 +61,62 @@ final class WorkoutStore {
             loadFailure = message
             errorMessage = message
         }
+    }
+
+    @discardableResult
+    func setExerciseFavorite(_ exerciseID: UUID, isFavorite: Bool) -> Bool {
+        guard !isFavorite || exercises.contains(where: { $0.id == exerciseID }) else {
+            return fail(StoreError.invalid("This exercise is no longer available. Choose an exercise from the catalog to favorite it."))
+        }
+        guard favoriteExerciseIDs.contains(exerciseID) != isFavorite else { return true }
+        var next = snapshot
+        if isFavorite { next.favoriteExerciseIDs.append(exerciseID) }
+        else { next.favoriteExerciseIDs.removeAll { $0 == exerciseID } }
+        return commit(next)
+    }
+
+    func exerciseInstructions(for exerciseID: UUID) -> [String] {
+        exerciseInstructionOverrides.first { $0.exerciseID == exerciseID }?.steps
+            ?? ExerciseCatalog.detail(for: exerciseID)?.instructions ?? []
+    }
+
+    func hasCustomExerciseInstructions(_ exerciseID: UUID) -> Bool {
+        exerciseInstructionOverrides.contains { $0.exerciseID == exerciseID }
+    }
+
+    /// Saving the bundled steps restores the default instead of pinning a redundant override.
+    @discardableResult
+    func setExerciseInstructions(_ steps: [String], for exerciseID: UUID) -> Bool {
+        do {
+            let trimmed = steps.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            try Self.validateInstructionSteps(trimmed)
+            guard exercises.contains(where: { $0.id == exerciseID }) else {
+                throw StoreError.invalid("This exercise is no longer available. Choose an exercise from the catalog to edit its steps.")
+            }
+            let defaults = ExerciseCatalog.detail(for: exerciseID)?.instructions.map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            } ?? []
+            if trimmed == defaults { return resetExerciseInstructions(for: exerciseID) }
+            if exerciseInstructionOverrides.first(where: { $0.exerciseID == exerciseID })?.steps == trimmed { return true }
+            var next = snapshot
+            if let index = next.exerciseInstructionOverrides.firstIndex(where: { $0.exerciseID == exerciseID }) {
+                next.exerciseInstructionOverrides[index].steps = trimmed
+            } else {
+                next.exerciseInstructionOverrides.append(ExerciseInstructionOverride(exerciseID: exerciseID, steps: trimmed))
+            }
+            return commit(next)
+        } catch {
+            return fail(error)
+        }
+    }
+
+    /// Orphaned catalog identities retain their text until explicitly reset.
+    @discardableResult
+    func resetExerciseInstructions(for exerciseID: UUID) -> Bool {
+        guard hasCustomExerciseInstructions(exerciseID) else { return true }
+        var next = snapshot
+        next.exerciseInstructionOverrides.removeAll { $0.exerciseID == exerciseID }
+        return commit(next)
     }
 
     @discardableResult
@@ -148,6 +206,21 @@ final class WorkoutStore {
         } catch { return fail(error) }
     }
 
+    /// The captured entry prevents a delayed picker from overwriting newly logged work.
+    @discardableResult
+    func replaceActiveExercise(in sessionID: UUID, expectedEntry: WorkoutExercise, with exerciseID: UUID) -> Bool {
+        guard let activeWorkout, activeWorkout.id == sessionID else {
+            return fail(StoreError.invalid("This workout is no longer active."))
+        }
+        guard let replacement = exercises.first(where: { $0.id == exerciseID }) else {
+            return fail(StoreError.invalid("This exercise is no longer available. Reopen the swap and choose an available exercise."))
+        }
+        do {
+            let updated = try ExerciseReplacement.replacing(activeWorkout, expectedEntry: expectedEntry, with: replacement)
+            return updateActiveWorkout(updated)
+        } catch { return fail(error) }
+    }
+
     @discardableResult
     func updateActiveWorkout(_ workout: WorkoutSession, now: Date = Date()) -> Bool {
         guard let activeWorkout, workout.id == activeWorkout.id else {
@@ -172,6 +245,19 @@ final class WorkoutStore {
                 // A replacement belongs only to this session, even when its entry ID is reused.
                 updated.exercises[exerciseIndex].templateExerciseID =
                     updated.exercises[exerciseIndex].exercise.id == original.exercise.id ? original.templateExerciseID : nil
+                // A different movement never inherits the original prescription,
+                // including through callers that retain an entry ID during replacement.
+                if original.exercise.id != updated.exercises[exerciseIndex].exercise.id {
+                    guard !original.sets.contains(where: \.isCompleted),
+                          !updated.exercises[exerciseIndex].sets.contains(where: \.isCompleted) else {
+                        throw StoreError.invalid("An exercise with completed sets cannot be replaced.")
+                    }
+                    for setIndex in updated.exercises[exerciseIndex].sets.indices {
+                        updated.exercises[exerciseIndex].sets[setIndex].targetReps = nil
+                        updated.exercises[exerciseIndex].sets[setIndex].targetWeight = nil
+                    }
+                    continue
+                }
                 for setIndex in updated.exercises[exerciseIndex].sets.indices {
                     guard let set = original.sets.first(where: { $0.id == updated.exercises[exerciseIndex].sets[setIndex].id }) else { continue }
                     updated.exercises[exerciseIndex].sets[setIndex].targetReps = set.targetReps
@@ -387,7 +473,7 @@ final class WorkoutStore {
     }
 
     private var snapshot: Snapshot {
-        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit, personalExercises: personalExercises)
+        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit, personalExercises: personalExercises, favoriteExerciseIDs: favoriteExerciseIDs, exerciseInstructionOverrides: exerciseInstructionOverrides)
     }
 
     private func apply(_ snapshot: Snapshot) {
@@ -396,6 +482,8 @@ final class WorkoutStore {
         activeWorkout = snapshot.activeWorkout
         unit = snapshot.unit
         personalExercises = snapshot.personalExercises
+        favoriteExerciseIDs = snapshot.favoriteExerciseIDs
+        exerciseInstructionOverrides = snapshot.exerciseInstructionOverrides
     }
 
     /// Registers only in the proposed snapshot; failed writes and abandoned drafts publish nothing.
@@ -606,6 +694,9 @@ final class WorkoutStore {
     }
 
     nonisolated static func validate(_ snapshot: WorkoutSnapshot) throws {
+        try validateIDs(snapshot.favoriteExerciseIDs)
+        try validateIDs(snapshot.exerciseInstructionOverrides.map(\.exerciseID))
+        for override in snapshot.exerciseInstructionOverrides { try validateInstructionSteps(override.steps) }
         try validateIDs(snapshot.personalExercises.map(\.id))
         for exercise in snapshot.personalExercises { try validateName(exercise.name) }
         try validateIDs(snapshot.templates.map(\.id))
@@ -638,6 +729,16 @@ final class WorkoutStore {
             guard workout.finishedAt == nil, !snapshot.history.contains(where: { $0.id == workout.id }) else {
                 throw StoreError.invalid("The active workout is already finished.")
             }
+        }
+    }
+
+    /// Shared validation for persisted instructions and editor drafts.
+    nonisolated static func validateInstructionSteps(_ steps: [String]) throws {
+        guard !steps.isEmpty, steps.count <= 100 else {
+            throw StoreError.invalid("Add between 1 and 100 instruction steps.")
+        }
+        guard steps.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.count <= 10_000 }) else {
+            throw StoreError.invalid("Each instruction step must contain text and be no longer than 10,000 characters.")
         }
     }
 

@@ -56,7 +56,7 @@ final class WorkflowUITests: XCTestCase {
         app.buttons["addExerciseButton"].tap()
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
-        search.typeText("Workflow Sled Push")
+        search.typeText("Workflow Sled Push\n")
         XCTAssertTrue(app.buttons["addCustomExerciseButton"].waitForExistence(timeout: 5))
         app.buttons["addCustomExerciseButton"].tap()
         XCTAssertTrue(app.buttons["addSet-Workflow Sled Push"].waitForExistence(timeout: 5))
