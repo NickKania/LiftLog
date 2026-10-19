@@ -6,6 +6,7 @@ import Observation
 final class WorkoutStore {
     private(set) var templates: [WorkoutTemplate] = []
     private(set) var history: [WorkoutSession] = []
+    private(set) var historyRecovery: [WorkoutSession] = []
     private(set) var activeWorkout: WorkoutSession?
     private(set) var unit: WeightUnit = .lb
     private(set) var personalExercises: [Exercise] = []
@@ -379,6 +380,54 @@ final class WorkoutStore {
         return commit(next)
     }
 
+    /// Compare the entire captured record so a stale review cannot overwrite later corrections.
+    @discardableResult
+    func saveHistoryWorkout(_ draft: WorkoutSession, replacing expected: WorkoutSession?) -> Bool {
+        do {
+            var next = snapshot
+            if let expected {
+                guard let index = next.history.firstIndex(where: { $0.id == expected.id }),
+                      next.history[index] == expected else {
+                    throw StoreError.invalid("This workout changed or was deleted. Reopen it before making corrections.")
+                }
+                var corrected = try WorkoutHistoryEditing.validated(draft, replacing: expected)
+                guard corrected != expected else { return true }
+                let existingIDs = Set(expected.exercises.map(\.id))
+                for index in corrected.exercises.indices where !existingIDs.contains(corrected.exercises[index].id) {
+                    corrected.exercises[index].exercise = Self.register(corrected.exercises[index].exercise, in: &next)
+                }
+                next.historyRecovery.removeAll { $0.id == expected.id }
+                next.historyRecovery.append(expected)
+                next.history[index] = corrected
+            } else {
+                guard !next.history.contains(where: { $0.id == draft.id }), next.activeWorkout?.id != draft.id else {
+                    throw StoreError.invalid("This workout has already been saved.")
+                }
+                var saved = try WorkoutHistoryEditing.validated(draft)
+                for index in saved.exercises.indices {
+                    saved.exercises[index].exercise = Self.register(saved.exercises[index].exercise, in: &next)
+                }
+                next.history.append(saved)
+            }
+            next.history.sort { $0.startedAt == $1.startedAt ? $0.id.uuidString < $1.id.uuidString : $0.startedAt > $1.startedAt }
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    @discardableResult
+    func undoHistoryCorrection(replacing expected: WorkoutSession) -> Bool {
+        var next = snapshot
+        guard let index = next.history.firstIndex(where: { $0.id == expected.id }),
+              next.history[index] == expected,
+              let previous = next.historyRecovery.first(where: { $0.id == expected.id }) else {
+            return fail(StoreError.invalid("This correction changed or is no longer available. Reopen the workout."))
+        }
+        next.history[index] = previous
+        next.historyRecovery.removeAll { $0.id == expected.id }
+        next.history.sort { $0.startedAt == $1.startedAt ? $0.id.uuidString < $1.id.uuidString : $0.startedAt > $1.startedAt }
+        return commit(next)
+    }
+
     @discardableResult
     func renameWorkout(id: UUID, name: String) -> Bool {
         do {
@@ -387,7 +436,14 @@ final class WorkoutStore {
             guard let index = next.history.firstIndex(where: { $0.id == id }) else {
                 throw StoreError.invalid("This workout is no longer in your history.")
             }
-            next.history[index].name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let original = next.history[index]
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedName != original.name else { return true }
+            // Name-only corrections preserve existing facts, including sessions left open
+            // longer than the full history editor permits for newly entered date ranges.
+            next.history[index].name = trimmedName
+            next.historyRecovery.removeAll { $0.id == id }
+            next.historyRecovery.append(original)
             return commit(next)
         } catch { return fail(error) }
     }
@@ -396,6 +452,7 @@ final class WorkoutStore {
     func deleteWorkout(id: UUID) -> Bool {
         var next = snapshot
         next.history.removeAll { $0.id == id }
+        next.historyRecovery.removeAll { $0.id == id }
         return commit(next)
     }
 
@@ -473,12 +530,13 @@ final class WorkoutStore {
     }
 
     private var snapshot: Snapshot {
-        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit, personalExercises: personalExercises, favoriteExerciseIDs: favoriteExerciseIDs, exerciseInstructionOverrides: exerciseInstructionOverrides)
+        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit, personalExercises: personalExercises, favoriteExerciseIDs: favoriteExerciseIDs, exerciseInstructionOverrides: exerciseInstructionOverrides, historyRecovery: historyRecovery)
     }
 
     private func apply(_ snapshot: Snapshot) {
         templates = snapshot.templates
         history = snapshot.history
+        historyRecovery = snapshot.historyRecovery
         activeWorkout = snapshot.activeWorkout
         unit = snapshot.unit
         personalExercises = snapshot.personalExercises
@@ -657,6 +715,7 @@ final class WorkoutStore {
 
     nonisolated private static func validate(_ workout: WorkoutSession) throws {
         try validateName(workout.name)
+        try validateNotes(workout.notes)
         try validateRest(workout.restSeconds)
         if let timer = workout.restTimer {
             guard workout.finishedAt == nil, timer.endsAt.timeIntervalSinceReferenceDate.isFinite else {
@@ -673,6 +732,7 @@ final class WorkoutStore {
             throw StoreError.invalid("A workout has an invalid template version reference.")
         }
         for item in workout.exercises {
+            try validateNotes(item.notes)
             try validateName(item.exercise.name)
             try validateIDs(item.sets.map(\.id))
             for set in item.sets {
@@ -684,6 +744,12 @@ final class WorkoutStore {
                     throw StoreError.invalid("Target weight must be a finite number of zero or more.")
                 }
             }
+        }
+    }
+
+    nonisolated private static func validateNotes(_ notes: String?) throws {
+        guard (notes?.count ?? 0) <= 10_000 else {
+            throw StoreError.invalid("Keep each note to 10,000 characters or fewer.")
         }
     }
 
@@ -717,7 +783,17 @@ final class WorkoutStore {
                 }
             }
         }
-        for workout in snapshot.history {
+        try validateIDs(snapshot.historyRecovery.map(\.id))
+        for previous in snapshot.historyRecovery {
+            guard let current = snapshot.history.first(where: { $0.id == previous.id }),
+                  current.unit == previous.unit, current.importSourceKey == previous.importSourceKey,
+                  current.templateID == previous.templateID,
+                  current.templateVersionID == previous.templateVersionID,
+                  current.templateVersionNumber == previous.templateVersionNumber else {
+                throw StoreError.invalid("A history recovery record has no matching workout or source.")
+            }
+        }
+        for workout in snapshot.history + snapshot.historyRecovery {
             try validate(workout)
             guard workout.finishedAt != nil, !workout.exercises.isEmpty,
                   workout.exercises.allSatisfy({ !$0.sets.isEmpty && $0.sets.allSatisfy(\.isCompleted) }) else {

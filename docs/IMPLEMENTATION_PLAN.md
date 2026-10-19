@@ -1,19 +1,19 @@
 # Local-first training implementation plan
 
-Last reconciled with the working checkout: **October 15, 2026**. Milestone 0 and Milestone 1C are implemented. Other milestones remain incomplete; existing foundations and outstanding scope are identified below. “Implemented” describes this checkout, including uncommitted work, and does not imply a released build.
+Last reconciled with the working checkout: **October 18, 2026**. Milestones 0, 1A, and 1C are implemented. Other milestones remain incomplete; existing foundations and outstanding scope are identified below. “Implemented” describes this checkout, including uncommitted work, and does not imply a released build.
 
 Based on weight-app commit `997aef7` and the [openGym v1.4.1 source](https://github.com/DuarteSantos8/openGym/tree/464355ef43d4c8f8a4e0bb6db9c2af7f240593b5), researched October 11, 2026. The implementation remains native SwiftUI with local SQLite. Adopt useful training behavior while preserving versioned prescriptions and trustworthy actual-work records.
 
 ## Checkout baseline and dependencies
 
-This status describes PR #17 after merge commit `6a7be64`, which incorporated `main` at `e0d28a5`. Exercise reordering and source-template-entry links were delivered by PR #16, which is already merged into `main`; this branch inherits those features from that base. PR #17 adds catalog discovery on top of that history. The older `997aef7` reference above records the original research baseline, not the current implementation baseline.
+The catalog baseline comes from PR #17 after merge commit `6a7be64`, which incorporated `main` at `e0d28a5`. Exercise reordering and source-template-entry links were delivered by PR #16, which is already merged into `main`; this branch inherits those features from that base. PR #17 adds catalog discovery on top of that history. The older `997aef7` reference above records the original research baseline, not the current implementation baseline. Milestone 1A adds history correction and manual entry on top of that catalog baseline.
 
 ## Implementation status
 
 | Milestone | Status | Currently implemented | Remaining scope |
 | --- | --- | --- | --- |
 | 0 — Catalog policy and provenance | **Implemented** | Pinned catalog, generated metadata/instructions/provenance, license attribution, offline Credits & Licenses at the bottom of Settings | No remaining implementation in this milestone; individual source-content review and photo rights remain unresolved |
-| 1A — History correction | **Partial foundation** | History viewing, rename/delete, Strong CSV import with preview and duplicate protection | Completed-set edits, date/duration correction, notes, manual past-workout entry, recovery/undo for corrections |
+| 1A — History correction | **Implemented** | Reviewed completed-record corrections, independent set edits, date/duration changes, session/exercise notes, manual past-workout entry, persisted undo; import provenance retained | No remaining implementation in this milestone |
 | 1B — Native progress | **Partial foundation** | Health dashboard lifting-load trends, maximum completed-set weights, consistency heatmap and activity summaries | Dedicated Progress view, broader load/rep trends and defined PRs, optional estimated 1RM, metric definitions shared with assistant tools |
 | 1C — Catalog discovery | **Implemented** | Filters, details, default/personal steps, favorites/recents, aliases, spelling suggestions, explicit template/active-workout replacements | No remaining implementation in this milestone |
 | 1D — Exports and sharing | **Planned** | SQLite backup/restore exists as the recovery mechanism | Versioned JSON, completed-set CSV, template/version sharing, printing/PDF |
@@ -57,9 +57,9 @@ These slices can ship separately once their own prerequisites pass.
 
 ### 1A. Correct and complete history
 
-**Status: partial foundation; correction features remain.** History viewing, rename/delete and reviewed Strong CSV import already exist. They do not provide arbitrary completed-workout editing or manual past-workout entry.
+**Status: implemented.** History details expose Edit, and History offers Add Past Workout even when empty. Both flows own cancelable drafts and require a complete-record review before saving. Actual weight/reps change independently by row; users can add/remove completed sets and exercises, adjust start/finish (and therefore duration), and save session/exercise notes.
 
-Add completed-workout editing, date/duration correction, session/exercise notes and manual past-workout entry. Preserve IDs and import provenance. Save validated corrections atomically, with review and a recoverable previous record or undo path. Do not use reimporting as the correction mechanism.
+Corrections preserve retained IDs, recorded units, original targets, template attribution and import source keys. New rows have no inferred targets or template links. Saves compare the captured original record, validate and commit atomically; invalid/stale drafts and failed writes publish nothing. One previous record per corrected workout is retained in SQLite and backups. Undo Last Correction restores that complete record after confirmation, including after relaunch; a later correction replaces the prior recovery slot, and deletion removes it. Rename uses the same recovery mechanism. Manual records have no template/import provenance and leave active workouts and templates unchanged. Reimport continues to skip corrected imports by their original source identity.
 
 Acceptance: edit/backdate a workout, relaunch and recover the result; invalid input or a failed save changes nothing; active workouts and templates are unaffected; duplicates remain protected; derived progress recalculates after correction or deletion.
 
