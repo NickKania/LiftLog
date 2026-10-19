@@ -2,6 +2,14 @@ import Foundation
 import XCTest
 @testable import LiftLogCore
 
+/// Implements only the series fetch, so the default summary is exercised.
+@MainActor
+private final class SeriesOnlyHealthProvider: WorkoutHealthDataProviding {
+    let snapshot: WorkoutHealthSnapshot
+    init(snapshot: WorkoutHealthSnapshot) { self.snapshot = snapshot }
+    func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot { snapshot }
+}
+
 final class WorkoutHealthDataTests: XCTestCase {
     private let start = Date(timeIntervalSince1970: 1_700_000_000)
 
@@ -70,6 +78,73 @@ final class WorkoutHealthDataTests: XCTestCase {
         XCTAssertEqual(steps.samples.first?.date, start.addingTimeInterval(1))
         XCTAssertEqual(steps.samples.last?.date, start.addingTimeInterval(1199))
         XCTAssertTrue(try XCTUnwrap(scoped.metrics.first { $0.metric == .heartRate }).samples.allSatisfy { $0.value == 120 })
+    }
+
+    func testSummaryAveragesHeartRateTotalsEnergyAndDropsStepsAndOutOfWindowSamples() throws {
+        let end = start.addingTimeInterval(600)
+        let workout = WorkoutSession(startedAt: start, finishedAt: end)
+        let snapshot = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start, endedAt: end,
+            fetchedAt: end, metrics: [
+                WorkoutHealthMetricSeries(metric: .heartRate, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 100),
+                    WorkoutHealthSample(date: start.addingTimeInterval(120), value: 140),
+                    WorkoutHealthSample(date: end.addingTimeInterval(60), value: 200)
+                ]),
+                WorkoutHealthMetricSeries(metric: .activeEnergy, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 10),
+                    WorkoutHealthSample(date: start.addingTimeInterval(120), value: 25)
+                ]),
+                WorkoutHealthMetricSeries(metric: .steps, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 500)
+                ])
+            ])
+        let summary = snapshot.summarized()
+        XCTAssertEqual(summary.metrics.map(\.metric), [.heartRate, .activeEnergy])
+        XCTAssertEqual(summary.metrics.first?.samples, [WorkoutHealthSample(date: end, value: 120)])
+        XCTAssertEqual(summary.metrics.last?.samples, [WorkoutHealthSample(date: end, value: 35)])
+        XCTAssertEqual(try summary.scoped(to: workout, through: end), summary)
+    }
+
+    func testSummaryKeepsMissingMetricsMissing() {
+        let end = start.addingTimeInterval(600)
+        let workout = WorkoutSession(startedAt: start, finishedAt: end)
+        let energyOnly = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start, endedAt: end,
+            fetchedAt: end, metrics: [WorkoutHealthMetricSeries(metric: .activeEnergy, samples: [
+                WorkoutHealthSample(date: start.addingTimeInterval(60), value: 42)
+            ])])
+        XCTAssertEqual(energyOnly.summarized().metrics.map(\.metric), [.activeEnergy])
+        let empty = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start, endedAt: end,
+                                          fetchedAt: end, metrics: [])
+        XCTAssertTrue(empty.summarized().metrics.isEmpty)
+    }
+
+    @MainActor
+    func testDefaultHealthSummaryScopesAWiderSeriesWindowBeforeAggregating() async throws {
+        let end = start.addingTimeInterval(600)
+        let workout = WorkoutSession(startedAt: start, finishedAt: end)
+        // The series provider returns a snapshot ending past `through`, with a
+        // sample beyond it. The summary must keep only the requested window
+        // and date its sample at the cutoff so later scoping retains it.
+        let wide = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start,
+            endedAt: start.addingTimeInterval(1200), fetchedAt: start.addingTimeInterval(1200), metrics: [
+                WorkoutHealthMetricSeries(metric: .heartRate, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 100),
+                    WorkoutHealthSample(date: start.addingTimeInterval(120), value: 140),
+                    WorkoutHealthSample(date: start.addingTimeInterval(900), value: 200)
+                ]),
+                WorkoutHealthMetricSeries(metric: .activeEnergy, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 10),
+                    WorkoutHealthSample(date: start.addingTimeInterval(900), value: 99)
+                ])
+            ])
+        let provider = SeriesOnlyHealthProvider(snapshot: wide)
+        let summary = try await provider.fetchHealthSummary(for: workout, through: end)
+        XCTAssertEqual(summary.endedAt, end)
+        XCTAssertEqual(summary.metrics.map(\.metric), [.heartRate, .activeEnergy])
+        XCTAssertEqual(summary.metrics.first?.samples, [WorkoutHealthSample(date: end, value: 120)])
+        XCTAssertEqual(summary.metrics.last?.samples, [WorkoutHealthSample(date: end, value: 10)])
+        XCTAssertEqual(try summary.scoped(to: workout, through: end), summary,
+                       "The dashboard's later scoping must not drop the summary sample")
     }
 
     func testEmptySnapshotDoesNotInventReadAuthorizationOrZeroValues() throws {

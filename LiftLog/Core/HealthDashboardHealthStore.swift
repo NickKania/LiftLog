@@ -17,6 +17,10 @@ final class HealthDashboardHealthStore {
     private(set) var hasLoaded = false
     private(set) var completedCount = 0
 
+    /// HealthKit round-trips are slow enough that strictly sequential reads make
+    /// even a handful of workouts take minutes; overlap a few, not all of them.
+    static let maximumConcurrentReads = 4
+
     @ObservationIgnored private let provider: any WorkoutHealthDataProviding
     @ObservationIgnored private var workouts: [WorkoutSession] = []
     @ObservationIgnored private var range = HealthDashboardRange.all
@@ -64,27 +68,41 @@ final class HealthDashboardHealthStore {
         let selection = workouts
         let provider = provider
         let task = Task { [weak self] in
-            for workout in selection {
-                guard !Task.isCancelled, self?.generation == requestGeneration else { return }
-                // Only completed sessions are admitted by updateWorkouts(_:).
-                guard let through = workout.finishedAt else { continue }
-                do {
-                    let snapshot = try await provider.fetchHealthData(for: workout, through: through)
-                    try Task.checkCancellation()
-                    guard self?.generation == requestGeneration else { return }
-                    let scoped = try snapshot.scoped(to: workout, through: through)
-                    self?.snapshots[workout.id] = scoped
-                } catch is CancellationError {
-                    guard self?.generation == requestGeneration else { return }
-                    self?.cancel()
-                    return
-                } catch {
-                    guard !Task.isCancelled, self?.generation == requestGeneration else { return }
-                    self?.failures.append(HealthDashboardHealthFailure(
-                        id: workout.id, workoutName: workout.name, message: error.localizedDescription
-                    ))
+            // Only completed sessions are admitted by updateWorkouts(_:).
+            let jobs = selection.enumerated().compactMap { index, workout in
+                workout.finishedAt.map { (index: index, workout: workout, through: $0) }
+            }
+            var indexedFailures: [(index: Int, failure: HealthDashboardHealthFailure)] = []
+            await withTaskGroup(of: HealthDashboardFetchOutcome.self) { group in
+                var iterator = jobs.makeIterator()
+                for _ in 0..<min(Self.maximumConcurrentReads, jobs.count) {
+                    guard let job = iterator.next() else { break }
+                    group.addTask { await Self.fetch(job, provider: provider) }
                 }
-                self?.completedCount += 1
+                for await outcome in group {
+                    guard !Task.isCancelled, self?.generation == requestGeneration else {
+                        group.cancelAll()
+                        return
+                    }
+                    switch outcome {
+                    case .loaded(let snapshot):
+                        self?.snapshots[snapshot.workoutID] = snapshot
+                    case .failed(let index, let workout, let message):
+                        // Concurrent reads finish out of order; failures are
+                        // reported in selection order regardless.
+                        indexedFailures.append((index, HealthDashboardHealthFailure(
+                            id: workout.id, workoutName: workout.name, message: message)))
+                        self?.failures = indexedFailures.sorted { $0.index < $1.index }.map(\.failure)
+                    case .cancelled:
+                        self?.cancel()
+                        group.cancelAll()
+                        return
+                    }
+                    self?.completedCount += 1
+                    if let job = iterator.next() {
+                        group.addTask { await Self.fetch(job, provider: provider) }
+                    }
+                }
             }
             guard !Task.isCancelled, self?.generation == requestGeneration else { return }
             self?.isLoading = false
@@ -94,4 +112,23 @@ final class HealthDashboardHealthStore {
         loadTask = task
         return task
     }
+
+    private static func fetch(_ job: (index: Int, workout: WorkoutSession, through: Date),
+                              provider: any WorkoutHealthDataProviding) async -> HealthDashboardFetchOutcome {
+        do {
+            let snapshot = try await provider.fetchHealthSummary(for: job.workout, through: job.through)
+            try Task.checkCancellation()
+            return .loaded(try snapshot.scoped(to: job.workout, through: job.through))
+        } catch is CancellationError {
+            return .cancelled
+        } catch {
+            return .failed(index: job.index, workout: job.workout, message: error.localizedDescription)
+        }
+    }
+}
+
+private enum HealthDashboardFetchOutcome: Sendable {
+    case loaded(WorkoutHealthSnapshot)
+    case failed(index: Int, workout: WorkoutSession, message: String)
+    case cancelled
 }

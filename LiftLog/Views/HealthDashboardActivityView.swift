@@ -152,7 +152,7 @@ struct HealthDashboardActivityView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("healthDashboardReadFailure-\(failure.id)")
             }
-            Text("Missing readings can mean no source data, limited read access, or Apple Watch sync delays. Apple Health doesn't reveal read permission status. Calories cover available intervals; heart rate is the mean of available session averages.")
+            Text("Missing readings can mean no source data, limited read access, or Apple Watch sync delays. Apple Health doesn't reveal read permission status. Calories cover available intervals; heart rate averages each workout's session average from Apple Health.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

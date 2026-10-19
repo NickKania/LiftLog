@@ -237,7 +237,7 @@ Saved-chat deletion verification: all 184 core tests and all four `AssistantChat
 
 ### Health dashboard
 
-`HealthDashboardAnalyticsTests` covers calendar range boundaries and DST, daily and weekday counts, completed-set filtering, repeated exercise entries, mixed-unit progression and maxima, duration totals, template identity, and missing versus zero Health measurements. `HealthDashboardHealthStoreTests` covers explicit loading, sequential reads, cancellation, stale refresh/history results, partial failures, and invalid provider snapshots.
+`HealthDashboardAnalyticsTests` covers calendar range boundaries and DST, daily and weekday counts, completed-set filtering, repeated exercise entries, mixed-unit progression and maxima, duration totals, template identity, and missing versus zero Health measurements. `HealthDashboardHealthStoreTests` covers explicit loading, bounded concurrent summary reads, cancellation, stale refresh/history results, partial failures in selection order, and invalid provider snapshots. `WorkoutHealthDataTests` also covers reducing a series snapshot to its dashboard summary.
 
 `HealthDashboardUITests` uses `--ui-testing --health-dashboard-ui-fixture` with synthetic workout and Health data. It checks empty history, range counts, exercise selection, preferred-unit conversion, and explicit Health loading/reset on range changes. The fixture never requests HealthKit permission or reads personal data.
 
