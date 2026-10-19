@@ -17,7 +17,12 @@ extension WorkoutHealthDataProviding {
     /// aggregates from it; the HealthKit provider overrides this with single
     /// aggregate queries instead of reading hundreds of interval buckets.
     func fetchHealthSummary(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
-        try await fetchHealthData(for: workout, through: through).summarized()
+        // Scope first: the summary sample is dated at the snapshot end, so
+        // aggregating a wider-than-requested window would put it past the
+        // cutoff and a later scoped(to:through:) would drop valid readings.
+        try await fetchHealthData(for: workout, through: through)
+            .scoped(to: workout, through: through)
+            .summarized()
     }
 }
 
