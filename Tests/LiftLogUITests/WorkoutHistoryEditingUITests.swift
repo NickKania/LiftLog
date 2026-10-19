@@ -105,6 +105,44 @@ final class WorkoutHistoryEditingUITests: XCTestCase {
     }
 
     @MainActor
+    func testRenameWorkoutOverSevenDaysPreservesDurationAndUndoAfterRelaunch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--history-long-workout-ui-fixture", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer { app.terminate() }
+        app.tabBars.buttons["History"].tap()
+        let original = app.buttons["historyWorkout-Eight-day Workout"]
+        XCTAssertTrue(original.waitForExistence(timeout: 5))
+        original.swipeLeft()
+        app.buttons["Rename"].tap()
+        let field = app.alerts.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        replace(field, with: "Renamed Long Workout")
+        app.alerts.buttons["saveHistoryWorkoutNameButton"].firstMatch.tap()
+        let renamed = app.buttons["historyWorkout-Renamed Long Workout"]
+        XCTAssertTrue(renamed.waitForExistence(timeout: 5))
+        renamed.tap()
+        XCTAssertTrue(app.staticTexts["Duration, 11520 min 0 sec"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Synthetic workout left open for eight days."].exists)
+        attach("Renamed eight-day workout", app: app)
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--reset-ui-testing" }
+        app.launch()
+        app.tabBars.buttons["History"].tap()
+        XCTAssertTrue(renamed.waitForExistence(timeout: 5))
+        renamed.tap()
+        XCTAssertTrue(app.staticTexts["Duration, 11520 min 0 sec"].waitForExistence(timeout: 5))
+        app.buttons["undoHistoryCorrectionButton"].tap()
+        let undo = app.buttons["Restore Previous Record"].firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 5))
+        undo.tap()
+        XCTAssertTrue(app.navigationBars["Eight-day Workout"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Duration, 11520 min 0 sec"].exists)
+        XCTAssertFalse(app.buttons["undoHistoryCorrectionButton"].exists)
+        attach("Restored eight-day workout", app: app)
+    }
+
+    @MainActor
     private func launch(populated: Bool) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]

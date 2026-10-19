@@ -430,12 +430,22 @@ final class WorkoutStore {
 
     @discardableResult
     func renameWorkout(id: UUID, name: String) -> Bool {
-        guard let original = history.first(where: { $0.id == id }) else {
-            return fail(StoreError.invalid("This workout is no longer in your history."))
-        }
-        var draft = original
-        draft.name = name
-        return saveHistoryWorkout(draft, replacing: original)
+        do {
+            try Self.validateName(name)
+            var next = snapshot
+            guard let index = next.history.firstIndex(where: { $0.id == id }) else {
+                throw StoreError.invalid("This workout is no longer in your history.")
+            }
+            let original = next.history[index]
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedName != original.name else { return true }
+            // Name-only corrections preserve existing facts, including sessions left open
+            // longer than the full history editor permits for newly entered date ranges.
+            next.history[index].name = trimmedName
+            next.historyRecovery.removeAll { $0.id == id }
+            next.historyRecovery.append(original)
+            return commit(next)
+        } catch { return fail(error) }
     }
 
     @discardableResult

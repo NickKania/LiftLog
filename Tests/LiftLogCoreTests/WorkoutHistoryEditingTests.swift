@@ -21,6 +21,84 @@ final class WorkoutHistoryEditingTests: XCTestCase {
     }
 
     @MainActor
+    func testForgottenWorkoutOverSevenDaysCanBeRenamedAndUndoneAfterRelaunch() async throws {
+        let url = try file()
+        let initial = WorkoutStore(fileURL: url)
+        XCTAssertTrue(initial.startWorkout(template: try XCTUnwrap(initial.templates.first)))
+        let database = WorkoutDatabase(url: url)
+        var saved = try database.load()
+        var forgotten = try XCTUnwrap(saved.activeWorkout)
+        forgotten.startedAt = forgotten.startedAt.addingTimeInterval(-8 * 24 * 3600)
+        forgotten.notes = "  Keep the original session note.  "
+        forgotten.exercises[0].notes = "  Keep the original exercise note.  "
+        saved.activeWorkout = forgotten
+        try database.save(saved)
+
+        let store = WorkoutStore(fileURL: url)
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.finishWorkout())
+        let original = try XCTUnwrap(store.history.first)
+        XCTAssertGreaterThan(try XCTUnwrap(original.finishedAt).timeIntervalSince(original.startedAt), 7 * 24 * 3600)
+        XCTAssertTrue(store.startWorkout())
+        let currentWorkout = store.activeWorkout
+        let templates = store.templates
+        let unit = store.unit
+
+        guard store.renameWorkout(id: original.id, name: "  Renamed forgotten workout \n") else {
+            return XCTFail(store.errorMessage ?? "The name-only correction should succeed.")
+        }
+        var expected = original
+        expected.name = "Renamed forgotten workout"
+        XCTAssertEqual(store.history, [expected])
+        XCTAssertEqual(store.historyRecovery, [original])
+        XCTAssertEqual(store.activeWorkout, currentWorkout)
+        XCTAssertEqual(store.templates, templates)
+        XCTAssertEqual(store.unit, unit)
+        let reloaded = WorkoutStore(fileURL: url)
+        XCTAssertEqual(reloaded.history, [expected])
+        XCTAssertTrue(reloaded.undoHistoryCorrection(replacing: expected))
+        XCTAssertEqual(WorkoutStore(fileURL: url).history, [original])
+        XCTAssertTrue(reloaded.historyRecovery.isEmpty)
+    }
+
+    @MainActor
+    func testLongHistoryRenameRetainsProvenanceAndRollsBackFailedWrites() async throws {
+        let url = try file()
+        var original = session(imported: true)
+        original.finishedAt = original.startedAt.addingTimeInterval(8 * 24 * 3600)
+        original.notes = "  Preserve this saved note verbatim.  "
+        try WorkoutDatabase(url: url).save(WorkoutSnapshot(templates: [], history: [original], activeWorkout: nil, unit: .lb))
+        let store = WorkoutStore(fileURL: url)
+        let db = try SQLiteConnection(url: url)
+        try db.execute("CREATE TRIGGER reject_rename BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'synthetic rename failure'); END")
+        let before = try Data(contentsOf: url)
+        XCTAssertFalse(store.renameWorkout(id: original.id, name: "Renamed long history"))
+        XCTAssertTrue(try XCTUnwrap(store.errorMessage).contains("synthetic rename failure"))
+        XCTAssertEqual(store.history, [original])
+        XCTAssertTrue(store.historyRecovery.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: url), before)
+        try db.execute("DROP TRIGGER reject_rename")
+        store.beginRestore()
+        XCTAssertFalse(store.renameWorkout(id: original.id, name: "Renamed long history"))
+        store.endRestore()
+        XCTAssertTrue(store.renameWorkout(id: original.id, name: "Renamed long history"))
+        var expected = original
+        expected.name = "Renamed long history"
+        XCTAssertEqual(WorkoutStore(fileURL: url).history, [expected])
+        let revision = store.revision
+        XCTAssertTrue(store.renameWorkout(id: original.id, name: " \nRenamed long history "))
+        XCTAssertEqual(store.revision, revision)
+        XCTAssertEqual(store.historyRecovery, [original])
+        // Full editor and manual-entry date limits stay independent of name-only correction.
+        XCTAssertThrowsError(try WorkoutHistoryEditing.validated(expected, replacing: original))
+        var manual = session()
+        manual.finishedAt = manual.startedAt.addingTimeInterval(8 * 24 * 3600)
+        XCTAssertThrowsError(try WorkoutHistoryEditing.validated(manual))
+    }
+
+    @MainActor
     func testCorrectionRelaunchUndoAndImportDuplicateProtection() async throws {
         let url = try file()
         let store = WorkoutStore(fileURL: url)

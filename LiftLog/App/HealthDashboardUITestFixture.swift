@@ -72,6 +72,22 @@ enum HealthDashboardUITestFixture {
         precondition(store.importWorkouts(sessions) != nil, "Could not save dashboard fixture workouts.")
     }
 
+    /// Seed only the isolated UI-test database; existing data survives relaunch.
+    static func seedLongWorkoutIfNeeded(at url: URL, now: Date = Date()) throws {
+        let arguments = ProcessInfo.processInfo.arguments
+        precondition(arguments.contains("--ui-testing") && arguments.contains("--history-long-workout-ui-fixture"))
+        guard !FileManager.default.fileExists(atPath: url.path) else { return }
+        guard let bench = ExerciseCatalog.all.first(where: { $0.name == "Bench Press" }) else {
+            throw DatabaseError(message: "The long-workout fixture requires Bench Press.")
+        }
+        let finish = now.addingTimeInterval(-3600)
+        let workout = WorkoutSession(id: identifier(50_000), name: "Eight-day Workout",
+            startedAt: finish.addingTimeInterval(-8 * 24 * 3600), finishedAt: finish,
+            exercises: [WorkoutExercise(exercise: bench, sets: [WorkoutSet(weight: 135, reps: 8, isCompleted: true)])],
+            notes: "Synthetic workout left open for eight days.")
+        try WorkoutDatabase(url: url).save(WorkoutSnapshot(templates: [], history: [workout], activeWorkout: nil, unit: .lb))
+    }
+
     static func makeHealthDataProvider() -> any WorkoutHealthDataProviding {
         precondition(isEnabled, "Dashboard fixtures require an explicit UI test launch.")
         return HealthDashboardFixtureProvider()
