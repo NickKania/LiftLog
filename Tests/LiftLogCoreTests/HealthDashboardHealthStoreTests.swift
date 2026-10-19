@@ -7,11 +7,17 @@ private final class DashboardHealthProvider: WorkoutHealthDataProviding {
     enum Outcome { case samples, empty, failure, wrongSession }
     struct Read { let workout: WorkoutSession; let through: Date }
     var reads: [Read] = []
+    var seriesReads: [Read] = []
     var outcomes: [UUID: Outcome] = [:]
     var suspends = false
     private var pending: [Int: CheckedContinuation<WorkoutHealthSnapshot, Error>] = [:]
 
     func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
+        seriesReads.append(Read(workout: workout, through: through))
+        return snapshot(for: workout, through: through)
+    }
+
+    func fetchHealthSummary(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
         let index = reads.count
         reads.append(Read(workout: workout, through: through))
         if suspends {
@@ -29,6 +35,14 @@ private final class DashboardHealthProvider: WorkoutHealthDataProviding {
     func release(_ index: Int, value: Double = 120) {
         let read = reads[index]
         pending.removeValue(forKey: index)?.resume(returning: snapshot(for: read.workout, through: read.through, value: value))
+    }
+
+    func releaseWithFailure(_ index: Int) {
+        pending.removeValue(forKey: index)?.resume(throwing: WorkoutHealthDataError.unavailable)
+    }
+
+    func readIndex(for workoutID: UUID) -> Int {
+        reads.firstIndex { $0.workout.id == workoutID } ?? -1
     }
 
     func snapshot(for workout: WorkoutSession, through: Date, value: Double? = 120) -> WorkoutHealthSnapshot {
@@ -68,6 +82,7 @@ final class HealthDashboardHealthStoreTests: XCTestCase {
         let task = try XCTUnwrap(store.load())
         await task.value
         XCTAssertEqual(provider.reads.map(\.workout.id), [completed.id])
+        XCTAssertTrue(provider.seriesReads.isEmpty, "The dashboard reads summaries, not interval series")
         XCTAssertEqual(provider.reads.first?.through, completed.finishedAt)
         XCTAssertEqual(store.snapshots[completed.id]?.workoutName, completed.name)
         XCTAssertTrue(store.hasLoaded)
@@ -82,28 +97,49 @@ final class HealthDashboardHealthStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testReadsAreSequentialAndCancelStopsFurtherSessionsAndClearsResults() async throws {
+    func testReadsRunConcurrentlyUpToTheLimitAndCancelDiscardsResults() async throws {
         let provider = DashboardHealthProvider()
         provider.suspends = true
         let store = HealthDashboardHealthStore(provider: provider)
-        store.updateWorkouts([workout("First"), workout("Second"), workout("Third")])
+        store.updateWorkouts((1...6).map { workout("Workout \($0)") })
         let task = try XCTUnwrap(store.load())
-        await waitForReads(1, provider: provider)
+        await waitForReads(HealthDashboardHealthStore.maximumConcurrentReads, provider: provider)
         for _ in 0..<10 { await Task.yield() }
-        XCTAssertEqual(provider.reads.count, 1)
+        XCTAssertEqual(provider.reads.count, HealthDashboardHealthStore.maximumConcurrentReads,
+                       "No further sessions start while the limit is in flight")
         provider.release(0)
-        await waitForReads(2, provider: provider)
+        await waitForReads(HealthDashboardHealthStore.maximumConcurrentReads + 1, provider: provider)
         XCTAssertEqual(store.snapshots.count, 1)
         XCTAssertEqual(store.completedCount, 1)
         store.cancel()
-        provider.release(1)
+        for index in 1...HealthDashboardHealthStore.maximumConcurrentReads { provider.release(index) }
         await task.value
-        XCTAssertEqual(provider.reads.count, 2)
+        XCTAssertEqual(provider.reads.count, HealthDashboardHealthStore.maximumConcurrentReads + 1,
+                       "The last session never starts after cancel")
         XCTAssertTrue(store.snapshots.isEmpty)
         XCTAssertTrue(store.failures.isEmpty)
         XCTAssertEqual(store.completedCount, 0)
         XCTAssertFalse(store.isLoading)
         XCTAssertFalse(store.hasLoaded)
+    }
+
+    @MainActor
+    func testFailuresAreReportedInSelectionOrderWhenReadsFinishOutOfOrder() async throws {
+        let provider = DashboardHealthProvider()
+        provider.suspends = true
+        let sessions = [workout("First"), workout("Second"), workout("Third")]
+        let store = HealthDashboardHealthStore(provider: provider)
+        store.updateWorkouts(sessions)
+        let task = try XCTUnwrap(store.load())
+        await waitForReads(3, provider: provider)
+        provider.releaseWithFailure(provider.readIndex(for: sessions[2].id))
+        provider.releaseWithFailure(provider.readIndex(for: sessions[0].id))
+        provider.release(provider.readIndex(for: sessions[1].id))
+        await task.value
+        XCTAssertEqual(store.failures.map(\.id), [sessions[0].id, sessions[2].id])
+        XCTAssertEqual(store.snapshots.count, 1)
+        XCTAssertEqual(store.completedCount, 3)
+        XCTAssertTrue(store.hasLoaded)
     }
 
     @MainActor
@@ -165,9 +201,9 @@ final class HealthDashboardHealthStoreTests: XCTestCase {
         let sessions = [workout("First"), workout("Second"), workout("Third")]
         store.updateWorkouts(sessions, range: .year)
         let staleTask = try XCTUnwrap(store.load())
-        await waitForReads(1, provider: provider)
+        await waitForReads(3, provider: provider)
         provider.release(0)
-        await waitForReads(2, provider: provider)
+        for _ in 0..<10_000 where store.completedCount < 1 { await Task.yield() }
         XCTAssertEqual(store.snapshots.count, 1)
         XCTAssertEqual(store.completedCount, 1)
 
@@ -177,12 +213,13 @@ final class HealthDashboardHealthStoreTests: XCTestCase {
         XCTAssertFalse(store.isLoading)
         XCTAssertFalse(store.hasLoaded)
         provider.release(1)
+        provider.release(2)
         await staleTask.value
         XCTAssertTrue(store.snapshots.isEmpty)
         XCTAssertTrue(store.failures.isEmpty)
         XCTAssertEqual(store.completedCount, 0)
         XCTAssertFalse(store.hasLoaded)
-        XCTAssertEqual(provider.reads.count, 2, "The old read must not continue or start a replacement")
+        XCTAssertEqual(provider.reads.count, 3, "The old read must not start a replacement")
     }
 
     @MainActor
@@ -216,7 +253,8 @@ final class HealthDashboardHealthStoreTests: XCTestCase {
         store.updateWorkouts(sessions)
         let task = try XCTUnwrap(store.load())
         await task.value
-        XCTAssertEqual(provider.reads.map(\.workout.id), sessions.map(\.id))
+        XCTAssertEqual(Set(provider.reads.map(\.workout.id)), Set(sessions.map(\.id)))
+        XCTAssertTrue(provider.seriesReads.isEmpty)
         XCTAssertEqual(store.snapshots.count, 2)
         XCTAssertEqual(store.emptyWorkoutCount, 1)
         XCTAssertTrue(try XCTUnwrap(store.snapshots[sessions[1].id]).metrics.isEmpty)

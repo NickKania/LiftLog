@@ -72,6 +72,44 @@ final class WorkoutHealthDataTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(scoped.metrics.first { $0.metric == .heartRate }).samples.allSatisfy { $0.value == 120 })
     }
 
+    func testSummaryAveragesHeartRateTotalsEnergyAndDropsStepsAndOutOfWindowSamples() throws {
+        let end = start.addingTimeInterval(600)
+        let workout = WorkoutSession(startedAt: start, finishedAt: end)
+        let snapshot = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start, endedAt: end,
+            fetchedAt: end, metrics: [
+                WorkoutHealthMetricSeries(metric: .heartRate, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 100),
+                    WorkoutHealthSample(date: start.addingTimeInterval(120), value: 140),
+                    WorkoutHealthSample(date: end.addingTimeInterval(60), value: 200)
+                ]),
+                WorkoutHealthMetricSeries(metric: .activeEnergy, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 10),
+                    WorkoutHealthSample(date: start.addingTimeInterval(120), value: 25)
+                ]),
+                WorkoutHealthMetricSeries(metric: .steps, samples: [
+                    WorkoutHealthSample(date: start.addingTimeInterval(60), value: 500)
+                ])
+            ])
+        let summary = snapshot.summarized()
+        XCTAssertEqual(summary.metrics.map(\.metric), [.heartRate, .activeEnergy])
+        XCTAssertEqual(summary.metrics.first?.samples, [WorkoutHealthSample(date: end, value: 120)])
+        XCTAssertEqual(summary.metrics.last?.samples, [WorkoutHealthSample(date: end, value: 35)])
+        XCTAssertEqual(try summary.scoped(to: workout, through: end), summary)
+    }
+
+    func testSummaryKeepsMissingMetricsMissing() {
+        let end = start.addingTimeInterval(600)
+        let workout = WorkoutSession(startedAt: start, finishedAt: end)
+        let energyOnly = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start, endedAt: end,
+            fetchedAt: end, metrics: [WorkoutHealthMetricSeries(metric: .activeEnergy, samples: [
+                WorkoutHealthSample(date: start.addingTimeInterval(60), value: 42)
+            ])])
+        XCTAssertEqual(energyOnly.summarized().metrics.map(\.metric), [.activeEnergy])
+        let empty = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start, endedAt: end,
+                                          fetchedAt: end, metrics: [])
+        XCTAssertTrue(empty.summarized().metrics.isEmpty)
+    }
+
     func testEmptySnapshotDoesNotInventReadAuthorizationOrZeroValues() throws {
         let workout = WorkoutSession(startedAt: start)
         let snapshot = WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: start,

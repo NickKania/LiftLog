@@ -5,7 +5,20 @@ import Foundation
 /// Implementations must not fetch or request authorization when initialized or when a workout starts.
 @MainActor
 protocol WorkoutHealthDataProviding {
+    /// Interval series for a session, used where samples over time are needed.
     func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot
+    /// One aggregate sample per dashboard metric for a session: the session
+    /// average heart rate and total active energy. Steps are not read.
+    func fetchHealthSummary(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot
+}
+
+extension WorkoutHealthDataProviding {
+    /// Providers that only implement the series fetch derive the same dashboard
+    /// aggregates from it; the HealthKit provider overrides this with single
+    /// aggregate queries instead of reading hundreds of interval buckets.
+    func fetchHealthSummary(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
+        try await fetchHealthData(for: workout, through: through).summarized()
+    }
 }
 
 enum WorkoutHealthMetric: String, Codable, CaseIterable, Sendable {
@@ -56,6 +69,27 @@ struct WorkoutHealthSnapshot: Codable, Equatable, Sendable {
     let metrics: [WorkoutHealthMetricSeries]
 
     var hasSamples: Bool { metrics.contains { !$0.samples.isEmpty } }
+
+    /// The dashboard aggregates each session needs, as one sample per metric at
+    /// the session end: average heart rate and total active energy. Other
+    /// metrics are dropped, and missing metrics stay missing, never zero.
+    func summarized() -> WorkoutHealthSnapshot {
+        let summaryMetricTypes: [WorkoutHealthMetric] = [.heartRate, .activeEnergy]
+        let summaryMetrics = summaryMetricTypes.compactMap { (metric: WorkoutHealthMetric) -> WorkoutHealthMetricSeries? in
+            let values = metrics.filter { $0.metric == metric }.flatMap(\.samples)
+                .filter { $0.date >= startedAt && $0.date <= endedAt && metric.accepts($0.value) }
+                .map(\.value)
+            guard !values.isEmpty else { return nil }
+            let value = metric == .heartRate
+                ? values.reduce(0) { $0 + $1 / Double(values.count) }
+                : values.reduce(0, +)
+            guard metric.accepts(value) else { return nil }
+            return WorkoutHealthMetricSeries(metric: metric,
+                                             samples: [WorkoutHealthSample(date: endedAt, value: value)])
+        }
+        return WorkoutHealthSnapshot(workoutID: workoutID, workoutName: workoutName, startedAt: startedAt,
+                                     endedAt: endedAt, fetchedAt: fetchedAt, metrics: summaryMetrics)
+    }
 
     static func interval(for workout: WorkoutSession, through: Date) throws -> DateInterval {
         let end = min(workout.finishedAt ?? through, through)
