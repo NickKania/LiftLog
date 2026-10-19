@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ActiveWorkoutView: View {
+    var onFinished: (UUID) -> Void = { _ in }
     @Environment(WorkoutStore.self) private var store
     @Environment(RestTimerAlerts.self) private var restAlerts
     @Environment(\.dismiss) private var dismiss
@@ -63,7 +64,10 @@ struct ActiveWorkoutView: View {
         .alert("Finish workout?", isPresented: $confirmingFinish) {
             Button("Keep Training", role: .cancel) { }
             Button("Save Workout") {
-                if store.finishWorkout() { dismiss() }
+                if let workoutID = store.activeWorkout?.id, store.finishWorkout() {
+                    onFinished(workoutID)
+                    dismiss()
+                }
             }
             .accessibilityIdentifier("confirmFinishWorkoutButton")
         } message: {

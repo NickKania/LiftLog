@@ -203,6 +203,7 @@ private struct HistoryStatLabelStyle: LabelStyle {
 struct WorkoutRecordView: View {
     let workout: WorkoutSession
     var title: String? = nil
+    var onSummary: (() -> Void)? = nil
 
     var body: some View {
         List {
@@ -217,6 +218,12 @@ struct WorkoutRecordView: View {
                 if let version = workout.templateVersionNumber {
                     LabeledContent("Template version", value: String(version))
                         .accessibilityIdentifier("historyTemplateVersion")
+                }
+            }
+            if let onSummary {
+                Section {
+                    Button("Workout Summary", systemImage: "sparkles", action: onSummary)
+                        .accessibilityIdentifier("workoutSummaryHistoryButton")
                 }
             }
             if let notes = workout.notes {
@@ -280,6 +287,7 @@ struct WorkoutDetailView: View {
     @Environment(WorkoutStore.self) private var store
     let workout: WorkoutSession
     @State private var editing = false
+    @State private var showingSummary = false
     @State private var undoing: WorkoutSession?
 
     private var current: WorkoutSession? { store.history.first { $0.id == workout.id } }
@@ -287,7 +295,7 @@ struct WorkoutDetailView: View {
     var body: some View {
         Group {
             if let current {
-                WorkoutRecordView(workout: current)
+                WorkoutRecordView(workout: current, onSummary: { showingSummary = true })
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Edit") { editing = true }
@@ -302,6 +310,9 @@ struct WorkoutDetailView: View {
                         }
                     }
                     .sheet(isPresented: $editing) { WorkoutHistoryEditorView(workout: current, unit: current.unit) }
+                    .sheet(isPresented: $showingSummary) {
+                        NavigationStack { WorkoutSummaryView(workoutID: current.id) }
+                    }
             } else {
                 ContentUnavailableView("Workout unavailable", systemImage: "clock.arrow.circlepath", description: Text("This workout was deleted or replaced by a backup restore."))
             }

@@ -157,6 +157,8 @@ final class ExerciseDiscoveryUITests: XCTestCase {
         addExercise("Squat", in: app)
         app.buttons["finishWorkoutButton"].tap()
         app.buttons["confirmFinishWorkoutButton"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["closeWorkoutSummaryButton"].waitForExistence(timeout: 5))
+        app.buttons["closeWorkoutSummaryButton"].tap()
         XCTAssertTrue(app.buttons["createTemplateButton"].waitForExistence(timeout: 5))
 
         relaunch(app)

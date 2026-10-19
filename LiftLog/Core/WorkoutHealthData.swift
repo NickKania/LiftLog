@@ -1,6 +1,7 @@
 import Foundation
 
-/// Reading health data requires an explicit dashboard load or assistant attachment.
+/// Reading health data requires an explicit dashboard load, assistant attachment,
+/// or Health-inclusive workout summary request.
 /// Implementations must not fetch or request authorization when initialized or when a workout starts.
 @MainActor
 protocol WorkoutHealthDataProviding {

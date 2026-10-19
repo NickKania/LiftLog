@@ -8,6 +8,11 @@ final class WorkoutHistoryEditingUITests: XCTestCase {
         let app = launch(populated: true)
         defer { app.terminate() }
         openFirstWorkout(in: app)
+        let summary = app.buttons["workoutSummaryHistoryButton"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        summary.tap()
+        XCTAssertTrue(app.otherElements["workoutSummarySavedStats"].waitForExistence(timeout: 5))
+        app.buttons["closeWorkoutSummaryButton"].tap()
         app.buttons["editHistoryWorkoutButton"].tap()
         let name = app.textFields["historyEditorNameField"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
@@ -33,9 +38,13 @@ final class WorkoutHistoryEditingUITests: XCTestCase {
         attach("History correction editor", app: app)
         app.buttons["reviewHistoryWorkoutButton"].tap()
         XCTAssertTrue(app.buttons["saveHistoryWorkoutButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Review Workout"].exists)
+        // The covered saved-record screen stays in the accessibility tree.
+        XCTAssertFalse(summary.isHittable, "Unsaved corrections must not offer the saved record's summary action")
         attach("Correction review", app: app)
         app.buttons["saveHistoryWorkoutButton"].tap()
         XCTAssertTrue(app.navigationBars["Corrected Upper"].waitForExistence(timeout: 5))
+        XCTAssertTrue(summary.exists)
         XCTAssertTrue(app.staticTexts["Synthetic session note"].exists)
         attach("Corrected workout detail", app: app)
         app.terminate()
