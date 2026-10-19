@@ -6,6 +6,8 @@ final class ExerciseDiscoveryTests: XCTestCase {
     private func detail(equipment: String? = "Barbell", primary: [String] = ["Chest"],
                         secondary: [String] = ["Triceps"], type: String? = "Strength") throws -> ExerciseDetail {
         var detail = try XCTUnwrap(ExerciseCatalog.details.values.first)
+        // Synthetic movement names must not inherit a random upstream search alias.
+        detail.source.sourceRecordID = ""
         detail.equipment = equipment
         detail.primaryMuscles = primary
         detail.secondaryMuscles = secondary

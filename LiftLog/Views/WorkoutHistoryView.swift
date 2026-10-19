@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkoutHistoryView: View {
     @Environment(WorkoutStore.self) private var store
     @State private var importing = false
+    @State private var addingWorkout = false
     @State private var deletingWorkout: WorkoutSession?
     @State private var renamingWorkoutID: UUID?
     @State private var editedName = ""
@@ -16,7 +17,7 @@ struct WorkoutHistoryView: View {
         let workouts = query.results(in: store.history)
         Group {
             if store.history.isEmpty {
-                ContentUnavailableView("Build your history", systemImage: "clock.arrow.circlepath", description: Text("Completed workouts will appear here. Start a workout and log your first set."))
+                ContentUnavailableView("Build your history", systemImage: "clock.arrow.circlepath", description: Text("Completed workouts will appear here. Start a workout, add a past workout, or import your history."))
             } else {
                 List {
                     Section {
@@ -50,6 +51,10 @@ struct WorkoutHistoryView: View {
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query.searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Workout or exercise")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Add Past Workout", systemImage: "plus") { addingWorkout = true }
+                    .accessibilityIdentifier("addPastWorkoutButton")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Menu("Date range", systemImage: "calendar") {
@@ -92,6 +97,7 @@ struct WorkoutHistoryView: View {
                     .accessibilityIdentifier("importWorkoutsButton")
             }
         }
+        .sheet(isPresented: $addingWorkout) { WorkoutHistoryEditorView(workout: nil, unit: store.unit) }
         .sheet(isPresented: $importing) { WorkoutImportView() }
         .onChange(of: store.history) { _, history in
             if case .template(let id) = query.template, !history.contains(where: { $0.templateID == id }) {
@@ -127,7 +133,7 @@ struct WorkoutHistoryView: View {
                 Text("Delete \(workout.name) from \(workout.startedAt.formatted(date: .abbreviated, time: .shortened))? This cannot be undone.")
             }
         }
-        .workoutErrorAlert(enabled: !importing && deletingWorkout == nil && renamingWorkoutID == nil)
+        .workoutErrorAlert(enabled: !addingWorkout && !importing && deletingWorkout == nil && renamingWorkoutID == nil)
     }
 
     private func workoutRow(_ workout: WorkoutSession) -> some View {
@@ -194,19 +200,27 @@ private struct HistoryStatLabelStyle: LabelStyle {
     }
 }
 
-struct WorkoutDetailView: View {
+struct WorkoutRecordView: View {
     let workout: WorkoutSession
+    var title: String? = nil
 
     var body: some View {
         List {
             Section {
+                LabeledContent("Workout", value: workout.name)
                 LabeledContent("Date", value: workout.startedAt.formatted(date: .abbreviated, time: .shortened))
+                if let finish = workout.finishedAt {
+                    LabeledContent("Finished", value: finish.formatted(date: .abbreviated, time: .shortened))
+                }
                 LabeledContent("Duration", value: duration)
                 LabeledContent("Completed sets", value: String(workout.exercises.reduce(0) { $0 + $1.sets.count }))
                 if let version = workout.templateVersionNumber {
                     LabeledContent("Template version", value: String(version))
                         .accessibilityIdentifier("historyTemplateVersion")
                 }
+            }
+            if let notes = workout.notes {
+                Section("Workout notes") { Text(notes).accessibilityIdentifier("historyWorkoutNotes") }
             }
             ForEach(workout.exercises) { exercise in
                 let group = SupersetStyle.group(for: exercise, in: workout.exercises)
@@ -227,13 +241,17 @@ struct WorkoutDetailView: View {
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                         }
                     }
+                    if let notes = exercise.notes {
+                        Text(notes).font(.subheadline).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("historyExerciseNotes-\(exercise.id)")
+                    }
                 } header: {
                     SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                 }
                 .listRowBackground(SupersetRowBackground(group: group))
             }
         }
-        .navigationTitle(workout.name)
+        .navigationTitle(title ?? workout.name)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -255,5 +273,51 @@ struct WorkoutDetailView: View {
         guard interval.isFinite, interval >= 0, interval < Double(Int.max) else { return "Unavailable" }
         let seconds = Int(interval)
         return seconds < 60 ? "\(seconds) sec" : "\(seconds / 60) min \(seconds % 60) sec"
+    }
+}
+
+struct WorkoutDetailView: View {
+    @Environment(WorkoutStore.self) private var store
+    let workout: WorkoutSession
+    @State private var editing = false
+    @State private var undoing: WorkoutSession?
+
+    private var current: WorkoutSession? { store.history.first { $0.id == workout.id } }
+
+    var body: some View {
+        Group {
+            if let current {
+                WorkoutRecordView(workout: current)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Edit") { editing = true }
+                                .accessibilityIdentifier("editHistoryWorkoutButton")
+                        }
+                        if store.historyRecovery.contains(where: { $0.id == current.id }) {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Undo Last Correction", systemImage: "arrow.uturn.backward") { undoing = current }
+                                    .labelStyle(.iconOnly)
+                                    .accessibilityIdentifier("undoHistoryCorrectionButton")
+                            }
+                        }
+                    }
+                    .sheet(isPresented: $editing) { WorkoutHistoryEditorView(workout: current, unit: current.unit) }
+            } else {
+                ContentUnavailableView("Workout unavailable", systemImage: "clock.arrow.circlepath", description: Text("This workout was deleted or replaced by a backup restore."))
+            }
+        }
+        .confirmationDialog("Undo last correction?", isPresented: Binding(
+            get: { undoing != nil }, set: { if !$0 { undoing = nil } }
+        ), titleVisibility: .visible) {
+            Button("Restore Previous Record") {
+                if let undoing { store.undoHistoryCorrection(replacing: undoing) }
+                undoing = nil
+            }
+            .accessibilityIdentifier("confirmUndoHistoryCorrectionButton")
+            Button("Cancel", role: .cancel) { undoing = nil }
+        } message: {
+            Text("Restore the complete record from before the last saved correction, including its date, sets, and notes. This undo cannot be reversed.")
+        }
+        .workoutErrorAlert(enabled: !editing && undoing == nil)
     }
 }

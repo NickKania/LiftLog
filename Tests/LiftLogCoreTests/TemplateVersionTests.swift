@@ -197,6 +197,7 @@ final class TemplateVersionTests: XCTestCase {
             try db.execute("DROP TABLE favorite_exercises")
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN superset_id")
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id")
+            try db.removeHistoryEditingSchema()
             try db.execute("PRAGMA user_version = 1")
         }
         let backup = url.deletingLastPathComponent().appendingPathComponent("v1-backup.sqlite")
@@ -213,7 +214,7 @@ final class TemplateVersionTests: XCTestCase {
         XCTAssertNil(store.history[0].exercises[0].sets[0].targetReps)
         let reloaded = WorkoutStore(fileURL: url)
         XCTAssertEqual(reloaded.templates, store.templates)
-        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 7)
+        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 8)
         let revisionBeforeRestore = store.revision
         try store.restoreDatabase(from: backup)
         XCTAssertEqual(store.revision, revisionBeforeRestore + 1)
@@ -260,6 +261,7 @@ final class TemplateVersionTests: XCTestCase {
             try db.execute("DROP TABLE favorite_exercises")
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN superset_id")
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id")
+            try db.removeHistoryEditingSchema()
             try db.execute("PRAGMA user_version = 1")
             // Force failure after the transactional schema upgrade has run.
             try db.execute("CREATE TRIGGER reject_records BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'simulated interrupted upgrade'); END")

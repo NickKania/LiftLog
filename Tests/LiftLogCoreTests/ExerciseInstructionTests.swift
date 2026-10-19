@@ -34,6 +34,7 @@ final class ExerciseInstructionTests: XCTestCase {
             try db.execute("ALTER TABLE records DROP COLUMN template_version_number")
             try db.execute("ALTER TABLE workout_sets DROP COLUMN target_weight")
         }
+        try db.removeHistoryEditingSchema()
         try db.execute("PRAGMA user_version = \(version)")
     }
 
@@ -201,7 +202,7 @@ final class ExerciseInstructionTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: url), before)
     }
 
-    func testV1ThroughV6ReadOnlyBackupsStayUnchangedAndSavesUpgradeToV7() throws {
+    func testV1ThroughV6ReadOnlyBackupsStayUnchangedAndSavesUpgradeToCurrentSchema() throws {
         for version in 1...6 {
             let url = try file()
             let database = WorkoutDatabase(url: url)
@@ -217,7 +218,7 @@ final class ExerciseInstructionTests: XCTestCase {
             next.exerciseInstructionOverrides = [.init(exerciseID: UUID(), steps: ["An apostrophe's cue", "Second\nline"])]
             try database.save(next)
             XCTAssertEqual(try database.load().exerciseInstructionOverrides, next.exerciseInstructionOverrides)
-            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 7)
+            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 8)
             XCTAssertEqual(try Data(contentsOf: backup), bytes)
         }
     }

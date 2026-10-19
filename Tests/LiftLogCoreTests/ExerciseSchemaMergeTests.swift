@@ -38,6 +38,7 @@ final class ExerciseSchemaMergeTests: XCTestCase {
                 if layout.hasPrefix("catalog") { try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id") }
                 if layout == "main5" { try db.execute("DROP TABLE favorite_exercises") }
                 if layout != "catalog6" { try db.execute("DROP TABLE exercise_instruction_overrides") }
+                try db.removeHistoryEditingSchema()
                 try db.execute("PRAGMA user_version = \(layout.hasSuffix("5") ? 5 : 6)")
                 try db.execute("CREATE TRIGGER reject_merge BEFORE INSERT ON settings BEGIN SELECT RAISE(ABORT, 'failed merge migration'); END")
             }
@@ -63,7 +64,7 @@ final class ExerciseSchemaMergeTests: XCTestCase {
             XCTAssertEqual(saved.templates, loaded.templates, layout)
             XCTAssertEqual(saved.favoriteExerciseIDs, loaded.favoriteExerciseIDs, layout)
             XCTAssertEqual(saved.exerciseInstructionOverrides, loaded.exerciseInstructionOverrides, layout)
-            XCTAssertEqual(try SQLiteConnection(url: url).rows("PRAGMA user_version").first?.integer("user_version"), 7)
+            XCTAssertEqual(try SQLiteConnection(url: url).rows("PRAGMA user_version").first?.integer("user_version"), 8)
         }
     }
 
@@ -92,6 +93,7 @@ final class ExerciseSchemaMergeTests: XCTestCase {
         do {
             let db = try SQLiteConnection(url: url)
             try db.execute("ALTER TABLE exercise_entries DROP COLUMN template_exercise_id")
+            try db.removeHistoryEditingSchema()
             try db.execute("PRAGMA user_version = 6")
         }
         let reloaded = WorkoutStore(fileURL: url)

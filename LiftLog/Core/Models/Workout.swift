@@ -13,8 +13,9 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
     var restSeconds: Int
     var restTimer: WorkoutRestTimer?
     var importSourceKey: String?
+    var notes: String?
 
-    init(id: UUID = UUID(), templateID: UUID? = nil, templateVersionID: UUID? = nil, templateVersionNumber: Int? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = [], restSeconds: Int = 120, restTimer: WorkoutRestTimer? = nil) {
+    init(id: UUID = UUID(), templateID: UUID? = nil, templateVersionID: UUID? = nil, templateVersionNumber: Int? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = [], restSeconds: Int = 120, restTimer: WorkoutRestTimer? = nil, notes: String? = nil) {
         self.id = id
         self.templateID = templateID
         self.templateVersionID = templateVersionID
@@ -27,10 +28,11 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         self.importSourceKey = importSourceKey
         self.restSeconds = restSeconds
         self.restTimer = restTimer
+        self.notes = notes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, templateID, templateVersionID, templateVersionNumber, name, startedAt, finishedAt, unit, exercises, importSourceKey, restSeconds, restTimer
+        case id, templateID, templateVersionID, templateVersionNumber, name, startedAt, finishedAt, unit, exercises, importSourceKey, restSeconds, restTimer, notes
     }
 
     init(from decoder: Decoder) throws {
@@ -46,6 +48,7 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         exercises = try values.decode([WorkoutExercise].self, forKey: .exercises)
         importSourceKey = try values.decodeIfPresent(String.self, forKey: .importSourceKey)
         restSeconds = try values.decodeIfPresent(Int.self, forKey: .restSeconds) ?? 120
+        notes = try values.decodeIfPresent(String.self, forKey: .notes)
         restTimer = try values.decodeIfPresent(WorkoutRestTimer.self, forKey: .restTimer)
     }
 
@@ -58,13 +61,15 @@ struct WorkoutExercise: Codable, Equatable, SupersetExercise {
     var supersetID: UUID?
     /// Stable source entry identity, including repeated occurrences of a catalog exercise.
     var templateExerciseID: UUID?
+    var notes: String?
 
-    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil, templateExerciseID: UUID? = nil) {
+    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil, templateExerciseID: UUID? = nil, notes: String? = nil) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
         self.supersetID = supersetID
         self.templateExerciseID = templateExerciseID
+        self.notes = notes
     }
 
     /// Numeric edits apply only to remaining sets, preserving completed results.
