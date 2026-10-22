@@ -6,7 +6,7 @@ final class WatchWorkoutPayloadTests: XCTestCase {
     private func active(exercises: [WatchExerciseState]) -> WatchActiveWorkout {
         WatchActiveWorkout(id: UUID(), name: "Routine", startedAt: Date(timeIntervalSinceReferenceDate: 1000),
                            restSeconds: 120, restEndsAt: Date(timeIntervalSinceReferenceDate: 1120),
-                           restTimerID: UUID(), exercises: exercises)
+                           restTimerID: UUID(), exercises: exercises, restDurationSeconds: 45)
     }
 
     private func set(completed: Bool = false) -> WatchSetState {
@@ -39,7 +39,7 @@ final class WatchWorkoutPayloadTests: XCTestCase {
     }
 
     func testStateAndAllActionsRoundTripThroughPropertyListSafeDictionaries() throws {
-        let workout = active(exercises: [.init(id: UUID(), name: "Squat", supersetID: nil, sets: [set()])])
+        let workout = active(exercises: [.init(id: UUID(), name: "Squat", supersetID: nil, sets: [set()], restSeconds: 45)])
         var state = WatchWorkoutState(templates: [.init(id: UUID(), name: "Plan", exerciseCount: 1, setCount: 3)],
                                       active: workout, unitRaw: "kg", revision: UInt64.max)
         let terminalRequest = WatchActionRequest(operationID: UUID(), action: .finish(workoutID: workout.id))
@@ -65,6 +65,23 @@ final class WatchWorkoutPayloadTests: XCTestCase {
         }
         let idle = WatchWorkoutState(templates: [], active: nil, unitRaw: "lb", revision: 0)
         XCTAssertEqual(try WatchWorkoutTransport.decodeState(from: WatchWorkoutTransport.encode(state: idle)), idle)
+    }
+
+    func testEarlierV2SnapshotWithoutRestOverridesOrCapturedDurationDecodes() throws {
+        let state = WatchWorkoutState(templates: [], active: active(exercises: [
+            .init(id: UUID(), name: "Bench", supersetID: nil, sets: [set()], restSeconds: 45)
+        ]), unitRaw: "lb", revision: 1)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
+        var workout = try XCTUnwrap(json["active"] as? [String: Any])
+        workout.removeValue(forKey: "restDurationSeconds")
+        var exercises = try XCTUnwrap(workout["exercises"] as? [[String: Any]])
+        exercises[0].removeValue(forKey: "restSeconds")
+        workout["exercises"] = exercises
+        json["active"] = workout
+        let decoded = try JSONDecoder().decode(WatchWorkoutState.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(decoded.active?.restDurationSeconds)
+        XCTAssertNil(decoded.active?.exercises[0].restSeconds)
+        XCTAssertEqual(decoded.active?.restSeconds, 120)
     }
 
     func testTransportRejectsMissingUnsupportedAndMalformedPayloads() throws {
@@ -111,6 +128,7 @@ final class WatchWorkoutPayloadTests: XCTestCase {
         XCTAssertEqual(active.startedAt, workout.startedAt)
         XCTAssertEqual(active.restSeconds, workout.restSeconds)
         XCTAssertEqual(active.restTimerID, workout.restTimer?.id)
+        XCTAssertEqual(active.restDurationSeconds, workout.restTimer.map { workout.restDuration(for: $0) })
         XCTAssertEqual(active.restEndsAt, workout.restTimer?.endsAt)
         XCTAssertEqual(active.exercises[0].id, workout.exercises[0].id)
         XCTAssertEqual(active.exercises[0].name, workout.exercises[0].exercise.name)

@@ -10,7 +10,7 @@ struct WatchRestView: View {
     var body: some View {
         WatchPage {
             VStack(spacing: 8) {
-                WatchRing(fraction: endsAt.timeIntervalSince(now) / Double(max(1, workout.restSeconds)), color: .orange, size: 60) {
+                WatchRing(fraction: endsAt.timeIntervalSince(now) / Double(max(1, workout.restDurationSeconds ?? workout.restSeconds)), color: .orange, size: 60) {
                     VStack(spacing: 1) {
                         Text(WatchPresentation.remaining(endsAt, at: now)).font(.system(compactLayout ? .caption : .title3, design: .rounded, weight: .bold)).monospacedDigit()
                             .lineLimit(1).minimumScaleFactor(0.7)

@@ -27,21 +27,22 @@ enum WatchPreviewFixture {
     static func workoutState(resting: Bool) -> WatchWorkoutState {
         let now = Date()
         // Out-of-order completed sets keep Bench Set 2 next while total progress is 5/13.
-        let exercises = [exercise("Bench Press", count: 4, weight: 135, reps: 8, completed: screen == "up-next" ? [0, 1, 2, 3] : [0]),
+        let exercises = [exercise("Bench Press", count: 4, weight: 135, reps: 8, completed: screen == "up-next" ? [0, 1, 2, 3] : [0], restSeconds: 45),
                          exercise("Overhead Press", count: 3, weight: 65, reps: 10, completed: screen == "up-next" ? [] : [0, 1, 2]),
                          exercise("Cable Fly", count: 3, weight: 25, reps: 12, completed: [0]),
                          exercise("Triceps Pushdown", count: 3, weight: 40, reps: 12, completed: [])]
         return .init(templates: templates,
                      active: .init(id: UUID(), name: "Push Day", startedAt: now.addingTimeInterval(-24 * 60 - 18),
-                                   restSeconds: 120, restEndsAt: resting ? now.addingTimeInterval(screen == "rest-done" ? -1 : 107) : nil,
-                                   restTimerID: resting ? UUID() : nil, exercises: screen == "empty" ? [] : exercises), unitRaw: "lb", revision: 5)
+                                   restSeconds: 120, restEndsAt: resting ? now.addingTimeInterval(screen == "rest-done" ? -1 : 32) : nil,
+                                   restTimerID: resting ? UUID() : nil, exercises: screen == "empty" ? [] : exercises,
+                                   restDurationSeconds: resting ? 45 : nil), unitRaw: "lb", revision: 5)
     }
 
-    private static func exercise(_ name: String, count: Int, weight: Double, reps: Int, completed: Set<Int>) -> WatchExerciseState {
+    private static func exercise(_ name: String, count: Int, weight: Double, reps: Int, completed: Set<Int>, restSeconds: Int? = nil) -> WatchExerciseState {
         .init(id: UUID(), name: name, supersetID: screen == "superset" && ["Bench Press", "Overhead Press"].contains(name) ? supersetID : nil, sets: (0..<count).map { index in
             .init(id: UUID(), weight: weight, reps: reps, targetWeight: weight, targetReps: reps,
                   isCompleted: completed.contains(index))
-        })
+        }, restSeconds: restSeconds)
     }
 }
 #endif

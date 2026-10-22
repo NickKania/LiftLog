@@ -49,6 +49,8 @@ struct WatchActiveWorkout: Codable, Equatable, Sendable {
     let restEndsAt: Date?
     let restTimerID: UUID?
     let exercises: [WatchExerciseState]
+    /// Captured timer duration; nil supports older v2 snapshots and idle workouts.
+    var restDurationSeconds: Int? = nil
 
     struct NextIncompleteSet: Equatable, Sendable {
         let exerciseIndex: Int
@@ -144,6 +146,7 @@ extension WatchWorkoutState {
         var exercises = active.exercises
         var endsAt = active.restEndsAt
         var timerID = active.restTimerID
+        var durationSeconds = active.restDurationSeconds
         switch action {
         case .completeSet(let setID, let weight, let reps, let completedAt, let restTimerID):
             guard completedAt.timeIntervalSinceReferenceDate.isFinite, weight.isFinite, weight >= 0, reps > 0,
@@ -159,9 +162,11 @@ extension WatchWorkoutState {
             if duration > 0 && exercises.contains(where: { $0.sets.contains { !$0.isCompleted } }) {
                 endsAt = completedAt.addingTimeInterval(TimeInterval(duration))
                 timerID = restTimerID
+                durationSeconds = duration
             } else {
                 endsAt = nil
                 timerID = nil
+                durationSeconds = nil
             }
         case .uncompleteSet(let setID):
             guard let index = exercises.firstIndex(where: { $0.sets.contains { $0.id == setID && $0.isCompleted } }) else { return self }
@@ -176,10 +181,12 @@ extension WatchWorkoutState {
             // alert on undo; the phone restores a still-valid timer in its next snapshot.
             endsAt = nil
             timerID = nil
+            durationSeconds = nil
         case .skipRest(let workoutID, let restTimerID):
             guard workoutID == active.id, timerID == restTimerID else { return self }
             endsAt = nil
             timerID = nil
+            durationSeconds = nil
         case .extendRest(let workoutID, let restTimerID, let seconds, let requestedAt, let resultingRestTimerID):
             guard requestedAt.timeIntervalSinceReferenceDate.isFinite, workoutID == active.id, timerID == restTimerID, seconds > 0, let deadline = endsAt else { return self }
             let expired = deadline <= requestedAt
@@ -187,6 +194,7 @@ extension WatchWorkoutState {
             guard extended > deadline else { return self }
             endsAt = extended
             timerID = resultingRestTimerID
+            durationSeconds = expired ? min(seconds, 3600) : min(3600, (active.restDurationSeconds ?? active.restSeconds) + Int(ceil(extended.timeIntervalSince(deadline))))
         default:
             // Starts and terminal actions need the phone's authoritative persistence result.
             return self
@@ -194,7 +202,7 @@ extension WatchWorkoutState {
         return .init(templates: templates,
                      active: .init(id: active.id, name: active.name, startedAt: active.startedAt,
                                    restSeconds: active.restSeconds, restEndsAt: endsAt, restTimerID: timerID,
-                                   exercises: exercises), unitRaw: unitRaw, revision: revision,
+                                   exercises: exercises, restDurationSeconds: durationSeconds), unitRaw: unitRaw, revision: revision,
                      processedThroughOperationID: processedThroughOperationID, lastTerminalResult: lastTerminalResult,
                      phoneSessionID: phoneSessionID, publicationSequence: publicationSequence)
     }

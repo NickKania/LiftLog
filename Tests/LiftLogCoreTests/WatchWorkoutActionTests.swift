@@ -11,14 +11,14 @@ final class WatchWorkoutActionTests: XCTestCase {
     }
 
     @MainActor
-    private func start(_ store: WorkoutStore) throws -> WorkoutSession {
+    private func start(_ store: WorkoutStore, restSeconds: Int = 75, exerciseRestSeconds: Int? = nil) throws -> WorkoutSession {
         let group = UUID()
         let template = WorkoutTemplate(name: "Watch routine", exercises: [
             TemplateExercise(exercise: ExerciseCatalog.all[0], sets: (0..<3).map { _ in
                 TemplateSet(weight: 50, targetReps: 8)
-            }, supersetID: group),
+            }, supersetID: group, restSeconds: exerciseRestSeconds),
             TemplateExercise(exercise: ExerciseCatalog.all[1], sets: [TemplateSet(weight: 20, targetReps: 10)], supersetID: group)
-        ], restSeconds: 75)
+        ], restSeconds: restSeconds)
         XCTAssertTrue(store.saveTemplate(template))
         XCTAssertTrue(store.applyWatchAction(.startTemplate(id: template.id)))
         return try XCTUnwrap(store.activeWorkout)
@@ -26,29 +26,68 @@ final class WatchWorkoutActionTests: XCTestCase {
 
     @MainActor
     func testWatchCompletionPreservesExerciseRestOverridesAndTimerIdentity() async throws {
-        for duration in [0, 45, 180] {
+        for (sessionDuration, override) in [(120, 45 as Int?), (120, 0), (120, nil), (0, 45)] {
             let url = try file()
             let store = WorkoutStore(fileURL: url)
-            let workout = try start(store)
-            XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, exerciseID: workout.exercises[0].id, restSeconds: duration))
-            let now = Date()
+            let workout = try start(store, restSeconds: sessionDuration, exerciseRestSeconds: override)
+            let completedAt = Date(timeIntervalSinceReferenceDate: 1000)
+            let deliveredAt = completedAt.addingTimeInterval(7200)
             let timerID = UUID()
             let action = WatchAction.completeSet(setID: workout.exercises[0].sets[0].id, weight: 50, reps: 8,
-                                                 completedAt: now, restTimerID: timerID)
+                                                 completedAt: completedAt, restTimerID: timerID)
             let mirror = store.watchWorkoutState.applyingOptimistically(action)
-            XCTAssertTrue(store.applyWatchAction(action, now: now))
+            XCTAssertEqual(mirror.active?.exercises[0].restSeconds, override)
+            XCTAssertTrue(store.applyWatchAction(action, now: deliveredAt))
             XCTAssertEqual(mirror.active, store.watchWorkoutState.active)
+            let duration = override ?? sessionDuration
             if duration == 0 {
                 XCTAssertNil(store.activeWorkout?.restTimer)
+                XCTAssertNil(mirror.active?.restDurationSeconds)
             } else {
                 XCTAssertEqual(store.activeWorkout?.restTimer?.id, timerID)
                 XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, duration)
-                XCTAssertTrue(store.applyWatchAction(.extendRest(workoutID: workout.id, restTimerID: timerID, seconds: 30,
-                                                                requestedAt: now, resultingRestTimerID: timerID), now: now))
-                XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, duration)
+                XCTAssertEqual(mirror.active?.restDurationSeconds, duration)
+                XCTAssertEqual(mirror.active?.restEndsAt, completedAt.addingTimeInterval(TimeInterval(duration)))
             }
             XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout, store.activeWorkout)
         }
+    }
+
+    @MainActor
+    func testOverrideExtensionsMatchOfflineMirrorAfterSettingsChangeAndRelaunch() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let workout = try start(store, restSeconds: 120, exerciseRestSeconds: 45)
+        let completedAt = Date(timeIntervalSinceReferenceDate: 1000)
+        let timerID = UUID()
+        XCTAssertTrue(store.applyWatchAction(.completeSet(setID: workout.exercises[0].sets[0].id, weight: 50, reps: 8,
+                                                         completedAt: completedAt, restTimerID: timerID), now: completedAt))
+        // Future completions use new settings; this timer still has its captured 45 seconds.
+        XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, exerciseID: workout.exercises[0].id, restSeconds: 0))
+        XCTAssertEqual(store.watchWorkoutState.active?.restDurationSeconds, 45)
+        var mirror = store.watchWorkoutState
+        for (requestedAt, seconds, expectedDuration, expectedRemaining) in [
+            (completedAt.addingTimeInterval(10), 30, 75, 65),
+            (completedAt.addingTimeInterval(75), 30, 30, 30),
+            (completedAt.addingTimeInterval(76), Int.max, 3600, 3600)
+        ] {
+            let previousID = try XCTUnwrap(mirror.active?.restTimerID)
+            let expired = try XCTUnwrap(mirror.active?.restEndsAt) <= requestedAt
+            let newID = UUID()
+            let action = try XCTUnwrap(mirror.restExtensionAction(by: seconds, at: requestedAt, newTimerID: newID))
+            mirror = mirror.applyingOptimistically(action)
+            XCTAssertTrue(store.applyWatchAction(action, now: completedAt.addingTimeInterval(7200)))
+            let timer = try XCTUnwrap(store.activeWorkout?.restTimer)
+            XCTAssertEqual(timer.id, expired ? newID : previousID)
+            XCTAssertEqual(timer.durationSeconds, expectedDuration)
+            XCTAssertEqual(timer.endsAt, requestedAt.addingTimeInterval(TimeInterval(expectedRemaining)))
+            XCTAssertEqual(mirror.active, store.watchWorkoutState.active)
+            XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout, store.activeWorkout)
+        }
+        let skip = WatchAction.skipRest(workoutID: workout.id, restTimerID: try XCTUnwrap(mirror.active?.restTimerID))
+        XCTAssertTrue(store.applyWatchAction(skip))
+        XCTAssertEqual(mirror.applyingOptimistically(skip).active, store.watchWorkoutState.active)
+        XCTAssertNil(store.watchWorkoutState.active?.restDurationSeconds)
     }
 
     @MainActor
@@ -318,6 +357,7 @@ final class WatchWorkoutActionTests: XCTestCase {
             XCTAssertTrue(store.applyWatchAction(extend, now: deliveredAt))
             XCTAssertEqual(store.activeWorkout?.restTimer?.id, extended.active?.restTimerID)
             XCTAssertEqual(store.activeWorkout?.restTimer?.endsAt, extended.active?.restEndsAt)
+            XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, extended.active?.restDurationSeconds)
             XCTAssertTrue(store.applyWatchAction(skip, now: deliveredAt))
             XCTAssertNil(store.activeWorkout?.restTimer)
         }

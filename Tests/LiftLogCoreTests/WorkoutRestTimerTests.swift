@@ -211,6 +211,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         XCTAssertEqual(extended.endsAt, timer.endsAt.addingTimeInterval(30))
         XCTAssertEqual(extended.id, timer.id)
         XCTAssertEqual(extended.completedSetID, timer.completedSetID)
+        XCTAssertEqual(extended.durationSeconds, 120)
         XCTAssertEqual(store.activeWorkout?.restSeconds, 90)
         XCTAssertEqual(store.revision, revision + 1)
         XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout?.restTimer, extended)
@@ -251,6 +252,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(timer.endsAt, before.addingTimeInterval(3600))
         XCTAssertLessThanOrEqual(timer.endsAt, after.addingTimeInterval(3600))
         XCTAssertEqual(timer.remainingSeconds(at: before), 3600)
+        XCTAssertEqual(timer.durationSeconds, 3600)
     }
 
     @MainActor
@@ -270,6 +272,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         let restarted = try XCTUnwrap(store.activeWorkout?.restTimer)
         XCTAssertNotEqual(restarted.id, original.id)
         XCTAssertEqual(restarted.completedSetID, original.completedSetID)
+        XCTAssertEqual(restarted.durationSeconds, 30)
         XCTAssertGreaterThanOrEqual(restarted.endsAt, before.addingTimeInterval(30))
         XCTAssertLessThanOrEqual(restarted.endsAt, after.addingTimeInterval(30))
         XCTAssertEqual(store.activeWorkout?.restSeconds, 120)

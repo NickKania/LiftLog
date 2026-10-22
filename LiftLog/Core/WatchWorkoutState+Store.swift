@@ -16,7 +16,7 @@ extension WorkoutStore {
                                   targetWeight: set.targetWeight, targetReps: set.targetReps,
                                   isCompleted: set.isCompleted)
                 }, restSeconds: exercise.restSeconds)
-            })
+            }, restDurationSeconds: workout.restTimer.map { workout.restDuration(for: $0) })
         }, unitRaw: (activeWorkout?.unit ?? unit).rawValue, revision: revision)
     }
 

@@ -32,6 +32,7 @@ final class WatchWorkoutMirrorTests: XCTestCase {
         XCTAssertEqual(workout.exercises[0].sets.map(\.targetWeight), [135, 135, 135])
         XCTAssertEqual(workout.restEndsAt, now.addingTimeInterval(120))
         XCTAssertEqual(workout.restTimerID, timerID)
+        XCTAssertEqual(workout.restDurationSeconds, 120)
         XCTAssertEqual(workout.id, before.active?.id)
         XCTAssertEqual(mirrored.revision, before.revision)
         XCTAssertEqual(mirrored.applyingOptimistically(.completeSet(setID: next.id, weight: 1, reps: 1, completedAt: now, restTimerID: UUID())), mirrored)
@@ -57,12 +58,15 @@ final class WatchWorkoutMirrorTests: XCTestCase {
             XCTAssertEqual(extended.active?.restEndsAt, now.addingTimeInterval(max(0, offset) + 30))
             XCTAssertEqual(extended.active?.restTimerID, offset > 0 ? timerID : newID)
             XCTAssertEqual(extended.active?.restSeconds, 120)
+            XCTAssertEqual(extended.active?.restDurationSeconds, offset > 0 ? 150 : 30)
             let capped = before.applyingOptimistically(try XCTUnwrap(before.restExtensionAction(by: Int.max, at: now, newTimerID: newID)))
             XCTAssertEqual(capped.active?.restEndsAt, now.addingTimeInterval(3600))
+            XCTAssertEqual(capped.active?.restDurationSeconds, 3600)
             let extendedID = try XCTUnwrap(extended.active?.restTimerID)
             let skipped = extended.applyingOptimistically(.skipRest(workoutID: id, restTimerID: extendedID))
             XCTAssertNil(skipped.active?.restEndsAt)
             XCTAssertNil(skipped.active?.restTimerID)
+            XCTAssertNil(skipped.active?.restDurationSeconds)
         }
     }
 

@@ -536,7 +536,9 @@ final class WorkoutStore {
         let expired = timer.endsAt <= now
         let deadline = min((expired ? now : timer.endsAt).addingTimeInterval(TimeInterval(seconds)), now.addingTimeInterval(3600))
         guard deadline > timer.endsAt else { return false }
-        workout.restTimer = WorkoutRestTimer(id: resultingRestTimerID ?? (expired ? UUID() : timer.id), completedSetID: timer.completedSetID, endsAt: deadline, durationSeconds: expired ? min(seconds, 3600) : workout.restDuration(for: timer))
+        let duration = expired ? min(seconds, 3600) : min(3600, workout.restDuration(for: timer) + Int(ceil(deadline.timeIntervalSince(timer.endsAt))))
+        workout.restTimer = WorkoutRestTimer(id: resultingRestTimerID ?? (expired ? UUID() : timer.id),
+                                            completedSetID: timer.completedSetID, endsAt: deadline, durationSeconds: duration)
         var next = snapshot
         next.activeWorkout = workout
         return commit(next)
