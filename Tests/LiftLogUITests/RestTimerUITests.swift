@@ -180,6 +180,8 @@ final class RestTimerUITests: XCTestCase {
     private func assertCountdown(_ countdown: XCUIElement, in app: XCUIApplication, isBelowSet completedNumber: Int, aboveSet nextNumber: Int, file: StaticString = #filePath, line: UInt = #line) {
         let completed = app.buttons["completeSet-\(completedNumber)"]
         let next = app.buttons["completeSet-\(nextNumber)"]
+        // Inserting the countdown can push the next row outside the list's visible cells.
+        reveal(next, in: app, scrollingUp: true)
         let positioned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             countdown.exists && completed.exists && next.exists &&
                 countdown.frame.minY >= completed.frame.maxY &&
