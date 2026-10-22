@@ -122,6 +122,20 @@ struct WatchActionReceipt: Codable, Equatable, Sendable {
 }
 
 extension WatchWorkoutState {
+    /// Reachability alone does not mean the phone has received an optimistic rest edit.
+    func hasSameRest(as phoneState: Self) -> Bool {
+        guard let active, let timerID = active.restTimerID, let endsAt = active.restEndsAt,
+              let phoneWorkout = phoneState.active else { return false }
+        return active.id == phoneWorkout.id && timerID == phoneWorkout.restTimerID
+            && endsAt == phoneWorkout.restEndsAt
+    }
+
+    func shouldScheduleLocalRestAlert(isReachable: Bool, phoneHasCurrentRest: Bool, at now: Date) -> Bool {
+        guard let active, active.restTimerID != nil, let endsAt = active.restEndsAt,
+              endsAt > now else { return false }
+        return !isReachable || !phoneHasCurrentRest
+    }
+
     /// Rest ends on its own: once the deadline passes, the Watch rolls into
     /// the next set without asking the user to acknowledge it.
     func restExpiryAction(at now: Date) -> WatchAction? {
@@ -209,7 +223,7 @@ extension WatchWorkoutState {
 }
 
 /// The same ledger drives the Watch client and deterministic reconciliation tests.
-struct WatchWorkoutReconciler {
+struct WatchWorkoutReconciler: Codable {
     private(set) var baseState: WatchWorkoutState
     private(set) var pending: [WatchActionRequest] = []
     private(set) var pendingTerminal: WatchActionRequest?

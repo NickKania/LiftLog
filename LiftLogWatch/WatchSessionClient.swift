@@ -15,7 +15,13 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
     private(set) var terminalWorkoutID: UUID?
     private(set) var savedConfirmed = false
     var showSaved = false {
-        didSet { if !showSaved { reconciler.dismissSaved() } }
+        didSet {
+            if !showSaved && reconciler.showSaved {
+                var updated = reconciler
+                updated.dismissSaved()
+                _ = commit(updated)
+            }
+        }
     }
     var errorMessage: String? {
         didSet { if errorMessage == nil { reconciler.clearError() } }
@@ -25,12 +31,16 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         baseState: .init(templates: [], active: nil, unitRaw: "lb", revision: 0))
 
     @ObservationIgnored private var session: WCSession?
+    @ObservationIgnored private let journal: WatchWorkoutJournal
+    @ObservationIgnored private var journalIsReadable = true
     @ObservationIgnored private let alerts = WatchRestAlerts()
     @ObservationIgnored private var isFixture = false
     @ObservationIgnored private var alertedRestTimerIDs: Set<UUID> = []
     nonisolated private static let logger = Logger(subsystem: "com.liftlog.app.watchkitapp", category: "WatchSession")
 
-    override init() {
+    init(journal: WatchWorkoutJournal = .init(url: URL.applicationSupportDirectory
+        .appendingPathComponent("LiftLog/watch-workout-journal.json"))) {
+        self.journal = journal
         super.init()
         #if DEBUG
         if let fixture = WatchPreviewFixture.state(arguments: ProcessInfo.processInfo.arguments) {
@@ -43,6 +53,18 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
             return
         }
         #endif
+        do {
+            if let restored = try journal.load() {
+                reconciler = restored
+                publishProjection()
+                hasReceivedContext = true
+            }
+        } catch {
+            // Preserve an unreadable journal; replacing it could lose unacknowledged work.
+            journalIsReadable = false
+            Self.logger.error("Watch recovery failed: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Couldn’t restore queued changes. Reopen Lift Log to retry, and review your workout on iPhone."
+        }
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         self.session = session
@@ -78,8 +100,9 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         let request = WatchActionRequest(operationID: UUID(), action: action)
         do {
             let dictionary = try WatchWorkoutTransport.encode(request: request)
-            reconciler.enqueue(request)
-            publishProjection()
+            var updated = reconciler
+            updated.enqueue(request)
+            guard commit(updated) else { return false }
             if isFixture {
                 #if DEBUG
                 applyFixtureAction(request)
@@ -97,6 +120,24 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         }
     }
 
+    /// Persist before publishing or transferring, so a process exit cannot roll edits back.
+    private func commit(_ updated: WatchWorkoutReconciler) -> Bool {
+        guard journalIsReadable else {
+            errorMessage = "Queued changes couldn’t be restored. Reopen Lift Log to retry."
+            return false
+        }
+        do {
+            if !isFixture { try journal.save(updated) }
+            reconciler = updated
+            publishProjection()
+            return true
+        } catch {
+            Self.logger.error("Watch recovery save failed: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Couldn’t save queued changes on this Watch. Free some space and try again."
+            return false
+        }
+    }
+
     private func publishProjection() {
         // Never expose the raw base between receipt retirement and pending replay.
         state = reconciler.state
@@ -109,8 +150,11 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
 
     func synchronizeAlerts() async {
         guard !isFixture else { return }
-        await alerts.synchronize(state: alertState, isReachable: isReachable)
+        await alerts.synchronize(state: alertState, isReachable: isReachable,
+                                 phoneHasCurrentRest: phoneHasCurrentRest)
     }
+
+    var phoneHasCurrentRest: Bool { alertState.hasSameRest(as: reconciler.baseState) }
 
     func refreshConnection() {
         hasPendingActions = !reconciler.pending.isEmpty || !(session?.outstandingUserInfoTransfers.isEmpty ?? true)
@@ -131,8 +175,8 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
     }
 
     private func accept(_ incoming: WatchWorkoutState) {
-        guard reconciler.accept(incoming) else { return }
-        publishProjection()
+        var updated = reconciler
+        guard updated.accept(incoming), commit(updated) else { return }
         hasReceivedContext = true
     }
 
@@ -176,8 +220,9 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         let failed = error != nil
         Task { @MainActor [weak self] in
             guard let self else { return }
-            if failed, let operationID, self.reconciler.fail(operationID: operationID) {
-                self.publishProjection()
+            var updated = self.reconciler
+            if failed, let operationID, updated.fail(operationID: operationID) {
+                _ = self.commit(updated)
             }
             self.refreshConnection()
         }

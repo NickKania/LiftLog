@@ -10,7 +10,7 @@ final class WatchRestAlerts {
     private var updateTask: Task<Void, Never>?
     private static let logger = Logger(subsystem: "com.liftlog.app.watchkitapp", category: "WatchRestAlerts")
 
-    func synchronize(state: WatchWorkoutState, isReachable: Bool) async {
+    func synchronize(state: WatchWorkoutState, isReachable: Bool, phoneHasCurrentRest: Bool) async {
         let previous = updateTask
         previous?.cancel()
         let task = Task { @MainActor [weak self] in
@@ -18,13 +18,13 @@ final class WatchRestAlerts {
             // remove or overwrite the replacement request with the same timer identity.
             await previous?.value
             guard !Task.isCancelled else { return }
-            await self?.update(state: state, isReachable: isReachable)
+            await self?.update(state: state, isReachable: isReachable, phoneHasCurrentRest: phoneHasCurrentRest)
         }
         updateTask = task
         await task.value
     }
 
-    private func update(state: WatchWorkoutState, isReachable: Bool) async {
+    private func update(state: WatchWorkoutState, isReachable: Bool, phoneHasCurrentRest: Bool) async {
         // Recover requests left by an earlier process as well as this process's timer.
         let pending = await center.pendingNotificationRequests()
         guard !Task.isCancelled else { return }
@@ -33,9 +33,10 @@ final class WatchRestAlerts {
             center.removeDeliveredNotifications(withIdentifiers: [scheduledIdentifier])
             self.scheduledIdentifier = nil
         }
-        // The phone supplies background alerts while reachable. The Watch schedules its
-        // own only while unreachable (for example, when the phone is in a locker).
-        guard !isReachable else { return }
+        // Keep local coverage for queued completions/extensions even while reachable.
+        // Hand off only after the phone confirms this exact timer and deadline.
+        guard state.shouldScheduleLocalRestAlert(isReachable: isReachable,
+                                                 phoneHasCurrentRest: phoneHasCurrentRest, at: Date()) else { return }
         if !requestedAuthorization {
             requestedAuthorization = true
             do { _ = try await center.requestAuthorization(options: [.alert, .sound]) }

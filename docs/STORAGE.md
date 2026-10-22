@@ -65,3 +65,8 @@ Before replacement, the current database is saved as `Application Support/LiftLo
 Backups support recovery and transferring a dataset between devices. They do not merge simultaneous edits. Local data remains the source used while logging workouts, and restore is always an explicit action.
 
 See [testing](TESTING.md) for the signed-device acceptance checklist.
+
+
+## Watch recovery journal
+
+The Watch stores `Application Support/LiftLog/watch-workout-journal.json` locally using versioned JSON and atomic replacement. It contains the last authoritative phone snapshot and the ordered requests still awaiting receipts, including pending finish/discard presentation. It is recovery for the Watch projection, not an independently editable workout database or part of the phone's SQLite/iCloud backups. Transport delivery alone never removes a request. The journal loads before WCSession activation; writes complete before publishing edits, queuing new transfers or retiring acknowledged requests. Missing files mean a first launch; unreadable or unsupported archives remain untouched and block replacement. Save failures retain the previous in-memory projection and report an error.

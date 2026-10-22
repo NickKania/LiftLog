@@ -13,27 +13,27 @@ struct WatchRootView: View {
 
     private var content: some View {
         NavigationStack {
-            Group {
-                if client.showSaved {
-                    WatchSavedView(title: client.savedConfirmed ? "Workout saved" : "Saving…",
-                                   message: client.savedConfirmed ? "Full summary on iPhone." : "Waiting for iPhone.",
-                                   isConfirmed: client.savedConfirmed) { client.showSaved = false }
-                } else if let workout = client.visibleWorkout {
-                    WatchActiveView(client: client, workout: workout)
-                        .id(workout.id)
-                } else {
-                    WatchStartView(client: client)
-                }
-            }
-            .background(.black)
-            .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 4) {
                 if !client.isReachable && client.hasPendingActions {
                     Label("Will sync to iPhone", systemImage: "iphone.slash")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
+                Group {
+                    if client.showSaved {
+                        WatchSavedView(title: client.savedConfirmed ? "Workout saved" : "Saving…",
+                                       message: client.savedConfirmed ? "Full summary on iPhone." : "Waiting for iPhone.",
+                                       isConfirmed: client.savedConfirmed) { client.showSaved = false }
+                    } else if let workout = client.visibleWorkout {
+                        WatchActiveView(client: client, workout: workout)
+                            .id(workout.id)
+                    } else {
+                        WatchStartView(client: client)
+                    }
+                }
             }
+            .background(.black)
             .alert("iPhone connection", isPresented: Binding(get: { client.errorMessage != nil }, set: {
                 if !$0 { client.errorMessage = nil }
             })) {
@@ -43,7 +43,8 @@ struct WatchRootView: View {
             }
         }
         .modifier(WatchPreviewAccessibility())
-        .task(id: RestAlertContext(state: client.alertState, isReachable: client.isReachable)) {
+        .task(id: RestAlertContext(state: client.alertState, isReachable: client.isReachable,
+                                  phoneHasCurrentRest: client.phoneHasCurrentRest)) {
             await client.synchronizeAlerts()
         }
         .onAppear {
@@ -62,6 +63,7 @@ struct WatchRootView: View {
 private struct RestAlertContext: Equatable {
     let state: WatchWorkoutState
     let isReachable: Bool
+    let phoneHasCurrentRest: Bool
 }
 
 private enum WorkoutPage: Hashable { case now, controls, rest }

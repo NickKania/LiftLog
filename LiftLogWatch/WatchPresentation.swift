@@ -157,7 +157,7 @@ struct WatchPage<Content: View, Actions: View>: View {
                 }
                 .task {
                     #if DEBUG
-                    if WatchPreviewFixture.screen != nil && ProcessInfo.processInfo.arguments.contains("--watch-preview-scroll-bottom") {
+                    if ProcessInfo.processInfo.arguments.contains("--watch-preview-scroll-bottom") {
                         await Task.yield()
                         proxy.scrollTo("watch-page-content", anchor: .bottom)
                     }
@@ -179,7 +179,7 @@ struct WatchPreviewAccessibility: ViewModifier {
     func body(content: Content) -> some View {
         content.transformEnvironment(\.dynamicTypeSize) { size in
             #if DEBUG
-            if WatchPreviewFixture.screen != nil && ProcessInfo.processInfo.arguments.contains("--watch-preview-accessibility") {
+            if ProcessInfo.processInfo.arguments.contains("--watch-preview-accessibility") {
                 size = .accessibility3
             }
             #endif

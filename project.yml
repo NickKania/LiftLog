@@ -110,6 +110,7 @@ targets:
     sources:
       - path: LiftLogWatch
       - path: LiftLog/Shared/WatchWorkoutPayload.swift
+      - path: LiftLog/Shared/WatchWorkoutJournal.swift
     dependencies:
       - sdk: WatchConnectivity.framework
     settings:

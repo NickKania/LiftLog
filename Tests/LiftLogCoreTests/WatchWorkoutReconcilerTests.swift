@@ -191,4 +191,148 @@ final class WatchWorkoutReconcilerTests: XCTestCase {
         XCTAssertFalse(ledger.fail(operationID: second.operationID))
         XCTAssertNil(ledger.errorMessage)
     }
+
+    func testRelaunchRestoresDeliveredButUnacknowledgedEditsAndTerminalRequests() throws {
+        for terminalKind in 0...2 {
+            let base = base()
+            let id = try XCTUnwrap(base.active?.id)
+            let first = completion(try XCTUnwrap(base.active?.nextIncompleteSet?.set.id))
+            var ledger = WatchWorkoutReconciler(baseState: base)
+            XCTAssertTrue(ledger.accept(base))
+            ledger.enqueue(first)
+            if terminalKind > 0 {
+                ledger.enqueue(request(terminalKind == 1 ? .finish(workoutID: id) : .discard(workoutID: id)))
+            }
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let journal = WatchWorkoutJournal(url: directory.appendingPathComponent("journal.json"))
+            try journal.save(ledger)
+            // No outstanding transport is needed: delivery is not a phone receipt.
+            var restored = try XCTUnwrap(journal.load())
+            XCTAssertEqual(restored.pending, ledger.pending)
+            XCTAssertEqual(restored.state, ledger.state)
+            XCTAssertEqual(restored.terminalWorkoutID, ledger.terminalWorkoutID)
+            XCTAssertEqual(restored.showSaved, terminalKind == 1)
+            XCTAssertFalse(restored.savedConfirmed)
+            XCTAssertFalse(restored.accept(base))
+            var ack = base.applyingOptimistically(first.action)
+            ack.publicationSequence += 1
+            ack.processedThroughOperationID = first.operationID
+            XCTAssertTrue(restored.accept(ack))
+            XCTAssertEqual(restored.state.active?.completedSets, 1)
+            XCTAssertEqual(restored.pending.count, terminalKind == 0 ? 0 : 1)
+            try journal.save(restored)
+            XCTAssertEqual(try journal.load()?.pending, restored.pending)
+            if let terminal = restored.pendingTerminal {
+                ack.publicationSequence += 1
+                ack.processedThroughOperationID = terminal.operationID
+                ack.lastTerminalResult = WatchTerminalResult(request: terminal, succeeded: true)
+                ack.active = nil
+                XCTAssertTrue(restored.accept(ack))
+                try journal.save(restored)
+                var confirmed = try XCTUnwrap(journal.load())
+                XCTAssertTrue(confirmed.pending.isEmpty)
+                XCTAssertNil(confirmed.pendingTerminal)
+                XCTAssertEqual(confirmed.savedConfirmed, terminalKind == 1)
+                confirmed.dismissSaved()
+                try journal.save(confirmed)
+                XCTAssertEqual(try journal.load()?.showSaved, false)
+            }
+        }
+    }
+
+    func testJournalPreservesUnreadableDataAndPriorStateAfterFailedWrite() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = WatchWorkoutJournal(url: directory.appendingPathComponent("journal.json"))
+        XCTAssertNil(try journal.load())
+        try journal.save(WatchWorkoutReconciler(baseState: base()))
+        let original = try Data(contentsOf: journal.url)
+        let invalid = Data("unreadable".utf8)
+        try invalid.write(to: journal.url)
+        XCTAssertThrowsError(try journal.load())
+        XCTAssertEqual(try Data(contentsOf: journal.url), invalid)
+        try original.write(to: journal.url)
+        // A nonfinite payload cannot replace the last recoverable ledger.
+        var ledger = try XCTUnwrap(journal.load())
+        ledger.enqueue(request(.completeSet(setID: UUID(), weight: .infinity, reps: 8,
+                                           completedAt: now, restTimerID: UUID())))
+        XCTAssertThrowsError(try journal.save(ledger))
+        XCTAssertEqual(try Data(contentsOf: journal.url), original)
+        XCTAssertTrue(try XCTUnwrap(journal.load()).pending.isEmpty)
+        var futureArchive = try XCTUnwrap(JSONSerialization.jsonObject(with: original) as? [String: Any])
+        futureArchive["version"] = 2
+        let futureData = try JSONSerialization.data(withJSONObject: futureArchive)
+        try futureData.write(to: journal.url)
+        XCTAssertThrowsError(try journal.load())
+        XCTAssertEqual(try Data(contentsOf: journal.url), futureData)
+        let blockedURL = directory.appendingPathComponent("blocked")
+        try Data("file instead of directory".utf8).write(to: blockedURL)
+        let blockedJournal = WatchWorkoutJournal(url: blockedURL.appendingPathComponent("journal.json"))
+        XCTAssertThrowsError(try blockedJournal.save(WatchWorkoutReconciler(baseState: base())))
+        XCTAssertEqual(try Data(contentsOf: journal.url), futureData)
+    }
+
+    func testRelaunchKeepsTerminalHiddenWhenWatermarkArrivesWithoutTerminalReceipt() throws {
+        let base = base()
+        let terminal = request(.finish(workoutID: try XCTUnwrap(base.active?.id)))
+        var ledger = WatchWorkoutReconciler(baseState: base)
+        ledger.enqueue(terminal)
+        var ack = base
+        ack.processedThroughOperationID = terminal.operationID
+        ack.publicationSequence += 1
+        XCTAssertTrue(ledger.accept(ack))
+        XCTAssertTrue(ledger.pending.isEmpty)
+        let data = try JSONEncoder().encode(ledger)
+        var restored = try JSONDecoder().decode(WatchWorkoutReconciler.self, from: data)
+        XCTAssertEqual(restored.pendingTerminal, terminal)
+        XCTAssertEqual(restored.terminalWorkoutID, base.active?.id)
+        XCTAssertTrue(restored.showSaved)
+        XCTAssertFalse(restored.savedConfirmed)
+        ack.lastTerminalResult = WatchTerminalResult(request: terminal, succeeded: false)
+        ack.publicationSequence += 1
+        XCTAssertTrue(restored.accept(ack))
+        XCTAssertNil(restored.terminalWorkoutID)
+        XCTAssertFalse(restored.showSaved)
+        XCTAssertNotNil(restored.errorMessage)
+    }
+
+    func testReachablePhoneMustConfirmExactRestBeforeWatchHandsOffAlert() throws {
+        let base = base()
+        let completion = completion(try XCTUnwrap(base.active?.nextIncompleteSet?.set.id))
+        var ledger = WatchWorkoutReconciler(baseState: base)
+        ledger.enqueue(completion)
+        let resting = ledger.state
+        XCTAssertFalse(resting.hasSameRest(as: ledger.baseState))
+        XCTAssertTrue(resting.shouldScheduleLocalRestAlert(isReachable: true,
+                                                          phoneHasCurrentRest: false, at: now))
+        var ack = resting
+        ack.publicationSequence += 1
+        ack.processedThroughOperationID = completion.operationID
+        XCTAssertTrue(ledger.accept(ack))
+        XCTAssertTrue(ledger.state.hasSameRest(as: ledger.baseState))
+        XCTAssertFalse(ledger.state.shouldScheduleLocalRestAlert(isReachable: true,
+                                                                phoneHasCurrentRest: true, at: now))
+        XCTAssertTrue(ledger.state.shouldScheduleLocalRestAlert(isReachable: false,
+                                                               phoneHasCurrentRest: true, at: now))
+        let extensionRequest = request(try XCTUnwrap(resting.restExtensionAction(by: 30, at: now, newTimerID: UUID())))
+        ledger.enqueue(extensionRequest)
+        XCTAssertFalse(ledger.state.hasSameRest(as: ack)) // Same timer ID, different deadline.
+        XCTAssertTrue(ledger.state.shouldScheduleLocalRestAlert(isReachable: true,
+                                                               phoneHasCurrentRest: ledger.state.hasSameRest(as: ack), at: now))
+        ack = ledger.state
+        ack.publicationSequence += 1
+        ack.processedThroughOperationID = extensionRequest.operationID
+        XCTAssertTrue(ledger.accept(ack))
+        XCTAssertTrue(ledger.state.hasSameRest(as: ack))
+        XCTAssertFalse(ledger.state.shouldScheduleLocalRestAlert(isReachable: true,
+                                                                phoneHasCurrentRest: true, at: now))
+        XCTAssertFalse(ledger.state.shouldScheduleLocalRestAlert(isReachable: false,
+                                                                phoneHasCurrentRest: false, at: now.addingTimeInterval(151)))
+        let otherWorkout = self.base()
+        XCTAssertFalse(resting.hasSameRest(as: otherWorkout))
+        XCTAssertFalse(otherWorkout.shouldScheduleLocalRestAlert(isReachable: false,
+                                                                phoneHasCurrentRest: false, at: now))
+    }
+
 }
