@@ -54,3 +54,5 @@ Workout rest defaults and per-exercise overrides are saved with each template ve
 
 
 Watch offline recovery is covered by `WatchWorkoutReconcilerTests`: restored progress and finish/discard requests survive relaunch even after transport delivery; partial acknowledgements retain later requests; terminal results and dismissal persist. Reachable phones take over rest alerts only after matching the workout, timer and deadline, including extensions with unchanged timer IDs. Physical-device delivery and wrist-down alert handoff remain separate acceptance checks.
+
+The Watch outbox tests also cover saved-but-unqueued request recovery, exits before the transfer checkpoint, matching outstanding transfers without duplicate submission, FIFO operation identity, cached receipt retirement and decoding journals created before transfer checkpoints.

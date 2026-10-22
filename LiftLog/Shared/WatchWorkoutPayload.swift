@@ -231,10 +231,37 @@ struct WatchWorkoutReconciler: Codable {
     private(set) var savedConfirmed = false
     private(set) var errorMessage: String?
     private var hasAcceptedSnapshot = false
+    /// Optional for journals created before transfer checkpoints were introduced.
+    private var transferredOperationIDs: Set<UUID>?
 
     var state: WatchWorkoutState { baseState.applyingPending(pending.map(\.action)) }
     var terminalWorkoutID: UUID? {
         pendingTerminal.flatMap { WatchTerminalResult(request: $0, succeeded: false)?.workoutID }
+    }
+
+    var requestsAwaitingTransfer: [WatchActionRequest] {
+        pending.filter { !(transferredOperationIDs?.contains($0.operationID) ?? false) }
+    }
+
+    mutating func recordTransfer(operationID: UUID) {
+        guard pending.contains(where: { $0.operationID == operationID }) else { return }
+        if transferredOperationIDs == nil { transferredOperationIDs = [] }
+        transferredOperationIDs?.insert(operationID)
+    }
+
+    /// Resume the durable outbox in FIFO order. An outstanding transfer covers the
+    /// crash window between queueing and saving its checkpoint. Keep delivered
+    /// requests pending for receipts without submitting them a second time.
+    mutating func transferPending(outstandingOperationIDs: Set<UUID>,
+                                  transfer: (WatchActionRequest) throws -> Void,
+                                  checkpoint: (Self) throws -> Void) throws {
+        for request in requestsAwaitingTransfer {
+            if !outstandingOperationIDs.contains(request.operationID) { try transfer(request) }
+            var updated = self
+            updated.recordTransfer(operationID: request.operationID)
+            try checkpoint(updated)
+            self = updated
+        }
     }
 
     mutating func enqueue(_ request: WatchActionRequest) {
@@ -255,6 +282,7 @@ struct WatchWorkoutReconciler: Codable {
         if let watermark = incoming.processedThroughOperationID,
            let index = pending.firstIndex(where: { $0.operationID == watermark }) {
             pending.removeFirst(index + 1)
+            transferredOperationIDs?.formIntersection(pending.map(\.operationID))
         }
         if let request = pendingTerminal, let result = incoming.lastTerminalResult,
            result.operationID == request.operationID,
@@ -277,6 +305,7 @@ struct WatchWorkoutReconciler: Codable {
     mutating func fail(operationID: UUID) -> Bool {
         guard let index = pending.firstIndex(where: { $0.operationID == operationID }) else { return false }
         pending.remove(at: index)
+        transferredOperationIDs?.remove(operationID)
         if pendingTerminal?.operationID == operationID {
             pendingTerminal = nil
             showSaved = false

@@ -335,4 +335,74 @@ final class WatchWorkoutReconcilerTests: XCTestCase {
                                                                 phoneHasCurrentRest: false, at: now))
     }
 
+    func testTransferRecoveryRetainsFIFOAndIDsAcrossBothCrashWindows() throws {
+        let base = base()
+        let first = request(.startEmpty)
+        let second = request(.finish(workoutID: try XCTUnwrap(base.active?.id)))
+        var ledger = WatchWorkoutReconciler(baseState: base)
+        ledger.enqueue(first)
+        ledger.enqueue(second)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = WatchWorkoutJournal(url: directory.appendingPathComponent("journal.json"))
+        try journal.save(ledger)
+        // Exit after saving, before transferUserInfo: both requests still need queueing.
+        var restored = try XCTUnwrap(journal.load())
+        XCTAssertEqual(restored.requestsAwaitingTransfer, [first, second])
+        var queued: [WatchActionRequest] = []
+        enum SimulatedExit: Error { case afterQueue }
+        // First recovery queues the first request, then exits before its checkpoint.
+        XCTAssertThrowsError(try restored.transferPending(outstandingOperationIDs: [], transfer: {
+            queued.append($0)
+        }, checkpoint: { _ in throw SimulatedExit.afterQueue }))
+        XCTAssertEqual(queued, [first])
+        restored = try XCTUnwrap(journal.load())
+        XCTAssertEqual(restored.requestsAwaitingTransfer, [first, second])
+        // Recognize the existing FIFO transfer; queue only the missing second request.
+        try restored.transferPending(outstandingOperationIDs: [first.operationID], transfer: {
+            queued.append($0)
+        }, checkpoint: { try journal.save($0) })
+        XCTAssertEqual(queued, [first, second])
+        restored = try XCTUnwrap(journal.load())
+        XCTAssertTrue(restored.requestsAwaitingTransfer.isEmpty)
+        XCTAssertEqual(restored.pending, [first, second])
+        // Delivery removes outstanding transfers but not the durable checkpoints.
+        try restored.transferPending(outstandingOperationIDs: [], transfer: {
+            queued.append($0)
+        }, checkpoint: { try journal.save($0) })
+        XCTAssertEqual(queued, [first, second])
+        var ack = base
+        ack.publicationSequence += 1
+        ack.processedThroughOperationID = second.operationID
+        ack.lastTerminalResult = WatchTerminalResult(request: second, succeeded: true)
+        ack.active = nil
+        XCTAssertTrue(restored.accept(ack))
+        XCTAssertTrue(restored.pending.isEmpty)
+        XCTAssertTrue(restored.requestsAwaitingTransfer.isEmpty)
+        XCTAssertTrue(restored.savedConfirmed)
+    }
+
+    func testPreCheckpointJournalRecoversOnlyRequestsNotRetiredByCachedReceipt() throws {
+        let base = base()
+        let first = request(.startEmpty)
+        let second = request(.startTemplate(id: UUID()))
+        var ledger = WatchWorkoutReconciler(baseState: base)
+        ledger.enqueue(first)
+        ledger.enqueue(second)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(ledger)) as? [String: Any])
+        object.removeValue(forKey: "transferredOperationIDs")
+        var restored = try JSONDecoder().decode(WatchWorkoutReconciler.self,
+                                                from: JSONSerialization.data(withJSONObject: object))
+        var cached = base
+        cached.publicationSequence += 1
+        cached.processedThroughOperationID = first.operationID
+        XCTAssertTrue(restored.accept(cached))
+        XCTAssertEqual(restored.requestsAwaitingTransfer, [second])
+        restored.recordTransfer(operationID: UUID())
+        XCTAssertEqual(restored.requestsAwaitingTransfer, [second])
+        restored.recordTransfer(operationID: second.operationID)
+        XCTAssertTrue(restored.fail(operationID: second.operationID))
+        XCTAssertTrue(restored.requestsAwaitingTransfer.isEmpty)
+    }
+
 }

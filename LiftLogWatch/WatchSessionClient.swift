@@ -31,6 +31,7 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         baseState: .init(templates: [], active: nil, unitRaw: "lb", revision: 0))
 
     @ObservationIgnored private var session: WCSession?
+    @ObservationIgnored private var hasActivatedSession = false
     @ObservationIgnored private let journal: WatchWorkoutJournal
     @ObservationIgnored private var journalIsReadable = true
     @ObservationIgnored private let alerts = WatchRestAlerts()
@@ -99,7 +100,7 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         }
         let request = WatchActionRequest(operationID: UUID(), action: action)
         do {
-            let dictionary = try WatchWorkoutTransport.encode(request: request)
+            _ = try WatchWorkoutTransport.encode(request: request)
             var updated = reconciler
             updated.enqueue(request)
             guard commit(updated) else { return false }
@@ -107,9 +108,6 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
                 #if DEBUG
                 applyFixtureAction(request)
                 #endif
-            } else {
-                // One durable FIFO for reachable and offline actions alike.
-                session?.transferUserInfo(dictionary)
             }
             refreshConnection()
             return true
@@ -118,6 +116,29 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
             errorMessage = "Couldn’t send this change. Try again."
             return false
         }
+    }
+
+    private func recoverPendingTransfers() {
+        guard !isFixture, journalIsReadable, hasActivatedSession,
+              let session, session.activationState == .activated else { return }
+        var outstandingIDs: Set<UUID> = []
+        for transfer in session.outstandingUserInfoTransfers {
+            do { outstandingIDs.insert(try WatchWorkoutTransport.decodeRequest(from: transfer.userInfo).operationID) }
+            catch { Self.logger.error("Queued Watch request could not be read: \(error.localizedDescription, privacy: .public)") }
+        }
+        var updated = reconciler
+        do {
+            try updated.transferPending(outstandingOperationIDs: outstandingIDs, transfer: { request in
+                session.transferUserInfo(try WatchWorkoutTransport.encode(request: request))
+            }, checkpoint: { try journal.save($0) })
+        } catch {
+            // Retain the last successful checkpoint. The next refresh recognizes any
+            // transfer queued before this failed save, then retries its checkpoint.
+            Self.logger.error("Watch transfer recovery failed: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Couldn’t queue saved changes. Reopen Lift Log to retry syncing to iPhone."
+        }
+        reconciler = updated
+        publishProjection()
     }
 
     /// Persist before publishing or transferring, so a process exit cannot roll edits back.
@@ -161,6 +182,7 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         guard let session else { return }
         isReachable = session.isReachable
         isConnected = session.activationState == .activated
+        recoverPendingTransfers()
     }
 
     func restDidExpire(id: UUID) {
@@ -192,9 +214,21 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
                              error: Error?) {
         if let error { Self.logger.error("Watch activation failed: \(error.localizedDescription, privacy: .public)") }
-        if !session.receivedApplicationContext.isEmpty { receive(session.receivedApplicationContext) }
+        let cached: WatchWorkoutState?
+        do {
+            cached = session.receivedApplicationContext.isEmpty ? nil
+                : try WatchWorkoutTransport.decodeState(from: session.receivedApplicationContext)
+        } catch {
+            cached = nil
+            Self.logger.error("Cached Watch snapshot rejected: \(error.localizedDescription, privacy: .public)")
+        }
         Task { @MainActor [weak self] in
-            self?.refreshConnection()
+            guard let self else { return }
+            // Retire cached acknowledgements before deciding which saved operations
+            // need transfer recovery. Do not race two independently scheduled tasks.
+            if let cached { self.accept(cached) }
+            self.hasActivatedSession = activationState == .activated
+            self.refreshConnection()
         }
     }
 
