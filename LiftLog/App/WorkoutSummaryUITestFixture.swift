@@ -12,7 +12,8 @@ enum WorkoutSummaryUITestFixture {
             && arguments.contains("--assistant-ui-fixture")
     }
 
-    static func makeStore(store: WorkoutStore, accounts: ChatGPTAccountStore) -> WorkoutSummaryStore {
+    static func makeStore(store: WorkoutStore, accounts: ChatGPTAccountStore,
+                          assistant: WorkoutAssistant? = nil) -> WorkoutSummaryStore {
         precondition(isEnabled, "Workout summary fixtures require an explicit UI test launch.")
         seedWorkouts(in: store)
         return WorkoutSummaryStore(
@@ -20,7 +21,11 @@ enum WorkoutSummaryUITestFixture {
             accessToken: { try await accounts.accessToken() },
             transport: WorkoutSummaryFixtureTransport(),
             accountIdentity: { "\(accounts.currentAccount?.id ?? "none"):summary:\(accounts.revision):\(accounts.canUsePlan)" },
-            healthDataProvider: WorkoutSummaryFixtureHealthProvider.shared
+            healthDataProvider: WorkoutSummaryFixtureHealthProvider.shared,
+            selectedProvider: { assistant?.selectedProvider ?? .chatGPT },
+            localInferenceClient: WorkoutSummaryFixtureLocalInferenceClient(availability: {
+                assistant?.appleFoundationModelsAvailability ?? .available
+            })
         )
     }
 
@@ -123,19 +128,7 @@ private struct WorkoutSummaryFixtureTransport: ChatGPTInferenceTransport {
             try await Task.sleep(for: .seconds(8))
         }
         let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any] ?? [:]
-        let input = body["input"] as? [[String: Any]] ?? []
-        let content = input.last?["content"] as? String ?? ""
-        let hasHealth: Bool = {
-            let evidence = content.components(separatedBy: "Evidence JSON:\n").last ?? content
-            guard let data = evidence.data(using: .utf8),
-                  let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let health = payload["health"] as? [String: Any],
-                  let metrics = health["metrics"] as? [[String: Any]] else { return false }
-            return !metrics.isEmpty
-        }()
-        let text = hasHealth
-            ? "## Workout insights\n\nYour workout is recorded locally. **Heart rate and active energy were included for this request only.**\n\nKeep the load steady and aim for one more clean rep next time if your form remains strong."
-            : "## Workout insights\n\nYour workout is recorded locally with **2 completed sets**. Compared with your earlier sessions, the load is trending up.\n\nTry adding one rep next session before increasing weight."
+        let text = WorkoutSummaryFixtureResponse.text(input: body["input"] as? [[String: Any]] ?? [])
         let output: [[String: Any]] = [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": text]]]]
         let event = try JSONSerialization.data(withJSONObject: [
             "type": "response.completed", "response": ["status": "completed", "output": output]
@@ -151,6 +144,60 @@ private struct WorkoutSummaryFixtureTransport: ChatGPTInferenceTransport {
     private func response(for request: URLRequest, contentType: String = "text/event-stream") -> HTTPURLResponse {
         HTTPURLResponse(url: request.url ?? URL(string: "https://api.openai.com")!, statusCode: 200,
                         httpVersion: "HTTP/1.1", headerFields: ["Content-Type": contentType])!
+    }
+}
+
+/// Exercises the same summary/privacy path without invoking Foundation Models,
+/// credentials, networking, or real HealthKit on a simulator.
+@MainActor
+private final class WorkoutSummaryFixtureLocalInferenceClient: AppleFoundationModelsProviding {
+    private let currentAvailability: () -> AppleFoundationModelsAvailability
+    var availability: AppleFoundationModelsAvailability { currentAvailability() }
+
+    init(availability: @escaping () -> AppleFoundationModelsAvailability) {
+        currentAvailability = availability
+    }
+
+    func models() async throws -> [ChatGPTModel] { AppleFoundationModelsModel.catalog }
+
+    func respond(model: String, input: [[String: Any]], tools: [[String: Any]],
+                 instructions: String, onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
+        if ProcessInfo.processInfo.arguments.contains("--workout-summary-error-ui-fixture") {
+            throw FixtureError.requestFailed
+        }
+        if ProcessInfo.processInfo.arguments.contains("--workout-summary-delayed-ui-fixture") {
+            try await Task.sleep(for: .seconds(8))
+        }
+        try Task.checkCancellation()
+        let text = WorkoutSummaryFixtureResponse.text(input: input)
+        return ChatGPTInferenceResponse(text: text, output: [], calls: [])
+    }
+
+    private enum FixtureError: LocalizedError {
+        case requestFailed
+
+        var errorDescription: String? { "Fixture summary request failed" }
+    }
+}
+
+private enum WorkoutSummaryFixtureResponse {
+    static func text(input: [[String: Any]]) -> String {
+        let content = input.last?["content"] as? String ?? ""
+        let hasHealth: Bool = {
+            let payload: [String: Any]?
+            if let structured = input.last?["evidence"] as? [String: Any] {
+                payload = structured
+            } else {
+                let evidence = content.components(separatedBy: "Evidence JSON:\n").last ?? content
+                payload = try? JSONSerialization.jsonObject(with: Data(evidence.utf8)) as? [String: Any]
+            }
+            guard let health = payload?["health"] as? [String: Any],
+                  let metrics = health["metrics"] as? [[String: Any]] else { return false }
+            return !metrics.isEmpty
+        }()
+        return hasHealth
+            ? "## Workout insights\n\nYour workout is recorded locally. **Heart rate and active energy were included for this request only.**\n\nKeep the load steady and aim for one more clean rep next time if your form remains strong."
+            : "## Workout insights\n\nYour workout is recorded locally with **2 completed sets**. Compared with your earlier sessions, the load is trending up.\n\nTry adding one rep next session before increasing weight."
     }
 }
 #endif

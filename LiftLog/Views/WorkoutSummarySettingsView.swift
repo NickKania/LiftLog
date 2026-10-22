@@ -55,7 +55,7 @@ struct WorkoutSummarySettingsView: View {
             Section {
                 Toggle("Automatic workout insights", isOn: $draftAutomatic)
                     .accessibilityIdentifier("workoutSummaryAutomaticToggle")
-                Text("When enabled, finishing a workout automatically sends the completed workout and up to eight comparable previous sessions to OpenAI using your ChatGPT plan and selected model. Apple Health is never included automatically.")
+                Text("When enabled, finishing a workout generates insights using the selected assistant provider, the completed workout and up to eight comparable previous sessions. Apple Intelligence processes the data on this iPhone; ChatGPT sends it to OpenAI using your eligible plan and default model. Apple Health is never included automatically. An unavailable provider never falls back to another provider.")
                     .font(.footnote).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("workoutSummaryAutomaticDisclosure")

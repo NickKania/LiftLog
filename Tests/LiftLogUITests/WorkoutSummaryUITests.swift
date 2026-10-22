@@ -4,6 +4,92 @@ final class WorkoutSummaryUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testSummaryExplainsBlockedProviderSwitchForUnreadableArchive() {
+        let app = launchFixture(reset: true, onDevice: true,
+                                additionalArguments: ["--foundation-models-corrupt-archive-ui-fixture"])
+        finishFixtureWorkout(in: app)
+        let matches = app.buttons.matching(identifier: "assistantProviderPicker")
+        let picker = matches.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? matches.firstMatch
+        for _ in 0..<10 where !picker.isHittable { app.scrollViews.firstMatch.swipeDown() }
+        XCTAssertTrue(picker.isHittable)
+        XCTAssertTrue(picker.label.contains("ChatGPT"))
+        picker.tap()
+        app.buttons["Apple Intelligence"].tap()
+        XCTAssertTrue(picker.label.contains("ChatGPT"), "Summary provider changes must preserve the unreadable chat archive")
+        let error = app.descendants(matching: .any)["assistantProviderStorageError"].firstMatch
+        reveal(error, in: app)
+        XCTAssertTrue(error.label.contains("preserved"))
+        XCTAssertTrue(error.label.contains("try choosing the provider again"))
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "assistantProviderStorageError").count, 1)
+        XCTAssertTrue(app.otherElements["workoutSummarySavedStats"].exists)
+        XCTAssertFalse(app.buttons["workoutSummaryGenerateButton"].exists)
+        keepScreenshot(of: app, named: "Workout summary explains blocked provider switch")
+        app.buttons["closeWorkoutSummaryButton"].tap()
+    }
+
+    @MainActor
+    func testOnDeviceSummaryAndHealthUseSelectedProviderWithoutChatGPT() {
+        let app = launchFixture(reset: true, onDevice: true)
+        finishFixtureWorkout(in: app)
+        let disclosure = app.staticTexts["workoutSummaryDisclosure"]
+        reveal(disclosure, in: app)
+        XCTAssertTrue(disclosure.label.contains("on this iPhone"))
+        XCTAssertTrue(disclosure.label.contains("without a ChatGPT account"))
+        let generate = app.buttons["workoutSummaryGenerateButton"]
+        reveal(generate, in: app)
+        generate.tap()
+        let insights = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Workout insights")).firstMatch
+        XCTAssertTrue(insights.waitForExistence(timeout: 5))
+        setToggle("workoutSummaryIncludeHealthToggle", enabled: true, in: app)
+        reveal(generate, in: app)
+        generate.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Heart rate and active energy")).firstMatch.waitForExistence(timeout: 5))
+        keepScreenshot(of: app, named: "On-device workout summary with explicit Health")
+
+        chooseSummaryProvider("ChatGPT", in: app)
+        reveal(disclosure, in: app)
+        XCTAssertTrue(disclosure.label.contains("Connect an eligible ChatGPT account"))
+        XCTAssertFalse(generate.exists, "Switching to ChatGPT must still require its account")
+        XCTAssertFalse(insights.exists, "Switching providers clears the prior transient summary")
+        chooseSummaryProvider("Apple Intelligence", in: app)
+        reveal(app.switches["workoutSummaryIncludeHealthToggle"], in: app)
+        XCTAssertEqual(toggleControl("workoutSummaryIncludeHealthToggle", in: app).value as? String, "0")
+        XCTAssertFalse(insights.exists, "Switching back must require a new explicit request")
+        app.buttons["closeWorkoutSummaryButton"].tap()
+    }
+
+    @MainActor
+    func testOnDeviceAutomaticSummaryRemainsWorkoutOnly() {
+        let app = launchFixture(reset: true, onDevice: true)
+        enableAutomaticSummaries(in: app)
+        finishFixtureWorkout(in: app)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Workout insights")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Heart rate and active energy")).firstMatch.exists)
+        reveal(app.switches["workoutSummaryIncludeHealthToggle"], in: app)
+        XCTAssertEqual(toggleControl("workoutSummaryIncludeHealthToggle", in: app).value as? String, "0")
+        app.buttons["closeWorkoutSummaryButton"].tap()
+    }
+
+    @MainActor
+    func testProviderSwitchCancelsOnDeviceSummaryAndClearsHealthSelection() {
+        let app = launchFixture(reset: true, delayed: true, onDevice: true)
+        finishFixtureWorkout(in: app)
+        setToggle("workoutSummaryIncludeHealthToggle", enabled: true, in: app)
+        let generate = app.buttons["workoutSummaryGenerateButton"]
+        reveal(generate, in: app)
+        generate.tap()
+        XCTAssertTrue(app.buttons["workoutSummaryStopButton"].waitForExistence(timeout: 5))
+        chooseSummaryProvider("ChatGPT", in: app)
+        XCTAssertFalse(app.buttons["workoutSummaryStopButton"].exists)
+        chooseSummaryProvider("Apple Intelligence", in: app)
+        reveal(app.switches["workoutSummaryIncludeHealthToggle"], in: app)
+        XCTAssertEqual(toggleControl("workoutSummaryIncludeHealthToggle", in: app).value as? String, "0")
+        XCTAssertFalse(app.buttons["workoutSummaryStopButton"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Workout insights")).firstMatch.exists)
+        app.buttons["closeWorkoutSummaryButton"].tap()
+    }
+
+    @MainActor
     func testFinishingWorkoutShowsSavedFactsWithoutAutomaticNetworkRequest() {
         let app = launchFixture(reset: true)
         app.tabBars.buttons["Workout"].tap()
@@ -114,10 +200,7 @@ final class WorkoutSummaryUITests: XCTestCase {
     func testSummaryRequestErrorOffersRetry() {
         let app = launchFixture(reset: true, error: true)
         enableAutomaticSummaries(in: app)
-        app.tabBars.buttons["Workout"].tap()
-        app.buttons["resumeWorkoutButton"].tap()
-        app.buttons["finishWorkoutButton"].tap()
-        app.buttons["confirmFinishWorkoutButton"].firstMatch.tap()
+        finishFixtureWorkout(in: app)
         XCTAssertTrue(app.staticTexts["Couldn’t generate insights"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["workoutSummaryRetryButton"].exists)
         XCTAssertTrue(app.buttons["closeWorkoutSummaryButton"].exists)
@@ -160,19 +243,47 @@ final class WorkoutSummaryUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchFixture(reset: Bool, error: Bool = false, delayed: Bool = false, largeText: Bool = false) -> XCUIApplication {
+    private func launchFixture(reset: Bool, error: Bool = false, delayed: Bool = false, largeText: Bool = false, onDevice: Bool = false, additionalArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         var arguments = ["--ui-testing", "--assistant-ui-fixture", "--workout-summary-ui-fixture"]
+        if onDevice {
+            arguments.append("--foundation-models-ui-fixture")
+        }
         if reset { arguments.append("--reset-ui-testing") }
         if error { arguments.append("--workout-summary-error-ui-fixture") }
         if delayed { arguments.append("--workout-summary-delayed-ui-fixture") }
         if largeText {
             arguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
-        app.launchArguments = arguments
+        app.launchArguments = arguments + additionalArguments
         app.launch()
         XCTAssertTrue(app.tabBars.buttons["Workout"].waitForExistence(timeout: 10))
         return app
+    }
+
+    @MainActor
+    private func finishFixtureWorkout(in app: XCUIApplication) {
+        app.tabBars.buttons["Workout"].tap()
+        app.buttons["resumeWorkoutButton"].tap()
+        let finish = app.buttons["finishWorkoutButton"]
+        XCTAssertTrue(finish.waitForExistence(timeout: 5))
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: finish)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
+        finish.tap()
+        let confirmation = app.buttons["confirmFinishWorkoutButton"].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.tap()
+        XCTAssertTrue(app.otherElements["workoutSummarySavedStats"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func chooseSummaryProvider(_ name: String, in app: XCUIApplication) {
+        let picker = app.buttons["assistantProviderPicker"]
+        for _ in 0..<10 where !picker.isHittable { app.scrollViews.firstMatch.swipeDown() }
+        XCTAssertTrue(picker.isHittable)
+        picker.tap()
+        app.buttons[name].tap()
+        XCTAssertTrue(picker.label.contains(name))
     }
 
     @MainActor

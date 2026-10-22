@@ -100,11 +100,14 @@ struct AssistantChatArchive: Codable {
     var version = 1
     var accounts: [String: AssistantChatAccountRecord] = [:]
     var lastAccount: String?
+    /// Separate from account registrations; signing out cannot erase on-device chats.
+    var appleFoundationModels: AssistantChatAccountRecord?
+    var selectedProvider: AssistantProvider?
 
     static func load(from url: URL) throws -> Self {
         let archive = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
         guard archive.version == 1 else { throw ChatGPTInferenceError("This saved-chat format is not supported by this app.") }
-        for account in archive.accounts.values {
+        for account in Array(archive.accounts.values) + [archive.appleFoundationModels].compactMap({ $0 }) {
             let ids = account.chats.map(\.id)
             guard Set(ids).count == ids.count else { throw ChatGPTInferenceError("Saved chats contain duplicate identifiers.") }
             for chat in account.chats {
