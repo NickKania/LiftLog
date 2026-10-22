@@ -449,4 +449,70 @@ final class WatchWorkoutActionTests: XCTestCase {
         }
     }
 
+
+    @MainActor
+    func testLegacyOutboxWaitsForFreshPhoneReceiptAfterRestartBeforeReplayingExtensions() async throws {
+        for appliedCount in 0...2 {
+            let url = try file()
+            let phone = WorkoutStore(fileURL: url)
+            let workout = try start(phone, restSeconds: 120)
+            let now = Date(timeIntervalSinceReferenceDate: 1000)
+            XCTAssertTrue(phone.applyWatchAction(.completeSet(setID: workout.exercises[0].sets[0].id,
+                                                              weight: 50, reps: 8, completedAt: now, restTimerID: UUID()), now: now))
+            let base = phone.watchWorkoutState
+            let first = WatchActionRequest(operationID: UUID(), action: try XCTUnwrap(base.restExtensionAction(by: 30, at: now, newTimerID: UUID())))
+            let second = WatchActionRequest(operationID: UUID(), action: try XCTUnwrap(base.applyingOptimistically(first.action)
+                .restExtensionAction(by: 30, at: now, newTimerID: UUID())))
+            let requests = [first, second]
+            var receipt = WatchActionReceipt()
+            for request in requests.prefix(appliedCount) {
+                XCTAssertTrue(phone.applyWatchAction(request.action, now: now))
+                receipt.record(request, succeeded: true)
+            }
+            // The phone restarts with its latest durable receipt, not the full dedupe window.
+            let restarted = WorkoutStore(fileURL: url)
+            var watch = WatchWorkoutReconciler(baseState: base)
+            requests.forEach { watch.enqueue($0) }
+            let legacy = try JSONEncoder().encode(watch) // No transfer checkpoints.
+            watch = try JSONDecoder().decode(WatchWorkoutReconciler.self, from: legacy)
+            let probeID = UUID()
+            watch.beginTransferRecovery(probeID: probeID)
+            var replayed: [UUID] = []
+            try watch.transferPending(outstandingOperationIDs: [], transfer: { request in
+                replayed.append(request.operationID)
+                XCTAssertTrue(restarted.applyWatchAction(request.action, now: now))
+                receipt.record(request, succeeded: true)
+            }, checkpoint: { _ in })
+            XCTAssertTrue(replayed.isEmpty)
+            // An unrelated publication is not proof that this recovery request was handled.
+            var fresh = restarted.watchWorkoutState
+            fresh.phoneSessionID = UUID()
+            fresh.publicationSequence = 1
+            fresh.processedThroughOperationID = receipt.processedThroughOperationID
+            fresh.recoveryProbeID = UUID()
+            XCTAssertTrue(watch.accept(fresh))
+            XCTAssertEqual(watch.transferRecoveryProbeID, appliedCount == 2 ? nil : probeID)
+            fresh.publicationSequence += 1
+            fresh.recoveryProbeID = probeID
+            XCTAssertTrue(watch.accept(fresh))
+            XCTAssertNil(watch.transferRecoveryProbeID)
+            try watch.transferPending(outstandingOperationIDs: [], transfer: { request in
+                replayed.append(request.operationID)
+                XCTAssertTrue(restarted.applyWatchAction(request.action, now: now))
+                receipt.record(request, succeeded: true)
+            }, checkpoint: { _ in })
+            XCTAssertEqual(replayed, requests.dropFirst(appliedCount).map(\.operationID))
+            XCTAssertEqual(restarted.activeWorkout?.restTimer?.endsAt, now.addingTimeInterval(180))
+            XCTAssertEqual(receipt.processedThroughOperationID, second.operationID)
+            fresh = restarted.watchWorkoutState
+            fresh.phoneSessionID = UUID()
+            fresh.publicationSequence = 1
+            fresh.processedThroughOperationID = receipt.processedThroughOperationID
+            fresh.recoveryProbeID = probeID
+            XCTAssertTrue(watch.accept(fresh))
+            XCTAssertTrue(watch.pending.isEmpty)
+            XCTAssertEqual(watch.state.active?.restEndsAt, now.addingTimeInterval(180))
+        }
+    }
+
 }

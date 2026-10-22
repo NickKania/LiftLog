@@ -57,6 +57,7 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         do {
             if let restored = try journal.load() {
                 reconciler = restored
+                reconciler.beginTransferRecovery(probeID: UUID())
                 publishProjection()
                 hasReceivedContext = true
             }
@@ -118,11 +119,21 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         }
     }
 
-    private func recoverPendingTransfers() {
+    private func recoverPendingTransfers(allowProbe: Bool = true) {
         guard !isFixture, journalIsReadable, hasActivatedSession,
               let session, session.activationState == .activated else { return }
+        if let probeID = reconciler.transferRecoveryProbeID {
+            // Read-only probes are safe to retry after delivery or a phone restart.
+            // Only foreground/connection refreshes retry them, not transfer callbacks.
+            guard allowProbe else { return }
+            let outstanding = session.outstandingUserInfoTransfers.contains {
+                (try? WatchWorkoutTransport.decodeRecoveryProbe(from: $0.userInfo)) == probeID
+            }
+            if !outstanding { session.transferUserInfo(WatchWorkoutTransport.encodeRecoveryProbe(id: probeID)) }
+            return
+        }
         var outstandingIDs: Set<UUID> = []
-        for transfer in session.outstandingUserInfoTransfers {
+        for transfer in session.outstandingUserInfoTransfers where transfer.userInfo[WatchWorkoutTransport.recoveryProbeKey] == nil {
             do { outstandingIDs.insert(try WatchWorkoutTransport.decodeRequest(from: transfer.userInfo).operationID) }
             catch { Self.logger.error("Queued Watch request could not be read: \(error.localizedDescription, privacy: .public)") }
         }
@@ -177,12 +188,12 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
 
     var phoneHasCurrentRest: Bool { alertState.hasSameRest(as: reconciler.baseState) }
 
-    func refreshConnection() {
+    func refreshConnection(allowRecoveryProbe: Bool = true) {
         hasPendingActions = !reconciler.pending.isEmpty || !(session?.outstandingUserInfoTransfers.isEmpty ?? true)
         guard let session else { return }
         isReachable = session.isReachable
         isConnected = session.activationState == .activated
-        recoverPendingTransfers()
+        recoverPendingTransfers(allowProbe: allowRecoveryProbe)
     }
 
     func restDidExpire(id: UUID) {
@@ -200,6 +211,7 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
         var updated = reconciler
         guard updated.accept(incoming), commit(updated) else { return }
         hasReceivedContext = true
+        recoverPendingTransfers(allowProbe: false)
     }
 
     nonisolated private func receive(_ dictionary: [String: Any]) {
@@ -249,6 +261,11 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
+        if userInfoTransfer.userInfo[WatchWorkoutTransport.recoveryProbeKey] != nil {
+            if let error { Self.logger.error("Watch recovery request failed: \(error.localizedDescription, privacy: .public)") }
+            Task { @MainActor [weak self] in self?.refreshConnection(allowRecoveryProbe: false) }
+            return
+        }
         let operationID = (try? WatchWorkoutTransport.decodeRequest(from: userInfoTransfer.userInfo))?.operationID
         if let error { Self.logger.error("Queued Watch action failed: \(error.localizedDescription, privacy: .public)") }
         let failed = error != nil
@@ -258,7 +275,7 @@ final class WatchSessionClient: NSObject, WCSessionDelegate {
             if failed, let operationID, updated.fail(operationID: operationID) {
                 _ = self.commit(updated)
             }
-            self.refreshConnection()
+            self.refreshConnection(allowRecoveryProbe: false)
         }
     }
 

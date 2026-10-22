@@ -14,7 +14,9 @@ final class WatchWorkoutService: NSObject, WCSessionDelegate {
     @ObservationIgnored private var recentOperationIDs: [UUID] = []
     @ObservationIgnored private var processedOperationIDs: Set<UUID> = []
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private var recoveryProbeID: UUID?
     private static let receiptKey = "watchWorkoutReceipt.v2"
+    private static let recoveryProbeKey = "watchWorkoutRecoveryProbe.v2"
     nonisolated private static let logger = Logger(subsystem: "com.liftlog.app", category: "WatchWorkoutService")
 
     init(store: WorkoutStore, defaults: UserDefaults = .standard) {
@@ -26,6 +28,7 @@ final class WatchWorkoutService: NSObject, WCSessionDelegate {
             catch { Self.logger.error("Watch receipt could not be loaded: \(error.localizedDescription, privacy: .public)") }
         }
         receipt = loaded
+        recoveryProbeID = defaults.string(forKey: Self.recoveryProbeKey).flatMap(UUID.init(uuidString:))
         super.init()
         // Seed the bounded dedupe window with the durable receipts after relaunch.
         for id in [loaded.lastTerminalResult?.operationID, loaded.processedThroughOperationID].compactMap({ $0 }) {
@@ -51,6 +54,7 @@ final class WatchWorkoutService: NSObject, WCSessionDelegate {
         state.publicationSequence = publicationSequence
         state.processedThroughOperationID = receipt.processedThroughOperationID
         state.lastTerminalResult = receipt.lastTerminalResult
+        state.recoveryProbeID = recoveryProbeID
         do {
             let dictionary = try WatchWorkoutTransport.encode(state: state)
             try session.updateApplicationContext(dictionary)
@@ -88,6 +92,18 @@ final class WatchWorkoutService: NSObject, WCSessionDelegate {
 
     nonisolated private func receive(_ dictionary: [String: Any]) {
         do {
+            if dictionary[WatchWorkoutTransport.recoveryProbeKey] != nil {
+                let probeID = try WatchWorkoutTransport.decodeRecoveryProbe(from: dictionary)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.recoveryProbeID = probeID
+                    self.defaults.set(probeID.uuidString, forKey: Self.recoveryProbeKey)
+                    // Echo on later publications too: context may be coalesced or the
+                    // phone may restart before the Watch receives this response.
+                    self.synchronize(force: true)
+                }
+                return
+            }
             let request = try WatchWorkoutTransport.decodeRequest(from: dictionary)
             // WCSession delivers on its serial delegate queue. Enqueue synchronously onto
             // main's FIFO, rather than spawning independently scheduled actor tasks.

@@ -3,6 +3,24 @@ import XCTest
 @testable import LiftLogCore
 
 final class WatchWorkoutPayloadTests: XCTestCase {
+    func testRecoveryProbeRoundTripsAndRejectsMalformedOrOlderProtocol() throws {
+        let id = UUID()
+        var dictionary = WatchWorkoutTransport.encodeRecoveryProbe(id: id)
+        XCTAssertNoThrow(try PropertyListSerialization.data(fromPropertyList: dictionary, format: .binary, options: 0))
+        XCTAssertEqual(try WatchWorkoutTransport.decodeRecoveryProbe(from: dictionary), id)
+        dictionary[WatchWorkoutTransport.recoveryProbeKey] = "invalid"
+        XCTAssertThrowsError(try WatchWorkoutTransport.decodeRecoveryProbe(from: dictionary))
+        dictionary[WatchWorkoutTransport.versionKey] = 1
+        XCTAssertThrowsError(try WatchWorkoutTransport.decodeRecoveryProbe(from: dictionary))
+        var state = WatchWorkoutState(templates: [], active: nil, unitRaw: "lb", revision: 1)
+        state.recoveryProbeID = id
+        XCTAssertEqual(try WatchWorkoutTransport.decodeState(from: WatchWorkoutTransport.encode(state: state)), state)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
+        json.removeValue(forKey: "recoveryProbeID")
+        XCTAssertNil(try JSONDecoder().decode(WatchWorkoutState.self,
+                                              from: JSONSerialization.data(withJSONObject: json)).recoveryProbeID)
+    }
+
     private func active(exercises: [WatchExerciseState]) -> WatchActiveWorkout {
         WatchActiveWorkout(id: UUID(), name: "Routine", startedAt: Date(timeIntervalSinceReferenceDate: 1000),
                            restSeconds: 120, restEndsAt: Date(timeIntervalSinceReferenceDate: 1120),

@@ -37,6 +37,8 @@ struct WatchWorkoutState: Codable, Equatable, Sendable {
     /// Store/fixture placeholder only; the phone service stamps its own lifetime ID.
     var phoneSessionID: UUID = unpublishedSessionID
     var publicationSequence: UInt64 = 0
+    /// Echoed on every publication after a read-only recovery request is processed.
+    var recoveryProbeID: UUID? = nil
 
     static let unpublishedSessionID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 }
@@ -218,7 +220,8 @@ extension WatchWorkoutState {
                                    restSeconds: active.restSeconds, restEndsAt: endsAt, restTimerID: timerID,
                                    exercises: exercises, restDurationSeconds: durationSeconds), unitRaw: unitRaw, revision: revision,
                      processedThroughOperationID: processedThroughOperationID, lastTerminalResult: lastTerminalResult,
-                     phoneSessionID: phoneSessionID, publicationSequence: publicationSequence)
+                     phoneSessionID: phoneSessionID, publicationSequence: publicationSequence,
+                     recoveryProbeID: recoveryProbeID)
     }
 }
 
@@ -233,6 +236,7 @@ struct WatchWorkoutReconciler: Codable {
     private var hasAcceptedSnapshot = false
     /// Optional for journals created before transfer checkpoints were introduced.
     private var transferredOperationIDs: Set<UUID>?
+    private(set) var transferRecoveryProbeID: UUID?
 
     var state: WatchWorkoutState { baseState.applyingPending(pending.map(\.action)) }
     var terminalWorkoutID: UUID? {
@@ -241,6 +245,10 @@ struct WatchWorkoutReconciler: Codable {
 
     var requestsAwaitingTransfer: [WatchActionRequest] {
         pending.filter { !(transferredOperationIDs?.contains($0.operationID) ?? false) }
+    }
+
+    mutating func beginTransferRecovery(probeID: UUID) {
+        transferRecoveryProbeID = requestsAwaitingTransfer.isEmpty ? nil : probeID
     }
 
     mutating func recordTransfer(operationID: UUID) {
@@ -255,6 +263,9 @@ struct WatchWorkoutReconciler: Codable {
     mutating func transferPending(outstandingOperationIDs: Set<UUID>,
                                   transfer: (WatchActionRequest) throws -> Void,
                                   checkpoint: (Self) throws -> Void) throws {
+        // Cached context may predate a phone restart and omit receipts for already
+        // applied operations. Never replay an ambiguous outbox until a fresh response.
+        guard transferRecoveryProbeID == nil else { return }
         for request in requestsAwaitingTransfer {
             if !outstandingOperationIDs.contains(request.operationID) { try transfer(request) }
             var updated = self
@@ -283,6 +294,9 @@ struct WatchWorkoutReconciler: Codable {
            let index = pending.firstIndex(where: { $0.operationID == watermark }) {
             pending.removeFirst(index + 1)
             transferredOperationIDs?.formIntersection(pending.map(\.operationID))
+        }
+        if requestsAwaitingTransfer.isEmpty || incoming.recoveryProbeID == transferRecoveryProbeID {
+            transferRecoveryProbeID = nil
         }
         if let request = pendingTerminal, let result = incoming.lastTerminalResult,
            result.operationID == request.operationID,
@@ -325,6 +339,7 @@ enum WatchWorkoutTransport {
     static let versionKey = "watchPayloadVersion"
     static let stateKey = "watchState"
     static let actionKey = "watchAction"
+    static let recoveryProbeKey = "watchRecoveryProbe"
 
     enum PayloadError: Error, Equatable {
         case unsupportedVersion
@@ -345,6 +360,17 @@ enum WatchWorkoutTransport {
 
     static func decodeRequest(from dictionary: [String: Any]) throws -> WatchActionRequest {
         try JSONDecoder().decode(WatchActionRequest.self, from: data(in: dictionary, key: actionKey))
+    }
+
+    static func encodeRecoveryProbe(id: UUID) -> [String: Any] {
+        [versionKey: payloadVersion, recoveryProbeKey: id.uuidString]
+    }
+
+    static func decodeRecoveryProbe(from dictionary: [String: Any]) throws -> UUID {
+        guard dictionary[versionKey] as? Int == payloadVersion else { throw PayloadError.unsupportedVersion }
+        guard let value = dictionary[recoveryProbeKey] as? String,
+              let id = UUID(uuidString: value) else { throw PayloadError.missingData }
+        return id
     }
 
     private static func data(in dictionary: [String: Any], key: String) throws -> Data {
