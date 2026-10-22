@@ -32,12 +32,15 @@ struct WorkoutSummaryContext {
         case invalidTarget(String)
         case invalidHealthSnapshot
         case payloadTooLarge
+        case localPayloadTooLarge
 
         var errorDescription: String? {
             switch self {
             case .invalidTarget(let reason): return "Workout summary needs a valid completed workout: \(reason)"
             case .invalidHealthSnapshot: return "The health data does not belong to this workout."
             case .payloadTooLarge: return "This workout is too large to summarize safely."
+            case .localPayloadTooLarge:
+                return "This workout summary is too large for Apple Intelligence. Shorten your summary prompt in Settings, try without Apple Health, or choose ChatGPT explicitly."
             }
         }
     }
@@ -241,6 +244,21 @@ struct WorkoutSummaryContext {
             // The target is always retained. If it alone cannot fit, fail explicitly.
             throw Error.payloadTooLarge
         }
+    }
+
+    /// The same validation and ordering as the cloud projection, before its
+    /// eight-session cap. Local requests report the actual available coverage.
+    static func validatedComparableHistory(workout: WorkoutSession, history: [WorkoutSession]) throws -> [WorkoutSession] {
+        _ = try WorkoutRecord(workout)
+        return history
+            .filter { $0.id != workout.id && isComparable($0, with: workout) && isEarlier($0, than: workout) }
+            .filter { (try? WorkoutRecord($0)) != nil }
+            .sorted {
+                if $0.finishedAt != $1.finishedAt {
+                    return ($0.finishedAt ?? .distantPast) > ($1.finishedAt ?? .distantPast)
+                }
+                return $0.id.uuidString < $1.id.uuidString
+            }
     }
 
     private static func isEarlier(_ candidate: WorkoutSession, than target: WorkoutSession) -> Bool {

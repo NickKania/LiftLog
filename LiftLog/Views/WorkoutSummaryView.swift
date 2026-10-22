@@ -34,11 +34,16 @@ struct WorkoutSummaryView: View {
     }
 
     private var hasModel: Bool {
-        !selectedModel.isEmpty
+        assistant.models.contains { $0.slug == selectedModel }
+    }
+
+    private var canUseProvider: Bool {
+        assistant.selectedProvider == .chatGPT ? accounts.canUsePlan : assistant.appleFoundationModelsAvailability.isAvailable
     }
 
     private var canGenerate: Bool {
-        workout != nil && accounts.canUsePlan && hasModel && !summary.isWorking
+        workout != nil && canUseProvider && hasModel && !summary.isWorking
+            && (assistant.selectedProvider == .chatGPT || assistant.canUseSelectedProvider)
     }
 
     private var hasCurrentSummary: Bool {
@@ -66,6 +71,7 @@ struct WorkoutSummaryView: View {
                     ContentUnavailableView("Workout unavailable", systemImage: "questionmark.folder",
                                           description: Text("This workout is no longer in your saved history."))
                 }
+                AssistantProviderPicker()
 
                 if workout != nil, hasCurrentSummary && summary.isWorking {
                     workingState
@@ -110,6 +116,19 @@ struct WorkoutSummaryView: View {
             guard !summary.isWorking else { return }
             automaticTask?.cancel()
             automaticTask = Task { await startAutomaticIfEligible() }
+        }
+        .onChange(of: assistant.selectedProvider) { _, _ in
+            generationTask?.cancel()
+            automaticTask?.cancel()
+            modelReloadTask?.cancel()
+            summary.providerWillChange()
+            selectedModel = ""
+            includeHealth = false
+            activeRequestIncludesHealth = false
+            loadingModels = false
+            // Provider changes need a new explicit Generate action in this sheet.
+            didAutoGenerate = true
+            chooseModelIfNeeded()
         }
         .onChange(of: workout) { _, _ in
             generationTask?.cancel()
@@ -184,19 +203,27 @@ struct WorkoutSummaryView: View {
         VStack(alignment: .leading, spacing: 16) {
             Label("Optional coaching insights", systemImage: "sparkles")
                 .font(.headline)
-            Text(accounts.canUsePlan
-                 ? "Workout data is sent to OpenAI when you choose Generate or enable automatic summaries. The request uses this workout and up to eight comparable saved sessions. Your workout remains available offline either way."
-                 : "Connect an eligible ChatGPT account in Settings to generate coaching insights. Your saved workout facts remain available offline.")
+            Text(requestDisclosure)
                 .font(.subheadline).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("workoutSummaryDisclosure")
 
-            if accounts.canUsePlan {
+            if assistant.selectedProvider == .appleFoundationModels, !assistant.appleFoundationModelsAvailability.isAvailable {
+                Label(assistant.appleFoundationModelsAvailability.explanation, systemImage: "exclamationmark.circle")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("workoutSummaryProviderUnavailable")
+                Button("Check availability") { assistant.refreshProviderAvailability() }
+                    .accessibilityIdentifier("workoutSummaryRefreshAvailabilityButton")
+            }
+            if canUseProvider {
                 modelPicker
                 Toggle(isOn: $includeHealth) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Include Apple Health")
-                        Text("Shares session-scoped heart rate, energy, or steps with OpenAI only for this request. It is not saved.")
+                        Text(assistant.selectedProvider == .appleFoundationModels
+                             ? "Processes session-scoped heart rate, energy, or steps on this iPhone only for this request. It is not saved."
+                             : "Shares session-scoped heart rate, energy, or steps with OpenAI only for this request. It is not saved.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -233,7 +260,7 @@ struct WorkoutSummaryView: View {
                 if loadingModels {
                     ProgressView("Loading available models")
                 } else {
-                    Text("No model is available yet. Try again after refreshing the account.")
+                    Text("No model is available yet. Try reloading the selected provider’s models.")
                         .font(.footnote).foregroundStyle(.secondary)
                     if let error = assistant.errorMessage {
                         Text(error)
@@ -248,6 +275,11 @@ struct WorkoutSummaryView: View {
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("workoutSummaryReloadModelsButton")
                 }
+            } else if assistant.selectedProvider == .appleFoundationModels {
+                Label("Apple system model · On-device", systemImage: "iphone")
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("workoutSummarySystemModel")
             } else {
                 Picker("Model", selection: $selectedModel) {
                     ForEach(assistant.models) { model in
@@ -309,19 +341,22 @@ struct WorkoutSummaryView: View {
     }
 
     private func prepareModelsAndAutomaticRequest() async {
-        guard accounts.canUsePlan else { return }
+        guard canUseProvider else { return }
+        let provider = assistant.selectedProvider
         if assistant.models.isEmpty {
             await reloadModels()
         }
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, provider == assistant.selectedProvider else { return }
         chooseModelIfNeeded()
         await startAutomaticIfEligible()
     }
 
     private func reloadModels() async {
-        guard isScreenActive, accounts.canUsePlan, !loadingModels else { return }
+        guard isScreenActive, canUseProvider, !loadingModels else { return }
+        let provider = assistant.selectedProvider
         loadingModels = true
         await assistant.refreshModels()
+        guard provider == assistant.selectedProvider, !Task.isCancelled else { return }
         loadingModels = false
         chooseModelIfNeeded()
         await startAutomaticIfEligible()
@@ -329,7 +364,7 @@ struct WorkoutSummaryView: View {
 
     private func startAutomaticIfEligible() async {
         guard isScreenActive, !Task.isCancelled, automaticallyGenerate, store.automaticWorkoutSummaries,
-              accounts.canUsePlan, !didAutoGenerate, !summary.isWorking else { return }
+              canUseProvider, !didAutoGenerate, !summary.isWorking else { return }
         chooseModelIfNeeded()
         guard hasModel else { return }
         // Mark only when a real model is available and the request is about to start;
@@ -343,7 +378,7 @@ struct WorkoutSummaryView: View {
 
     private func chooseModelIfNeeded() {
         guard selectedModel.isEmpty || !assistant.models.contains(where: { $0.slug == selectedModel }) else { return }
-        selectedModel = assistant.models.first(where: { $0.slug == store.defaultAssistantModel })?.slug
+        selectedModel = assistant.models.first(where: { assistant.selectedProvider == .chatGPT && $0.slug == store.defaultAssistantModel })?.slug
             ?? assistant.models.first?.slug ?? ""
     }
 
@@ -358,5 +393,14 @@ struct WorkoutSummaryView: View {
         generationTask = Task {
             await summary.generate(workoutID: workoutID, model: model, includeHealth: includeHealth)
         }
+    }
+
+    private var requestDisclosure: String {
+        if assistant.selectedProvider == .appleFoundationModels {
+            return "Apple Intelligence processes this workout and up to eight comparable saved sessions on this iPhone when you choose Generate or enable automatic summaries. Works offline without a ChatGPT account. Lift Log never switches to ChatGPT automatically."
+        }
+        return accounts.canUsePlan
+            ? "Workout data is sent to OpenAI when you choose Generate or enable automatic summaries. The request uses this workout and up to eight comparable saved sessions. Your workout remains available offline either way."
+            : "Connect an eligible ChatGPT account in Settings, or choose Apple Intelligence for on-device insights when available. Your saved workout facts remain available offline."
     }
 }

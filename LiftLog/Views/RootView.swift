@@ -4,9 +4,16 @@ struct RootView: View {
     @Environment(WorkoutStore.self) private var store
     @Environment(ChatGPTAccountStore.self) private var chatGPT
     @Environment(WorkoutAssistant.self) private var assistant
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showWorkout = false
     @State private var pendingSummaryID: UUID?
     @State private var summaryWorkout: WorkoutSession?
+
+    private var providerRefreshIdentity: String {
+        assistant.selectedProvider == .appleFoundationModels
+            ? "apple:\(assistant.appleFoundationModelsAvailability.isAvailable)"
+            : "chatGPT:\(chatGPT.revision)"
+    }
 
     var body: some View {
         TabView {
@@ -43,8 +50,13 @@ struct RootView: View {
                 showWorkout = true
             }
         }
-        .task(id: chatGPT.revision) {
-            if chatGPT.canUsePlan { await assistant.refreshModels() }
+        .task(id: providerRefreshIdentity) {
+            if assistant.selectedProvider == .appleFoundationModels || chatGPT.canUsePlan {
+                await assistant.refreshModels()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { assistant.refreshProviderAvailability() }
         }
     }
 }
@@ -67,25 +79,31 @@ struct SettingsView: View {
             } footer: {
                 Text("Current template weights convert to this unit. Saved versions, active workouts, and history keep their recorded unit.")
             }
+            AssistantProviderSettingsView()
             Section {
-                Picker("Default model", selection: Binding(
-                    get: { store.defaultAssistantModel ?? "" },
-                    set: { store.setDefaultAssistantModel($0) }
-                )) {
-                    Text("Automatic").tag("")
-                    ForEach(assistant.models) { model in Text(model.displayName).tag(model.slug) }
-                    if let saved = store.defaultAssistantModel, !assistant.models.contains(where: { $0.slug == saved }) {
-                        Text("\(saved) (unavailable)").tag(saved)
+                if assistant.selectedProvider == .chatGPT {
+                    Picker("Default model", selection: Binding(
+                        get: { store.defaultAssistantModel ?? "" },
+                        set: { store.setDefaultAssistantModel($0) }
+                    )) {
+                        Text("Automatic").tag("")
+                        ForEach(assistant.models) { model in Text(model.displayName).tag(model.slug) }
+                        if let saved = store.defaultAssistantModel, !assistant.models.contains(where: { $0.slug == saved }) {
+                            Text("\(saved) (unavailable)").tag(saved)
+                        }
                     }
-                }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("assistantDefaultModelPicker")
-                .disabled(assistant.isLoadingModels)
-                if assistant.isLoadingModels {
-                    ProgressView("Loading available models")
-                } else if accounts.canUsePlan && assistant.models.isEmpty {
-                    Button("Reload models") { Task { await assistant.refreshModels() } }
-                    if let error = assistant.errorMessage { Text(error).font(.footnote).foregroundStyle(.secondary) }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("assistantDefaultModelPicker")
+                    .disabled(assistant.isLoadingModels)
+                    if assistant.isLoadingModels {
+                        ProgressView("Loading available models")
+                    } else if accounts.canUsePlan && assistant.models.isEmpty {
+                        Button("Reload models") { Task { await assistant.refreshModels() } }
+                        if let error = assistant.errorMessage { Text(error).font(.footnote).foregroundStyle(.secondary) }
+                    }
+                } else {
+                    LabeledContent("Model", value: "Apple system model")
+                        .accessibilityIdentifier("assistantSystemModelLabel")
                 }
                 NavigationLink("Workout summaries") {
                     WorkoutSummarySettingsView()
@@ -94,9 +112,11 @@ struct SettingsView: View {
             } header: {
                 Text("Assistant")
             } footer: {
-                Text(accounts.canUsePlan
-                     ? "Used for new chats. Automatic chooses an available model. If your default is unavailable, new chats use Automatic."
-                     : "Connect an eligible ChatGPT account to choose a default for new chats.")
+                Text(assistant.selectedProvider == .appleFoundationModels
+                     ? "Apple Intelligence uses the system’s on-device model. Your ChatGPT default model preference is retained separately."
+                     : (accounts.canUsePlan
+                        ? "Used for new chats. Automatic chooses an available model. If your default is unavailable, new chats use Automatic."
+                        : "Connect an eligible ChatGPT account to choose a default for new chats."))
             }
             Section("ChatGPT") {
                 NavigationLink("ChatGPT Account") {

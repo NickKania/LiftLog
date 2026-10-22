@@ -152,6 +152,33 @@ struct WorkoutHealthSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+extension WorkoutHealthSnapshot {
+    /// Reduces an already scoped series without dropping any contributing interval.
+    /// Energy and step buckets retain sums; heart rate buckets contain the arithmetic
+    /// mean of their source interval means, not a time-weighted or instantaneous rate.
+    /// Always aggregate the original scoped snapshot when trying another budget;
+    /// averaging a previously reduced series could give unequal groups equal weight.
+    func aggregated(maximumSamplesPerMetric: Int) -> WorkoutHealthSnapshot {
+        let limit = max(1, maximumSamplesPerMetric)
+        let reduced = metrics.map { series in
+            guard series.samples.count > limit else { return series }
+            let samples = (0..<limit).compactMap { index -> WorkoutHealthSample? in
+                let start = index * series.samples.count / limit
+                let end = (index + 1) * series.samples.count / limit
+                let group = series.samples[start..<end]
+                guard let last = group.last else { return nil }
+                let value = series.metric == .heartRate
+                    ? group.reduce(0) { $0 + $1.value / Double(group.count) }
+                    : group.reduce(0) { $0 + $1.value }
+                return WorkoutHealthSample(date: last.date, value: value)
+            }
+            return WorkoutHealthMetricSeries(metric: series.metric, samples: samples)
+        }
+        return WorkoutHealthSnapshot(workoutID: workoutID, workoutName: workoutName,
+                                    startedAt: startedAt, endedAt: endedAt, fetchedAt: fetchedAt, metrics: reduced)
+    }
+}
+
 enum WorkoutHealthDataError: LocalizedError {
     case unavailable
     case invalidSession

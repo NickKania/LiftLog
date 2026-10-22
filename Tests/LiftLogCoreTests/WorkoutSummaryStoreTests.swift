@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import LiftLogCore
 
-private final class SummaryTransport: ChatGPTInferenceTransport {
+final class SummaryTransport: ChatGPTInferenceTransport {
     var requests: [URLRequest] = []
     var responseText = "Summary ready"
     var streamError: Error?
@@ -44,7 +44,7 @@ private final class SummaryTransport: ChatGPTInferenceTransport {
 }
 
 @MainActor
-private final class SummaryHealthProvider: WorkoutHealthDataProviding {
+final class SummaryHealthProvider: WorkoutHealthDataProviding {
     var reads = 0
     var error: Error?
     var suspend = false
