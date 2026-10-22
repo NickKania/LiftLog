@@ -491,8 +491,23 @@ final class WorkoutStore {
 
     @discardableResult
     func skipRest() -> Bool {
-        guard var workout = activeWorkout else { return false }
+        guard var workout = activeWorkout, workout.restTimer != nil else { return false }
         workout.restTimer = nil
+        var next = snapshot
+        next.activeWorkout = workout
+        return commit(next)
+    }
+
+    /// Extends an active deadline with the same identity; expired rest starts a new alert.
+    /// Cap the deadline at one hour from now, matching remainingSeconds' 3600-second cap.
+    @discardableResult
+    func extendRest(by seconds: Int) -> Bool {
+        guard seconds > 0, var workout = activeWorkout, let timer = workout.restTimer else { return false }
+        let now = Date()
+        let expired = timer.endsAt <= now
+        let deadline = min((expired ? now : timer.endsAt).addingTimeInterval(TimeInterval(seconds)), now.addingTimeInterval(3600))
+        guard deadline > timer.endsAt else { return false }
+        workout.restTimer = WorkoutRestTimer(id: expired ? UUID() : timer.id, completedSetID: timer.completedSetID, endsAt: deadline)
         var next = snapshot
         next.activeWorkout = workout
         return commit(next)
