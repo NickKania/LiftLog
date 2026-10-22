@@ -6,6 +6,7 @@ struct TemplateEditorView: View {
     @State private var draft: WorkoutTemplate
     @State private var pickingExercise = false
     @State private var supersetEditor: SupersetEditorContext?
+    @State private var restExercise: TemplateExercise?
     @State private var swappingExercise: TemplateExercise?
     @State private var invalidSets: Set<UUID> = []
     @State private var draftUnit: WeightUnit?
@@ -29,12 +30,9 @@ struct TemplateEditorView: View {
                         .accessibilityIdentifier("templateNameField")
                 }
                 Section {
-                    Stepper(value: $draft.restSeconds, in: 0...3600, step: 15) {
-                        LabeledContent("Rest between sets", value: restDescription(draft.restSeconds))
-                    }
-                    .accessibilityIdentifier("templateRestStepper")
+                    RestDurationStepper(seconds: $draft.restSeconds, identifier: "templateRestStepper")
                 } footer: {
-                    Text("Complete a set with more sets remaining to start a countdown. A tone signals your next set. Set to Off to disable it.")
+                    Text("The workout default applies unless an exercise has its own rest time. Complete a set with more sets remaining to start a countdown.")
                 }
                 if let original {
                     Section {
@@ -68,6 +66,13 @@ struct TemplateEditorView: View {
                 ForEach(draft.exercises) { exercise in
                     let group = SupersetStyle.group(for: exercise, in: draft.exercises)
                     Section {
+                        Button {
+                            hideKeyboard()
+                            restExercise = exercise
+                        } label: {
+                            LabeledContent("Rest", value: RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: draft.restSeconds))
+                        }
+                        .accessibilityIdentifier("templateExerciseRest-\(exercise.id)")
                         SetColumnHeader(unit: unit, repsTitle: "TARGET REPS")
                         ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { setIndex, set in
                             SetInputRow(number: setIndex + 1, unit: unit, weight: set.weight, reps: set.targetReps, repsTitle: "Target reps", onChange: { weight, reps in
@@ -143,7 +148,7 @@ struct TemplateEditorView: View {
                 }
             }
             .accessibilityIdentifier("templateEditor")
-            .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && swappingExercise == nil)
+            .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && swappingExercise == nil && restExercise == nil)
             .navigationTitle(isNew ? "New Template" : (planningNextWorkout ? "Plan Next Workout" : "Edit Template"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -162,6 +167,14 @@ struct TemplateEditorView: View {
             .sheet(isPresented: $pickingExercise) {
                 ExercisePickerView { exercise in
                     draft.exercises.append(TemplateExercise(exercise: exercise, sets: [TemplateSet(weight: 0, targetReps: 10)]))
+                }
+            }
+            .sheet(item: $restExercise) { exercise in
+                RestSettingsEditorView(title: exercise.exercise.name, restSeconds: exercise.restSeconds,
+                    workoutRestSeconds: draft.restSeconds,
+                    footer: "Choose a rest time for this exercise, such as a shorter rest for burnout sets.") { seconds in
+                    updateExercise(exercise.id) { $0.restSeconds = seconds }
+                    return true
                 }
             }
             .sheet(item: $supersetEditor) { context in
@@ -224,6 +237,9 @@ struct TemplateEditorView: View {
             guard let previous = original.exercises.first(where: { $0.id == item.id }) else {
                 result.append("Add \(item.exercise.name): \(item.sets.count) sets")
                 continue
+            }
+            if item.restSeconds != previous.restSeconds {
+                result.append("\(item.exercise.name) rest: \(RestTime.exerciseDescription(previous.restSeconds, workoutDefault: original.restSeconds)) → \(RestTime.exerciseDescription(item.restSeconds, workoutDefault: draft.restSeconds))")
             }
             for (index, set) in item.sets.enumerated() {
                 guard let oldSet = previous.sets.first(where: { $0.id == set.id }) else {
@@ -319,6 +335,7 @@ private struct TemplateVersionDetailView: View {
             ForEach(version.exercises) { exercise in
                 let group = SupersetStyle.group(for: exercise, in: version.exercises)
                 Section {
+                    LabeledContent("Rest", value: RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: version.restSeconds))
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                         LabeledContent("Set \(index + 1)", value: "\(set.weight.formatted(.number.precision(.fractionLength(0...2)))) \(version.unit.rawValue) × \(set.targetReps)")
                             .monospacedDigit()

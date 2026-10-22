@@ -9,7 +9,7 @@ extension WorkoutSession {
                          reps: set.reps, number: index + 1, total: exercise.sets.count)
         }.first
         let interval = restTimer.map { timer in
-            timer.endsAt.addingTimeInterval(-Double(max(1, restSeconds)))...timer.endsAt
+            timer.endsAt.addingTimeInterval(-Double(max(1, restDuration(for: timer))))...timer.endsAt
         }
         let sets = exercises.flatMap(\.sets)
         return .init(workoutID: id, workoutName: Self.activityLabel(name), startedAt: startedAt,
