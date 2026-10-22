@@ -51,3 +51,10 @@ Lift Log is a local-first iOS app. Its backend is the Foundation-based `WorkoutS
 See [Testing](TESTING.md) for commands and remaining manual device, accessibility, and layout checks. UI automation covers representative paths; it does not replace those manual checks.
 
 Workout rest defaults and per-exercise overrides are saved with each template version and copied into independent sessions. Exercises inherit the default unless explicitly overridden, including Off. Session-only settings affect future completions without changing templates or an existing countdown. Countdown deadlines persist across minimizing, suspension, relaunch, and backups. Foreground tones work without notification permission; background alerts require notification permission and enabled sounds, and follow system notification settings. Completing the last planned set does not start a rest timer.
+
+
+Watch offline recovery is covered by `WatchWorkoutReconcilerTests`: restored progress and finish/discard requests survive relaunch even after transport delivery; partial acknowledgements retain later requests; terminal results and dismissal persist. Reachable phones take over rest alerts only after matching the workout, timer and deadline, including extensions with unchanged timer IDs. Physical-device delivery and wrist-down alert handoff remain separate acceptance checks.
+
+The Watch outbox tests also cover saved-but-unqueued request recovery, exits before the transfer checkpoint, matching outstanding transfers without duplicate submission, FIFO operation identity, cached receipt retirement and decoding journals created before transfer checkpoints.
+
+Recovered Watch requests without transfer checkpoints wait for a matching fresh, read-only phone recovery response before replay. The restarted-phone regression applies zero, one or two rest extensions before relaunch and verifies that only the unapplied suffix is sent, rest grows by exactly 60 seconds, and the final receipt clears the pending ledger.

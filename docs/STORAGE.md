@@ -65,3 +65,11 @@ Before replacement, the current database is saved as `Application Support/LiftLo
 Backups support recovery and transferring a dataset between devices. They do not merge simultaneous edits. Local data remains the source used while logging workouts, and restore is always an explicit action.
 
 See [testing](TESTING.md) for the signed-device acceptance checklist.
+
+
+## Watch recovery journal
+
+The Watch stores `Application Support/LiftLog/watch-workout-journal.json` locally using versioned JSON and atomic replacement. It contains the last authoritative phone snapshot and the ordered requests still awaiting receipts, including pending finish/discard presentation. It is recovery for the Watch projection, not an independently editable workout database or part of the phone's SQLite/iCloud backups. Transport delivery alone never removes a request. The journal loads before WCSession activation; writes complete before publishing edits, queuing new transfers or retiring acknowledged requests. Missing files mean a first launch; unreadable or unsupported archives remain untouched and block replacement. Save failures retain the previous in-memory projection and report an error.
+
+
+Transfer submission checkpoints are optional fields in the existing version-1 journal. Recovery first applies cached phone receipts, then drains requests lacking a checkpoint in their original order and with unchanged operation IDs. Existing WCSession outstanding transfers are marked without resubmission, covering an exit after queueing but before saving the checkpoint. A delivered request with a checkpoint stays pending for its phone receipt without being requeued. An exit before queueing leaves an unsubmitted request that activation queues. Checkpoint failure stops later submissions and preserves the last successful checkpoint. After journal restoration, missing transfer checkpoints trigger a read-only recovery probe before any resubmission. A matching fresh phone response retires the already-processed prefix, including operations forgotten by the phone’s in-memory dedupe window after relaunch. Earlier journals remain readable. The phone retains its latest probe ID beside its receipt in local UserDefaults and includes it in subsequent publications; the Watch creates a new probe identity on relaunch when transfer recovery is needed.

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lift Log — Apple Watch concept (PROTOTYPE)</title>
+<!-- PROTOTYPE — throwaway design exploration. Question: what should the Watch
+     start / complete-set / rest / finish flow look like? 3 variants, ?variant=A|B|C.
+     Data mirrors LiftLog: Push Day, 2:00 rest, finish saves completed sets only. -->
+<style>
+*{box-sizing:border-box} html{background:#0b0b0f;color:#f2f2f7;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,sans-serif}
+body{margin:0;padding:28px 22px 110px;max-width:1240px;margin-inline:auto}
+h1{font-size:26px;margin:0 0 4px} h2{font-size:17px;margin:34px 0 6px} h3{font-size:13px;margin:0 0 4px}
+p{margin:0 0 8px;line-height:1.5} .sub{color:#a7a7b3;max-width:860px}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 8px;border-radius:99px;background:#3a2b00;color:#ffd60a;vertical-align:3px;margin-left:8px}
+.variantInfo{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0 4px}
+.variantInfo>div{background:#17171d;border:1px solid #2a2a33;border-radius:14px;padding:12px 14px}
+.variantInfo p{font-size:13px;color:#c9c9d4;margin:0}
+.live{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:start;background:#121218;border:1px solid #26262f;border-radius:20px;padding:22px;margin-top:10px}
+.statebox{background:#000;border:1px solid #2a2a33;border-radius:12px;padding:12px 14px;font:12px/1.7 ui-monospace,Menlo,monospace;color:#9fe8b1;white-space:pre-wrap;min-height:118px}
+.flowbtns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.flowbtns button,.wbtn{cursor:pointer;border:0;border-radius:99px;padding:8px 14px;font:600 13px -apple-system,sans-serif;background:#2c2c36;color:#fff}
+.flowbtns button.on{background:#30d158;color:#04150a}
+.hint{font-size:12px;color:#8e8e9a}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:26px 18px;margin-top:14px}
+.frameWrap{display:flex;flex-direction:column;align-items:center;gap:9px}
+.cap{font-size:12px;color:#b9b9c5;text-align:center;line-height:1.5;max-width:232px}
+.cap b{color:#fff;font-size:13px}.cap .how{color:#7dd3fc}
+/* ---- Watch frame (45mm proportions, scaled) ---- */
+.watch{position:relative;width:214px;height:262px;background:#1c1c22;border-radius:52px;padding:11px;box-shadow:0 10px 34px rgba(0,0,0,.55),inset 0 0 0 2px #3a3a44;flex:none}
+.watch:before{content:"";position:absolute;right:-4px;top:64px;width:4px;height:34px;border-radius:3px;background:#55555f}
+.watch:after{content:"";position:absolute;right:-3px;top:112px;width:3px;height:52px;border-radius:3px;background:#44444e}
+.screen{position:relative;width:100%;height:100%;background:#000;border-radius:42px;overflow:hidden;padding:11px 13px 10px;display:flex;flex-direction:column;font-size:13px}
+.trow{display:flex;justify-content:space-between;align-items:baseline;color:#8e8e9a;font-size:11px;margin-bottom:5px}
+.trow .clock{color:#d8d8e0;font-weight:600}
+.screen button{font-family:inherit;cursor:pointer}
+.grow{flex:1}.center{text-align:center}.sec{color:#9a9aa5}.small{font-size:11px}.tiny{font-size:10px}
+.big{font-size:27px;font-weight:700;line-height:1.08}.huge{font-size:36px;font-weight:800;line-height:1}
+.exname{font-size:16px;font-weight:700;line-height:1.15}
+.presc{font-size:19px;font-weight:700}.presc .u{font-size:12px;color:#9a9aa5;font-weight:600}
+.cta{display:block;width:100%;border:0;border-radius:99px;padding:9px 8px;font-size:14px;font-weight:700;background:#30d158;color:#04150a;text-align:center}
+.cta2{display:block;width:100%;border:0;border-radius:99px;padding:7px 8px;font-size:13px;font-weight:600;background:#26262e;color:#fff;text-align:center;margin-top:7px}
+.cta.red{background:#ff453a;color:#fff}.cta.orange{background:#ff9f0a;color:#1a0e00}
+.rowline{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dots{display:flex;gap:4px;justify-content:center}.dots i{width:5px;height:5px;border-radius:99px;background:#3d3d47;display:block}.dots i.on{background:#fff}
+.setdots{display:flex;gap:5px}.setdots i{width:9px;height:9px;border-radius:99px;border:1.5px solid #55555f;display:block}.setdots i.done{background:#30d158;border-color:#30d158}.setdots i.now{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.progress{height:5px;border-radius:99px;background:#26262e;overflow:hidden}.progress i{display:block;height:100%;background:#ff9f0a;border-radius:99px}
+.chip{display:inline-block;padding:2px 7px;border-radius:99px;background:#26262e;color:#c9c9d4;font-size:10px;font-weight:700}
+.chip.o{background:#3a2503;color:#ffb340}.chip.g{background:#06331a;color:#5be584}.chip.r{background:#3d0b08;color:#ff7a70}
+.listrow{display:flex;align-items:center;gap:8px;background:#17171d;border-radius:12px;padding:8px 9px;margin-bottom:6px;text-align:left;width:100%;border:0;color:#fff}
+.listrow .n{font-size:13px;font-weight:600;line-height:1.15}.listrow .d{font-size:11px;color:#9a9aa5}
+.check{width:21px;height:21px;border-radius:99px;border:2px solid #55555f;flex:none;display:grid;place-items:center;font-size:12px;color:#04150a}
+.check.done{background:#30d158;border-color:#30d158}
+.card{background:#17171d;border-radius:16px;padding:11px 12px}
+.ringWrap{position:relative;width:104px;height:104px;margin:2px auto}
+.ringWrap .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.notif{background:#1d1d24;border:1px solid #33333e;border-radius:18px;padding:11px 12px;box-shadow:0 8px 22px rgba(0,0,0,.5)}
+.pulse{animation:p 1.1s ease-in-out infinite}@keyframes p{50%{transform:scale(1.035)}}
+.crownHint{color:#7dd3fc;font-size:10px;font-weight:600}
+.stepper{display:flex;align-items:center;justify-content:space-between;background:#17171d;border-radius:12px;padding:7px 10px;margin-bottom:7px}
+.stepper b{font-size:16px}.stepper span{color:#9a9aa5;font-size:11px}
+.plusminus{font-size:17px;color:#30d158;font-weight:800}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9;display:flex;align-items:center;gap:14px;background:#f2f2f7;color:#111;border-radius:99px;padding:9px 16px;box-shadow:0 12px 32px rgba(0,0,0,.55);font-weight:700;font-size:14px}
+.switcher button{border:0;background:#111;color:#fff;width:32px;height:32px;border-radius:99px;font-size:16px;cursor:pointer}
+@media(max-width:760px){.variantInfo,.live{grid-template-columns:1fr}.live{justify-items:center}}
+</style></head>
+<body>
+<h1>Lift Log for Apple Watch <span class="tag">PROTOTYPE — NOT FOR SHIPPING</span></h1>
+<p class="sub">Concept only — nothing here is implemented in the app. One question: <b>how should starting a workout, completing a set, resting, and finishing feel on the wrist, one-handed and mid-set?</b> Same sample workout in every direction: <b>Push Day</b> (Bench Press 135&nbsp;lb × 8, Set 2 of 4), rest 2:00, 5 of 13 sets done, 24:18 elapsed. Finish saves completed sets only — same rule as iPhone today.</p>
+<div class="variantInfo" id="variantInfo"></div>
+
+<h2>1 · Try it — tap the watch</h2>
+<p class="sub">Click <b>Complete Set</b>, watch the rest timer, skip or let it finish, then end the workout. Live demo uses a shortened 12-second rest so you can see the “Rest complete” haptic screen. State is shown beside the watch after every tap.</p>
+<div class="live">
+  <div class="watch"><div class="screen" id="liveScreen"></div></div>
+  <div>
+    <div class="flowbtns" id="flowBtns"></div>
+    <div class="statebox" id="stateBox"></div>
+    <p class="hint" style="margin-top:10px">Watch inputs in this concept: <b>tap</b> = primary action · <b>Digital Crown</b> = adjust reps / weight, scroll · <b>swipe</b> = switch exercise page · <b>haptic (.notification)</b> = rest complete · <b>side button</b> untouched (system). No keyboard, ever.</p>
+    <p class="hint">Switch direction with the floating bar below, ← → keys, or <span style="font-family:ui-monospace,monospace">?variant=A|B|C</span>. Feedback like “rest screen from C, set screen from A” is exactly what this is for.</p>
+  </div>
+</div>
+
+<h2>2 · Full screen board</h2>
+<p class="sub">Every screen in the flow, in the direction you have selected. Captions note the input and what syncs to iPhone.</p>
+<div class="board" id="board"></div>
+
+<h2>3 · Edge states (same in all directions)</h2>
+<p class="sub">These must not lose a set or invent one. Watch actions queue offline and reconcile by set ID when the iPhone is reachable again.</p>
+<div class="board" id="edges"></div>
+<p class="hint" style="margin-top:18px">Assumptions to confirm in NOTES.md: Watch is a remote for the iPhone’s active workout (option 1) vs. standalone Watch workouts (option 2); whether it runs an HKWorkoutSession (heart rate / always-on); and whether weight editing belongs on the wrist at all.</p>
+
+<div class="switcher"><button id="prevV" aria-label="Previous variant">←</button><span id="vLabel">A — Focus</span><button id="nextV" aria-label="Next variant">→</button></div>
+<script>
+const VARIANTS={
+ A:{name:"A — Focus",principle:"One job per screen. The biggest possible tap target finishes the set; everything else waits a swipe away.",best:"Mid-set with chalky or sweaty hands. Fastest complete-set loop; least to mis-tap.",trade:"You see one set at a time. Looking ahead at the whole workout takes extra swipes."},
+ B:{name:"B — List",principle:"The iPhone workout, shrunk. One crown-scrolled list of exercises and sets with check circles.",best:"Seeing the whole session, jumping between exercises, supersets, fixing an earlier set.",trade:"Densest and slowest under load. Rows are smaller targets; scrolling mid-set is fiddly."},
+ C:{name:"C — Rings",principle:"Fitness-style cards. A progress ring is the hero; swipe sideways between Now / Rest / Summary cards.",best:"Glanceability with the wrist down. Elapsed time and workout progress always readable.",trade:"Completing a set is one level less direct than A. Ring space pushes prescription text smaller."}};
+const $=id=>document.getElementById(id);
+const topbar=(l="Push Day")=>`<div class="trow"><span>${l}</span><span class="clock">9:41</span></div>`;
+const ring=(pct,color="#ff9f0a",size=104)=>{const r=44,c=2*Math.PI*r;return `<svg width="${size}" height="${size}" viewBox="0 0 104 104"><circle cx="52" cy="52" r="${r}" fill="none" stroke="#26262e" stroke-width="11"/><circle cx="52" cy="52" r="${r}" fill="none" stroke="${color}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${c*pct} ${c}" transform="rotate(-90 52 52)"/></svg>`};
+const setDots=(done,total)=>`<span class="setdots">${Array.from({length:total},(_,i)=>`<i class="${i<done?"done":i===done?"now":""}"></i>`).join("")}</span>`;
+function sA(key,L={}){ // Variant A — Focus
+ if(key==="start")return `${topbar("Lift Log")}<div class="grow"><div class="exname">Start workout</div><p class="sec small">Pick a template. Crown scrolls.</p>
+  <button class="listrow" data-go="set"><span class="grow"><span class="n">▶ Push Day</span><br><span class="d">4 exercises · 13 sets</span></span><span class="chip g">Last: Tue</span></button>
+  <button class="listrow"><span class="grow"><span class="n">▶ Pull Day</span><br><span class="d">4 exercises · 12 sets</span></span></button>
+  <button class="listrow"><span class="grow"><span class="n">＋ Empty workout</span><br><span class="d">Build it on iPhone later</span></span></button></div><div class="hint center tiny">Starting here also opens it on iPhone</div>`;
+ if(key==="set")return `${topbar()}<div class="rowline"><span class="chip">EXERCISE 1 OF 4</span><span class="sec small">24:18</span></div>
+  <div class="grow" style="margin-top:8px"><div class="big">Bench<br>Press</div>
+  <div class="presc" style="margin:8px 0 4px">135 <span class="u">lb ×</span> 8</div>
+  <div class="rowline"><span class="sec small">Set 2 of 4</span>${setDots(1,4)}</div>
+  <p class="crownHint" style="margin-top:8px">↕ Crown: adjust reps · tap weight to change</p></div>
+  <button class="cta" data-go="rest">✓ Complete Set</button><div class="dots" style="margin-top:8px"><i class="on"></i><i></i><i></i></div>`;
+ if(key==="adjust")return `${topbar()}<div class="exname">Bench Press · Set 2</div><p class="sec small">Turn the Crown. Only this and later sets change.</p>
+  <div class="grow" style="margin-top:6px"><div class="stepper"><span>WEIGHT</span><b>135 lb</b><span class="plusminus">− ＋</span></div>
+  <div class="stepper"><span>REPS DONE</span><b>8</b><span class="plusminus">− ＋</span></div>
+</div>
+  <button class="cta" data-go="rest">✓ Log 135 × 8</button><button class="cta2" data-go="set">Back</button>`;
+ if(key==="rest")return `${topbar()}<div class="center"><span class="chip o">● REST</span></div>
+  <div class="center grow"><div class="huge" data-restclock style="margin-top:10px">${L.clock||"1:47"}</div>
+  <div class="progress" style="margin:12px 2px"><i style="width:${L.pct??82}%"></i></div>
+  <div class="sec small">Next: Bench Press · Set 3<br><b style="color:#fff">135 lb × 8</b></div></div>
+  <div class="rowline"><button class="cta2" style="margin:0;flex:1" data-act="plus30">+30s</button><button class="cta orange" style="flex:1.2" data-go="set2">Skip ▸</button></div>`;
+ if(key==="restdone")return `${topbar()}<div class="grow"><div class="notif pulse"><div class="rowline"><b>⏰ Rest complete</b><span class="sec tiny">now</span></div>
+  <p class="small" style="margin:4px 0 0">Bench Press · Set 3 — 135 lb × 8. Strong haptic + chime.</p></div>
+  <p class="sec small" style="margin-top:8px">Shows over the watch face. Only one device alerts.</p></div>
+  <button class="cta" data-go="set2">Start Set 3</button><button class="cta2" data-go="rest">+ Rest 0:30 more</button>`;
+ if(key==="upnext")return `${topbar()}<div class="rowline"><span class="chip g">✓ BENCH DONE</span><span class="sec small">9/13 sets</span></div>
+  <div class="grow" style="margin-top:8px"><div class="sec small">UP NEXT</div><div class="big">Overhead<br>Press</div>
+  <div class="presc" style="margin:8px 0 4px">65 <span class="u">lb ×</span> 10</div><div class="sec small">Set 1 of 3 · then Cable Fly + Pushdown (superset A)</div></div>
+  <button class="cta" data-go="set2">Start Exercise</button><div class="dots" style="margin-top:8px"><i></i><i class="on"></i><i></i></div>`;
+ if(key==="finish")return `${topbar()}<div class="exname">Finish Push Day?</div>
+  <div class="grow" style="margin-top:6px"><div class="card"><div class="rowline"><span class="sec small">Duration</span><b>48:12</b></div><div class="rowline"><span class="sec small">Sets done</span><b>13 of 13</b></div><div class="rowline"><span class="sec small">Volume</span><b>9,840 lb</b></div></div>
+  <p class="sec tiny" style="margin-top:6px">Only completed sets save.</p></div>
+  <button class="cta" data-go="saved">Save Workout</button><button class="cta2" data-go="set2">Keep Training</button>`;
+ if(key==="saved")return `${topbar("Lift Log")}<div class="center grow"><div style="font-size:38px;margin-top:14px">✅</div><div class="exname">Workout saved</div>
+  <p class="sec small">Push Day · 48 min · 13 sets<br>Summary is on your iPhone.</p></div>
+  <button class="cta" data-go="start">Done</button>`;
+ if(key==="controls")return `${topbar()}<div class="exname">Workout controls</div><p class="sec small">Swipe-up page, available anytime.</p><div class="grow" style="margin-top:6px">
+  <button class="cta2" style="margin:0 0 7px">⏸ View on iPhone</button><button class="cta orange" data-go="finish" style="margin-bottom:7px">Finish Workout</button>
+  <button class="cta red">Discard Workout…</button><p class="sec tiny" style="margin-top:6px">Discard asks again first.</p></div>`;
+ return "";}
+function sB(key,L={}){ // Variant B — List
+ const row=(n,d,done,now)=>`<button class="listrow" ${now?'style="outline:2px solid #30d158" data-go="rest"':""}><span class="check ${done?"done":""}">${done?"✓":""}</span><span class="grow"><span class="n">${n}</span><br><span class="d">${d}</span></span>${now?'<span class="chip g">TAP ✓</span>':""}</button>`;
+ if(key==="start")return `${topbar("Lift Log")}<div class="exname">Templates</div><div class="grow" style="margin-top:6px">
+  <button class="listrow" data-go="set"><span class="grow"><span class="n">Push Day</span><br><span class="d">Bench · OHP · Fly · Pushdown</span></span><span>›</span></button>
+  <button class="listrow"><span class="grow"><span class="n">Pull Day</span><br><span class="d">Row · Lat Pulldown · Curl</span></span><span>›</span></button>
+  <button class="listrow"><span class="grow"><span class="n">Legs</span><br><span class="d">Squat · RDL · Calf Raise</span></span><span>›</span></button>
+  <button class="listrow"><span class="grow"><span class="n">＋ Empty Workout</span><br><span class="d">No exercises yet</span></span><span>›</span></button></div><div class="crownHint center">↕ Crown scrolls this list</div>`;
+ if(key==="set")return `${topbar()}<div class="rowline"><b>24:18</b><span class="sec small">5 / 13 sets</span><button class="chip" data-go="finish" style="border:0;color:#fff">Finish</button></div>
+  <div class="grow" style="margin-top:6px"><div class="sec tiny" style="margin-bottom:4px">BENCH PRESS</div>
+  ${row("Set 1 · 135 × 8","done",true)}${row("Set 2 · 135 × 8","tap ✓ when finished",false,true)}${row("Set 3 · 135 × 8","",false)}
+  <div class="sec tiny" style="margin:2px 0 4px">OVERHEAD PRESS · 65 × 10 — 3 sets ⌄</div></div><div class="crownHint center">↕ Crown: scroll · tap row name: edit</div>`;
+ if(key==="adjust")return `${topbar()}<div class="exname">Edit Set 2</div><p class="sec small">Bench Press — tap a value, turn Crown.</p>
+  <div class="grow" style="margin-top:6px"><div class="stepper"><span>LB</span><b>135</b><span class="plusminus">⌃⌄</span></div>
+  <div class="stepper"><span>REPS</span><b>8</b><span class="plusminus">⌃⌄</span></div>
+  <div class="stepper"><span>DONE?</span><b>No</b><span class="chip g">tap to ✓</span></div></div>
+  <button class="cta" data-go="rest">✓ Complete &amp; Rest</button><button class="cta2" data-go="set">Back to List</button>`;
+ if(key==="rest")return `${topbar()}<div class="grow"><div class="card" style="background:#241703;border:1px solid #6b4403">
+  <div class="rowline"><span class="chip o">⏱ REST</span><b data-restclock>${L.clock||"1:47"}</b></div>
+  <div class="progress" style="margin:8px 0"><i style="width:${L.pct??82}%"></i></div>
+  <div class="rowline"><span class="sec small">Next: Set 3 · 135 × 8</span><button class="chip" data-go="set2" style="border:0;color:#fff">Skip</button></div></div>
+  <div style="margin-top:7px">${row("Set 2 · 135 × 8","done ✓",true)}${row("Set 3 · 135 × 8","up next",false)}${row("Set 4 · 135 × 8","",false)}</div></div>
+  <p class="sec tiny center">Timer pins to the top of the list — you can keep scrolling.</p>`;
+ if(key==="restdone")return `${topbar()}<div class="grow"><div class="notif pulse"><div class="rowline"><b>⏰ Rest complete</b><span class="sec tiny">now</span></div>
+  <p class="small" style="margin-top:4px">Set 3 is highlighted in your list. Haptic taps your wrist twice.</p></div>
+  <div style="margin-top:8px">${row("Set 3 · 135 × 8","go — tap ✓ after",false,true)}</div></div>
+  <button class="cta2" data-go="rest">Snooze +0:30</button>`;
+ if(key==="upnext")return `${topbar()}<div class="rowline"><b>31:02</b><span class="sec small">9 / 13 sets</span></div><div class="grow" style="margin-top:6px">
+  <div class="sec tiny" style="margin-bottom:4px">✓ BENCH PRESS — 4/4 DONE</div>
+  <div class="sec tiny" style="margin-bottom:4px">OVERHEAD PRESS</div>
+  ${row("Set 1 · 65 × 10","tap ✓ when finished",false,true)}${row("Set 2 · 65 × 10","",false)}
+  <div class="sec tiny" style="margin-top:2px">🔗 SUPERSET A: CABLE FLY + PUSHDOWN ⌄</div></div><div class="crownHint center">List auto-scrolls to the next exercise</div>`;
+ if(key==="finish")return `${topbar()}<div class="exname">Finish workout?</div><div class="grow" style="margin-top:6px">
+  ${row("Save 13 completed sets","48:12 · 9,840 lb",true)}
+  <p class="sec tiny">Incomplete sets are excluded, like iPhone.</p></div>
+  <button class="cta" data-go="saved">Save Workout</button><button class="cta2" data-go="set2">Keep Training</button>`;
+ if(key==="saved")return `${topbar("Lift Log")}<div class="center grow"><div style="font-size:38px;margin-top:14px">✅</div><div class="exname">Saved to History</div><p class="sec small">Push Day · 13 sets<br>Open iPhone for the summary.</p></div><button class="cta" data-go="start">Done</button>`;
+ if(key==="controls")return `${topbar()}<div class="exname">Controls</div><div class="grow" style="margin-top:6px">
+  <button class="listrow" data-go="finish"><span class="grow"><span class="n">🏁 Finish Workout</span><br><span class="d">Save completed sets</span></span></button>
+  <button class="listrow"><span class="grow"><span class="n">📱 Open on iPhone</span><br><span class="d">Add / swap exercises there</span></span></button>
+  <button class="listrow"><span class="grow"><span class="n" style="color:#ff7a70">🗑 Discard Workout</span><br><span class="d">Deletes logged sets</span></span></button></div>`;
+ return "";}
+function sC(key,L={}){ // Variant C — Rings / cards
+ if(key==="start")return `${topbar("Lift Log")}<div class="center"><div class="ringWrap" style="width:84px;height:84px">${ring(.0,"#30d158",84)}<span class="mid"><span style="font-size:26px">🏋️</span></span></div>
+  <div class="exname">Push Day</div><p class="sec small">4 exercises · ~45 min<br>Last done Tuesday</p></div><div class="grow"></div>
+  <button class="cta" data-go="set">▶ Start</button><div class="dots"><i class="on"></i><i></i><i></i><i></i></div>`;
+ if(key==="set")return `${topbar()}<div class="center"><div class="ringWrap">${ring(5/13,"#30d158")}<span class="mid"><b style="font-size:17px">5/13</b><span class="sec tiny">SETS · 24:18</span></span></div>
+  <div class="exname">Bench Press</div><div class="presc">135 <span class="u">lb ×</span> 8 <span class="sec small">· Set 2/4</span></div></div><div class="grow"></div>
+  <button class="cta" data-go="rest">✓ Done — Start Rest</button><div class="dots" style="margin-top:8px"><i class="on"></i><i></i><i></i></div>`;
+ if(key==="adjust")return `${topbar()}<div class="center"><div class="sec small">BENCH PRESS · SET 2</div>
+  <div class="huge" style="margin:8px 0 2px">8 <span style="font-size:15px;color:#9a9aa5">reps</span></div><p class="crownHint">↕ Crown changes reps</p>
+  <div class="card" style="margin-top:10px"><div class="rowline"><span class="sec small">Weight</span><b>135 lb</b></div><div class="rowline"><span class="sec small">Target</span><b>135 × 8</b></div></div></div><div class="grow"></div>
+  <button class="cta" data-go="rest">✓ Log Set</button><button class="cta2" data-go="set">Cancel</button>`;
+ if(key==="rest")return `${topbar()}<div class="center"><div class="ringWrap" style="width:128px;height:128px">${ring((L.pct??82)/100,"#ff9f0a",128)}<span class="mid"><b data-restclock style="font-size:26px">${L.clock||"1:47"}</b><span class="sec tiny">REST</span></span></div>
+  <div class="sec small">Next: Bench Press Set 3<br><b style="color:#fff">135 lb × 8</b> · Get set up now</div></div><div class="grow"></div>
+  <div class="rowline"><button class="cta2" style="margin:0;flex:1" data-act="plus30">+30s</button><button class="cta orange" style="flex:1.2" data-go="set2">Skip ▸</button></div>`;
+ if(key==="restdone")return `${topbar()}<div class="grow"><div class="notif pulse center"><div style="font-size:26px">⏰</div><b>Rest complete</b>
+  <p class="small sec">Set 3 · 135 lb × 8<br>Double haptic. Ring flashes green.</p></div></div>
+  <button class="cta" data-go="set2">Go — Set 3</button><button class="cta2" data-go="rest">+0:30 Rest</button>`;
+ if(key==="upnext")return `${topbar()}<div class="center"><div class="ringWrap" style="width:84px;height:84px">${ring(9/13,"#30d158",84)}<span class="mid"><b style="font-size:17px">9/13</b><span class="sec tiny">SETS</span></span></div>
+  <div class="chip g">✓ Bench complete</div><div class="exname" style="margin-top:6px">Overhead Press</div>
+  <div class="presc">65 <span class="u">lb ×</span> 10</div><p class="sec small">Set 1 of 3</p></div><div class="grow"></div>
+  <button class="cta" data-go="set2">Start</button><div class="dots" style="margin-top:8px"><i class="on"></i><i></i><i></i></div>`;
+ if(key==="finish")return `${topbar()}<div class="center"><div class="ringWrap" style="width:84px;height:84px">${ring(1,"#30d158",84)}<span class="mid"><b style="font-size:17px">13/13</b><span class="sec tiny">48:12</span></span></div>
+  <div class="exname">Finish Push Day?</div><p class="sec small">9,840 lb lifted. Only completed sets are saved.</p></div><div class="grow"></div>
+  <button class="cta" data-go="saved">Save Workout</button><button class="cta2" data-go="set2">Keep Training</button>`;
+ if(key==="saved")return `${topbar("Lift Log")}<div class="center grow"><div class="ringWrap" style="margin-top:8px">${ring(1,"#30d158")}<span class="mid" style="font-size:30px">✓</span></div>
+  <div class="exname">Workout saved</div><p class="sec small">Nice work. Full summary on iPhone.</p></div><button class="cta" data-go="start">Done</button>`;
+ if(key==="controls")return `${topbar()}<div class="center"><div class="exname">Summary card</div>
+  <div class="card" style="text-align:left;margin-top:8px"><div class="rowline"><span class="sec small">Elapsed</span><b>24:18</b></div><div class="rowline"><span class="sec small">Sets</span><b>5 / 13</b></div><div class="rowline"><span class="sec small">Heart rate*</span><b>— bpm</b></div></div>
+</div><div class="grow"></div>
+  <button class="cta orange" data-go="finish">Finish…</button><button class="cta2">Discard…</button>`;
+ return "";}
+const SCREEN={A:sA,B:sB,C:sC};
+const BOARD=[
+ ["start","01 · Start a workout","<span class=how>Tap template</span> → creates the same active workout as iPhone Start Workout. Locked while another workout is active (shows Resume instead)."],
+ ["set","02 · Next set — ready","<span class=how>One tap</span> completes the set at target values and starts rest. This is the screen you live on."],
+ ["adjust","03 · Adjust reps / weight","<span class=how>Digital Crown</span> — log what you actually did (e.g. 7 reps). Completed sets never change; matches iPhone updateSetValues rule."],
+ ["rest","04 · Rest timer running","Counts to a stored deadline (endsAt), so lowering your wrist cannot pause it. <span class=how>+30s / Skip</span>. Shows next set so you can set up."],
+ ["restdone","05 · Rest-complete notification","<span class=how>Haptic + banner</span> over any watch face. One device alerts — Watch when worn, iPhone otherwise. Tap = go to next set."],
+ ["upnext","06 · Exercise done → up next","Auto-advances when the last set of an exercise completes. Superset partners alternate instead of resting to the next exercise."],
+ ["finish","07 · Finish — confirm","Deliberately two taps, never near the Complete button. Warns: only completed sets save. Disabled until ≥1 set is done."],
+ ["saved","08 · Saved","Workout moves to History on iPhone; summary opens there. Watch returns to Start / Resume."],
+ ["controls","Swipe page · Controls","Finish/Discard live here, away from the set loop. Discard always confirms. Editing exercises stays on iPhone in v1."]];
+const EDGES=[
+ ["e-resume","Workout already active","<b>Resume Push Day</b><br><span class=sec>24:18 · 5/13 sets</span>","Started on iPhone? Watch attaches to it. One active workout only — same guard as WorkoutStore."],
+ ["e-offline","iPhone out of reach","<b>✓ Set saved on Watch</b><br><span class=sec>Will sync to iPhone</span>","Completions queue by set ID and apply on reconnect. Rest deadline is local, so the timer still fires. Nothing is dropped or double-counted."],
+ ["e-last","Last set — no timer","<b>Last set done 🎉</b><br><span class=sec>No rest needed</span>","Matches today: no timer when no incomplete set remains. Goes straight to Finish. Also: Rest = Off never shows a timer."],
+ ["e-superset","Superset A1 → A2","<b>Fly ✓ → Pushdown next</b><br><span class=sec>Rest after the pair</span>","Rest starts only after the round completes (proposed — needs your call). Label + colour, never colour alone."]];
+function edgeHTML(id,title,body){return `${topbar("Push Day")}<div class="center grow"><div style="font-size:30px;margin:12px 0 6px">${id==="e-offline"?"⌚":id==="e-resume"?"▶️":id==="e-last"?"🏁":"🔗"}</div><div class="exname">${title}</div><p class="small" style="margin-top:6px">${body}</p></div><button class="cta">Continue</button>`}
+let variant=new URLSearchParams(location.search).get("variant")||"A"; if(!VARIANTS[variant])variant="A";
+let live="start",restLeft=0,restTotal=12,tick=null,completed=5;
+function fmt(s){return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
+function renderAll(){
+ $("vLabel").textContent=VARIANTS[variant].name;
+ const v=VARIANTS[variant];
+ $("variantInfo").innerHTML=`<div><h3>Direction</h3><p><b>${v.name}.</b> ${v.principle}</p></div><div><h3>Best for</h3><p>${v.best}</p></div><div><h3>Trade-off</h3><p>${v.trade}</p></div>`;
+ $("board").innerHTML=BOARD.map(([k,t,c])=>`<div class="frameWrap"><div class="watch"><div class="screen">${SCREEN[variant](k)}</div></div><div class="cap"><b>${t}</b><br>${c}</div></div>`).join("");
+ $("edges").innerHTML=EDGES.map(([id,t,b,c])=>`<div class="frameWrap"><div class="watch"><div class="screen">${edgeHTML(id,t,b)}</div></div><div class="cap"><b>${t}</b><br>${c}</div></div>`).join("");
+ renderLive();}
+function renderLive(){
+ const L=live==="rest"?{clock:fmt(restLeft),pct:Math.round(100*restLeft/restTotal)}:{};
+ $("liveScreen").innerHTML=SCREEN[variant](live==="set2"?"set":live,L)||"";
+ const steps=[["start","Start"],["set","Set ready"],["adjust","Adjust"],["rest","Rest"],["restdone","Rest done"],["finish","Finish"],["saved","Saved"]];
+ $("flowBtns").innerHTML=steps.map(([k,l])=>`<button class="${live===k||(live==="set2"&&k==="set")?"on":""}" data-jump="${k}">${l}</button>`).join("");
+ $("stateBox").textContent=`variant      ${variant} — ${VARIANTS[variant].name}\nscreen       ${live}\nworkout      Push Day (active on iPhone + Watch)\nnext set     Bench Press · Set 2 of 4 · 135 lb × 8\ncompleted    ${completed} / 13 sets\nrest         ${live==="rest"?("endsAt = now + "+restLeft+"s  (demo 12s; real 2:00)"):"—"}\nsync         set completions → iPhone by set ID; queued offline`;
+ if(live==="rest"){clearInterval(tick);tick=setInterval(()=>{restLeft--;if(restLeft<=0){clearInterval(tick);go("restdone")}else{const el=$("liveScreen").querySelector("[data-restclock]");if(el)el.textContent=fmt(restLeft);const bar=$("liveScreen").querySelector(".progress i");if(bar)bar.style.width=(100*restLeft/restTotal)+"%"}},1000)}}
+function go(dest){
+ clearInterval(tick);
+ if(dest==="rest"){completed=Math.min(13,completed+1);restLeft=restTotal}
+ if(dest==="set2")dest="set"; if(dest==="saved")completed=13; if(dest==="start")completed=5;
+ live=dest;renderLive();}
+document.addEventListener("click",e=>{
+ const g=e.target.closest("[data-go]"); if(g&&g.closest("#liveScreen")){go(g.dataset.go);return}
+ const j=e.target.closest("[data-jump]"); if(j){if(j.dataset.jump==="rest"){restLeft=restTotal;live="rest";renderLive()}else go(j.dataset.jump);return}
+ const a=e.target.closest("[data-act]"); if(a&&a.dataset.act==="plus30"&&live==="rest"){restLeft+=5;renderLive()}});
+function setVariant(v){variant=v;history.replaceState(null,"","?variant="+v);renderAll()}
+const order=["A","B","C"];
+$("nextV").onclick=()=>setVariant(order[(order.indexOf(variant)+1)%3]);
+$("prevV").onclick=()=>setVariant(order[(order.indexOf(variant)+2)%3]);
+document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA/.test(e.target.tagName))return;if(e.key==="ArrowRight")$("nextV").click();if(e.key==="ArrowLeft")$("prevV").click()});
+renderAll();
+</script>
+</body></html>

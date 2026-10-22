@@ -6,6 +6,7 @@ struct LiftLogApp: App {
     @State private var store: WorkoutStore
     @State private var restAlerts = RestTimerAlerts()
     @State private var liveActivity = WorkoutLiveActivity()
+    @State private var watchWorkout: WatchWorkoutService
     @State private var backgroundBackup = BackupBackgroundActivity()
     @State private var chatGPT: ChatGPTAccountStore
     @State private var assistant: WorkoutAssistant
@@ -48,6 +49,7 @@ struct LiftLogApp: App {
         accountStore = ChatGPTAccountStore()
         #endif
         _store = State(initialValue: workoutStore)
+        _watchWorkout = State(initialValue: WatchWorkoutService(store: workoutStore))
         _chatGPT = State(initialValue: accountStore)
         let workoutAssistant: WorkoutAssistant
         #if DEBUG
@@ -123,9 +125,13 @@ struct LiftLogApp: App {
                     restAlerts.setActive(scenePhase == .active)
                     restAlerts.synchronize(store.activeWorkout?.restTimer)
                     liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: scenePhase == .active)
+                    watchWorkout.synchronize()
                     store.cloudBackup.scheduleBackup()
                 }
                 .onChange(of: store.activeWorkout?.restTimer) { _, rest in restAlerts.synchronize(rest) }
+                .onChange(of: store.activeWorkout) { _, _ in watchWorkout.synchronize() }
+                .onChange(of: store.templates) { _, _ in watchWorkout.synchronize() }
+                .onChange(of: store.unit) { _, _ in watchWorkout.synchronize() }
                 .onChange(of: store.activeWorkout?.activitySnapshot) { _, snapshot in
                     liveActivity.synchronize(snapshot, isActive: scenePhase == .active)
                 }
@@ -134,6 +140,7 @@ struct LiftLogApp: App {
                     liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: phase == .active)
                     if phase == .active {
                         store.cloudBackup.scheduleBackup()
+                        watchWorkout.synchronize()
                         assistant.refreshProviderAvailability()
                     }
                     else if phase == .background {

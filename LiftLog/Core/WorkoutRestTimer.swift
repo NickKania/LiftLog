@@ -19,14 +19,14 @@ struct WorkoutRestTimer: Codable, Equatable, Identifiable {
         Int(max(0, min(3600, ceil(endsAt.timeIntervalSince(date)))))
     }
 
-    static func updated(previous: WorkoutSession, current: WorkoutSession, now: Date) -> WorkoutRestTimer? {
+    static func updated(previous: WorkoutSession, current: WorkoutSession, now: Date, newRestTimerID: UUID? = nil) -> WorkoutRestTimer? {
         let sets = current.exercises.flatMap(\.sets)
         guard sets.contains(where: { !$0.isCompleted }) else { return nil }
         let incompleteIDs = Set(previous.exercises.flatMap(\.sets).filter { !$0.isCompleted }.map(\.id))
         if let completed = sets.last(where: { $0.isCompleted && incompleteIDs.contains($0.id) }) {
             let duration = current.exercises.first { $0.sets.contains { $0.id == completed.id } }?.restSeconds ?? current.restSeconds
             guard duration > 0 else { return nil }
-            return WorkoutRestTimer(completedSetID: completed.id, endsAt: now.addingTimeInterval(TimeInterval(duration)), durationSeconds: duration)
+            return WorkoutRestTimer(id: newRestTimerID ?? UUID(), completedSetID: completed.id, endsAt: now.addingTimeInterval(TimeInterval(duration)), durationSeconds: duration)
         }
         guard let timer = previous.restTimer, sets.contains(where: { $0.id == timer.completedSetID && $0.isCompleted }) else { return nil }
         return timer

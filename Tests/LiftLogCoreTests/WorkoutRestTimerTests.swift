@@ -198,6 +198,87 @@ final class WorkoutRestTimerTests: XCTestCase {
     }
 
     @MainActor
+    func testExtendRestPersistsDeadlineAndPreservesTimerIdentityAndRestSetting() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        var workout = try start(store, rest: 90)
+        workout.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout))
+        let timer = try XCTUnwrap(store.activeWorkout?.restTimer)
+        let revision = store.revision
+        XCTAssertTrue(store.extendRest(by: 30))
+        let extended = try XCTUnwrap(store.activeWorkout?.restTimer)
+        XCTAssertEqual(extended.endsAt, timer.endsAt.addingTimeInterval(30))
+        XCTAssertEqual(extended.id, timer.id)
+        XCTAssertEqual(extended.completedSetID, timer.completedSetID)
+        XCTAssertEqual(extended.durationSeconds, 120)
+        XCTAssertEqual(store.activeWorkout?.restSeconds, 90)
+        XCTAssertEqual(store.revision, revision + 1)
+        XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout?.restTimer, extended)
+    }
+
+    @MainActor
+    func testExtendRestWithoutWorkoutOrTimerAndNonpositiveDurationsAreNoOps() async throws {
+        let store = WorkoutStore(fileURL: try file())
+        let idleRevision = store.revision
+        XCTAssertFalse(store.extendRest(by: 30))
+        XCTAssertFalse(store.skipRest())
+        XCTAssertEqual(store.revision, idleRevision)
+        var workout = try start(store)
+        let activeRevision = store.revision
+        XCTAssertFalse(store.extendRest(by: 30))
+        XCTAssertFalse(store.skipRest())
+        XCTAssertEqual(store.revision, activeRevision)
+        workout.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout))
+        let resting = store.activeWorkout
+        let restingRevision = store.revision
+        XCTAssertFalse(store.extendRest(by: 0))
+        XCTAssertFalse(store.extendRest(by: -30))
+        XCTAssertEqual(store.activeWorkout, resting)
+        XCTAssertEqual(store.revision, restingRevision)
+    }
+
+    @MainActor
+    func testExtendRestClampsHugeExtensionsToOneHourRemaining() async throws {
+        let store = WorkoutStore(fileURL: try file())
+        var workout = try start(store)
+        workout.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout))
+        let before = Date()
+        XCTAssertTrue(store.extendRest(by: Int.max))
+        let after = Date()
+        let timer = try XCTUnwrap(store.activeWorkout?.restTimer)
+        XCTAssertGreaterThanOrEqual(timer.endsAt, before.addingTimeInterval(3600))
+        XCTAssertLessThanOrEqual(timer.endsAt, after.addingTimeInterval(3600))
+        XCTAssertEqual(timer.remainingSeconds(at: before), 3600)
+        XCTAssertEqual(timer.durationSeconds, 3600)
+    }
+
+    @MainActor
+    func testExtendExpiredDeadlineStartsNewTimerFromNowAndRestoreBlocksWrites() async throws {
+        let store = WorkoutStore(fileURL: try file())
+        var workout = try start(store)
+        workout.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        let original = try XCTUnwrap(store.activeWorkout?.restTimer)
+        store.beginRestore()
+        XCTAssertFalse(store.extendRest(by: 30))
+        XCTAssertEqual(store.activeWorkout?.restTimer, original)
+        store.endRestore()
+        let before = Date()
+        XCTAssertTrue(store.extendRest(by: 30))
+        let after = Date()
+        let restarted = try XCTUnwrap(store.activeWorkout?.restTimer)
+        XCTAssertNotEqual(restarted.id, original.id)
+        XCTAssertEqual(restarted.completedSetID, original.completedSetID)
+        XCTAssertEqual(restarted.durationSeconds, 30)
+        XCTAssertGreaterThanOrEqual(restarted.endsAt, before.addingTimeInterval(30))
+        XCTAssertLessThanOrEqual(restarted.endsAt, after.addingTimeInterval(30))
+        XCTAssertEqual(store.activeWorkout?.restSeconds, 120)
+    }
+
+    @MainActor
     func testInvalidRestDurationsCannotSave() async throws {
         let store = WorkoutStore(fileURL: try file())
         XCTAssertFalse(store.saveTemplate(template(rest: -1)))

@@ -277,7 +277,7 @@ final class WorkoutStore {
     }
 
     @discardableResult
-    func updateActiveWorkout(_ workout: WorkoutSession, now: Date = Date()) -> Bool {
+    func updateActiveWorkout(_ workout: WorkoutSession, now: Date = Date(), newRestTimerID: UUID? = nil) -> Bool {
         guard let activeWorkout, workout.id == activeWorkout.id else {
             return fail(StoreError.invalid("This workout is no longer active."))
         }
@@ -325,7 +325,7 @@ final class WorkoutStore {
             for index in updated.exercises.indices {
                 updated.exercises[index].exercise = Self.register(updated.exercises[index].exercise, in: &next)
             }
-            updated.restTimer = WorkoutRestTimer.updated(previous: activeWorkout, current: updated, now: now)
+            updated.restTimer = WorkoutRestTimer.updated(previous: activeWorkout, current: updated, now: now, newRestTimerID: newRestTimerID)
             next.activeWorkout = updated
             return commit(next)
         } catch { return fail(error) }
@@ -521,8 +521,24 @@ final class WorkoutStore {
 
     @discardableResult
     func skipRest() -> Bool {
-        guard var workout = activeWorkout else { return false }
+        guard var workout = activeWorkout, workout.restTimer != nil else { return false }
         workout.restTimer = nil
+        var next = snapshot
+        next.activeWorkout = workout
+        return commit(next)
+    }
+
+    /// Extends an active deadline with the same identity; expired rest starts a new alert.
+    /// Cap the deadline at one hour from now, matching remainingSeconds' 3600-second cap.
+    @discardableResult
+    func extendRest(by seconds: Int, now: Date = Date(), resultingRestTimerID: UUID? = nil) -> Bool {
+        guard seconds > 0, var workout = activeWorkout, let timer = workout.restTimer else { return false }
+        let expired = timer.endsAt <= now
+        let deadline = min((expired ? now : timer.endsAt).addingTimeInterval(TimeInterval(seconds)), now.addingTimeInterval(3600))
+        guard deadline > timer.endsAt else { return false }
+        let duration = expired ? min(seconds, 3600) : min(3600, workout.restDuration(for: timer) + Int(ceil(deadline.timeIntervalSince(timer.endsAt))))
+        workout.restTimer = WorkoutRestTimer(id: resultingRestTimerID ?? (expired ? UUID() : timer.id),
+                                            completedSetID: timer.completedSetID, endsAt: deadline, durationSeconds: duration)
         var next = snapshot
         next.activeWorkout = workout
         return commit(next)
