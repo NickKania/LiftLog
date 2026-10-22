@@ -163,6 +163,9 @@ final class AssistantInteractionUITests: XCTestCase {
     func testChartAndMarkdownWithLargeTextInDarkMode() throws {
         let app = launchFixture(largeText: true)
         send("Chart my training volume", in: app)
+        let transcript = app.scrollViews.firstMatch
+        XCTAssertGreaterThanOrEqual(transcript.frame.minX, app.frame.minX - 1, "Large assistant controls must not widen the transcript beyond the screen")
+        XCTAssertLessThanOrEqual(transcript.frame.maxX, app.frame.maxX + 1, "The transcript gutter must remain onscreen for scrolling")
         let previous = app.buttons["assistantChartPreviousButton"]
         reveal(previous, in: app)
         previous.tap()

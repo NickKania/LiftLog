@@ -37,7 +37,7 @@
 		<true/>
 	</dict>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Lift Log reads heart rate, active energy, and steps when you load Apple Health, send an Apple Health tag, or include Apple Health in a workout summary. Dashboard readings stay on your device. Readings selected for assistant messages or summaries are sent to OpenAI for that request.</string>
+	<string>Lift Log reads heart rate, active energy, and steps when you load Apple Health, send an Apple Health tag, or include Apple Health in a workout summary. Dashboard readings stay on your device. Readings selected for ChatGPT messages or summaries are sent to OpenAI for that request. Apple Intelligence processes selected readings on your device.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Lift Log uses Apple Health to read selected workout measurements. Lift Log does not save or update data in Apple Health.</string>
 	<key>NSSupportsLiveActivities</key>

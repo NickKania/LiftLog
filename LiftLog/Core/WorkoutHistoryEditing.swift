@@ -32,7 +32,8 @@ enum WorkoutHistoryEditing {
             if let previous {
                 guard entry.exercise == previous.exercise,
                       entry.templateExerciseID == previous.templateExerciseID,
-                      entry.supersetID == previous.supersetID else {
+                      entry.supersetID == previous.supersetID,
+                      entry.restSeconds == previous.restSeconds else {
                     throw ValidationError("Keep the recorded movement and source links. Remove the entry and add a new exercise to correct the movement.")
                 }
             } else if entry.templateExerciseID != nil || entry.supersetID != nil {

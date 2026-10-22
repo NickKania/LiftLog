@@ -77,12 +77,15 @@ struct TemplateExercise: Codable, Equatable, SupersetExercise {
     var exercise: Exercise
     var sets: [TemplateSet]
     var supersetID: UUID?
+    /// Nil inherits the workout default; zero explicitly disables rest.
+    var restSeconds: Int?
 
-    init(id: UUID = UUID(), exercise: Exercise, sets: [TemplateSet] = [TemplateSet()], supersetID: UUID? = nil) {
+    init(id: UUID = UUID(), exercise: Exercise, sets: [TemplateSet] = [TemplateSet()], supersetID: UUID? = nil, restSeconds: Int? = nil) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
         self.supersetID = supersetID
+        self.restSeconds = restSeconds
     }
 
     /// Applies the same weight and target reps to every set, preserving set IDs.

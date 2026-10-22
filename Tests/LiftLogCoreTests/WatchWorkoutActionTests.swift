@@ -25,6 +25,33 @@ final class WatchWorkoutActionTests: XCTestCase {
     }
 
     @MainActor
+    func testWatchCompletionPreservesExerciseRestOverridesAndTimerIdentity() async throws {
+        for duration in [0, 45, 180] {
+            let url = try file()
+            let store = WorkoutStore(fileURL: url)
+            let workout = try start(store)
+            XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, exerciseID: workout.exercises[0].id, restSeconds: duration))
+            let now = Date()
+            let timerID = UUID()
+            let action = WatchAction.completeSet(setID: workout.exercises[0].sets[0].id, weight: 50, reps: 8,
+                                                 completedAt: now, restTimerID: timerID)
+            let mirror = store.watchWorkoutState.applyingOptimistically(action)
+            XCTAssertTrue(store.applyWatchAction(action, now: now))
+            XCTAssertEqual(mirror.active, store.watchWorkoutState.active)
+            if duration == 0 {
+                XCTAssertNil(store.activeWorkout?.restTimer)
+            } else {
+                XCTAssertEqual(store.activeWorkout?.restTimer?.id, timerID)
+                XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, duration)
+                XCTAssertTrue(store.applyWatchAction(.extendRest(workoutID: workout.id, restTimerID: timerID, seconds: 30,
+                                                                requestedAt: now, resultingRestTimerID: timerID), now: now))
+                XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, duration)
+            }
+            XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout, store.activeWorkout)
+        }
+    }
+
+    @MainActor
     func testStartTemplateCopiesPrescriptionAndRejectsUnknownOrAlreadyActiveStart() async throws {
         let store = WorkoutStore(fileURL: try file())
         let revision = store.revision

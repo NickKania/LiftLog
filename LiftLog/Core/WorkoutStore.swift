@@ -221,13 +221,41 @@ final class WorkoutStore {
                 exercises: source?.exercises.map { item in
                     WorkoutExercise(exercise: item.exercise, sets: item.sets.map {
                         WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
-                    }, supersetID: item.supersetID, templateExerciseID: item.id)
+                    }, supersetID: item.supersetID, templateExerciseID: item.id, restSeconds: item.restSeconds)
                 } ?? [],
                 restSeconds: source?.restSeconds ?? 120
             )
             for index in workout.exercises.indices {
                 workout.exercises[index].exercise = Self.register(workout.exercises[index].exercise, in: &next)
             }
+            next.activeWorkout = workout
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    /// Rest changes affect future completions only; any running countdown keeps its deadline.
+    @discardableResult
+    func updateRestSettings(workoutID: UUID, exerciseID: UUID? = nil, restSeconds: Int?) -> Bool {
+        guard var workout = activeWorkout, workout.id == workoutID else {
+            return fail(StoreError.invalid("This workout is no longer active."))
+        }
+        do {
+            if let restSeconds { try Self.validateRest(restSeconds) }
+            if let exerciseID {
+                guard let index = workout.exercises.firstIndex(where: { $0.id == exerciseID }) else {
+                    throw StoreError.invalid("This exercise is no longer in the workout.")
+                }
+                workout.exercises[index].restSeconds = restSeconds
+            } else {
+                guard let restSeconds else { throw StoreError.invalid("Choose a workout rest duration.") }
+                workout.restSeconds = restSeconds
+            }
+            // Give legacy timers a captured duration before changing their fallback setting.
+            if let timer = workout.restTimer, timer.durationSeconds == nil {
+                workout.restTimer = WorkoutRestTimer(id: timer.id, completedSetID: timer.completedSetID,
+                    endsAt: timer.endsAt, durationSeconds: max(1, activeWorkout?.restSeconds ?? 120))
+            }
+            var next = snapshot
             next.activeWorkout = workout
             return commit(next)
         } catch { return fail(error) }
@@ -269,6 +297,8 @@ final class WorkoutStore {
             // Logged values may change; targets remain the prescription originally started.
             for exerciseIndex in updated.exercises.indices {
                 guard let original = activeWorkout.exercises.first(where: { $0.id == updated.exercises[exerciseIndex].id }) else { continue }
+                // Ordinary logging edits must not overwrite a newer rest setting.
+                updated.exercises[exerciseIndex].restSeconds = original.restSeconds
                 // A replacement belongs only to this session, even when its entry ID is reused.
                 updated.exercises[exerciseIndex].templateExerciseID =
                     updated.exercises[exerciseIndex].exercise.id == original.exercise.id ? original.templateExerciseID : nil
@@ -506,7 +536,7 @@ final class WorkoutStore {
         let expired = timer.endsAt <= now
         let deadline = min((expired ? now : timer.endsAt).addingTimeInterval(TimeInterval(seconds)), now.addingTimeInterval(3600))
         guard deadline > timer.endsAt else { return false }
-        workout.restTimer = WorkoutRestTimer(id: resultingRestTimerID ?? (expired ? UUID() : timer.id), completedSetID: timer.completedSetID, endsAt: deadline)
+        workout.restTimer = WorkoutRestTimer(id: resultingRestTimerID ?? (expired ? UUID() : timer.id), completedSetID: timer.completedSetID, endsAt: deadline, durationSeconds: expired ? min(seconds, 3600) : workout.restDuration(for: timer))
         var next = snapshot
         next.activeWorkout = workout
         return commit(next)
@@ -771,6 +801,7 @@ final class WorkoutStore {
         }
         try validateIDs(template.exercises.map(\.id))
         for item in template.exercises {
+            if let rest = item.restSeconds { try validateRest(rest) }
             try validateName(item.exercise.name)
             guard !item.sets.isEmpty else {
                 throw StoreError.invalid("Each template exercise needs at least one set.")
@@ -785,7 +816,8 @@ final class WorkoutStore {
         try validateNotes(workout.notes)
         try validateRest(workout.restSeconds)
         if let timer = workout.restTimer {
-            guard workout.finishedAt == nil, timer.endsAt.timeIntervalSinceReferenceDate.isFinite else {
+            guard workout.finishedAt == nil, timer.endsAt.timeIntervalSinceReferenceDate.isFinite,
+                  timer.durationSeconds.map({ (1...3600).contains($0) }) ?? true else {
                 throw StoreError.invalid("A workout contains an invalid rest timer.")
             }
         }
@@ -799,6 +831,7 @@ final class WorkoutStore {
             throw StoreError.invalid("A workout has an invalid template version reference.")
         }
         for item in workout.exercises {
+            if let rest = item.restSeconds { try validateRest(rest) }
             try validateNotes(item.notes)
             try validateName(item.exercise.name)
             try validateIDs(item.sets.map(\.id))
@@ -888,7 +921,7 @@ final class WorkoutStore {
     nonisolated static func samePrescription(_ left: [TemplateExercise], _ right: [TemplateExercise]) -> Bool {
         guard left.count == right.count, SupersetGrouping.sameMembership(left, right) else { return false }
         return zip(left, right).allSatisfy { lhs, rhs in
-            lhs.exercise == rhs.exercise && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
+            lhs.exercise == rhs.exercise && lhs.restSeconds == rhs.restSeconds && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
                 abs(a.weight - b.weight) <= max(1, abs(a.weight), abs(b.weight)) * 1e-12 && a.targetReps == b.targetReps
             }
         }

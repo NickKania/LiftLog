@@ -194,7 +194,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         let store = WorkoutStore(fileURL: url)
         XCTAssertNil(store.errorMessage)
         XCTAssertTrue(store.setUnit(.kg))
-        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 8)
+        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 9)
     }
 
     @MainActor
@@ -281,4 +281,202 @@ final class WorkoutRestTimerTests: XCTestCase {
         XCTAssertFalse(store.saveTemplate(template(rest: -1)))
         XCTAssertFalse(store.saveTemplate(template(rest: 3601)))
     }
+    @MainActor
+    func testExerciseOverridesVersionIndependentlyAndCopyIntoSelectedSession() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        var plan = template()
+        XCTAssertTrue(store.saveTemplate(plan))
+        plan = try XCTUnwrap(store.templates.first { $0.id == plan.id })
+        let originalVersion = try XCTUnwrap(plan.currentVersion)
+        plan.exercises[0].restSeconds = 30
+        XCTAssertTrue(store.saveTemplate(plan))
+        plan = try XCTUnwrap(store.templates.first { $0.id == plan.id })
+        XCTAssertEqual(plan.versions.count, 2)
+        XCTAssertNil(plan.versions[0].exercises[0].restSeconds)
+        XCTAssertEqual(plan.versions[1].exercises[0].restSeconds, 30)
+        XCTAssertTrue(store.startWorkout(template: plan))
+        XCTAssertEqual(store.activeWorkout?.exercises[0].restSeconds, 30)
+        plan.exercises[0].restSeconds = 0
+        XCTAssertTrue(store.saveTemplate(plan))
+        XCTAssertEqual(store.activeWorkout?.exercises[0].restSeconds, 30)
+        XCTAssertTrue(store.setUnit(.kg))
+        XCTAssertEqual(store.templates.first { $0.id == plan.id }?.exercises[0].restSeconds, 0)
+        XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout?.exercises[0].restSeconds, 30)
+        XCTAssertTrue(store.discardWorkout())
+        XCTAssertTrue(store.startWorkout(template: plan, versionID: originalVersion.id))
+        XCTAssertNil(store.activeWorkout?.exercises[0].restSeconds)
+    }
+
+    @MainActor
+    func testCompletedExerciseDeterminesDurationIncludingDuplicateEntriesAndOff() async throws {
+        let store = WorkoutStore(fileURL: try file())
+        var plan = template(rest: 90)
+        let movement = plan.exercises[0].exercise
+        plan.exercises[0].restSeconds = 30
+        plan.exercises.append(TemplateExercise(exercise: movement, restSeconds: 0))
+        plan.exercises.append(TemplateExercise(exercise: movement))
+        XCTAssertTrue(store.saveTemplate(plan))
+        XCTAssertTrue(store.startWorkout(template: plan))
+        var workout = try XCTUnwrap(store.activeWorkout)
+        workout.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        let timer = try XCTUnwrap(store.activeWorkout?.restTimer)
+        XCTAssertEqual(timer.endsAt, now.addingTimeInterval(30))
+        XCTAssertEqual(timer.durationSeconds, 30)
+        XCTAssertEqual(store.activeWorkout?.activitySnapshot.restInterval?.lowerBound, now)
+        workout = try XCTUnwrap(store.activeWorkout)
+        workout.exercises[1].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        XCTAssertNil(store.activeWorkout?.restTimer, "Completing an Off exercise clears the previous rest")
+        workout = try XCTUnwrap(store.activeWorkout)
+        workout.exercises[2].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        XCTAssertEqual(store.activeWorkout?.restTimer?.endsAt, now.addingTimeInterval(90))
+        XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, restSeconds: 0))
+        workout = try XCTUnwrap(store.activeWorkout)
+        workout.exercises[0].sets[1].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, 30, "Override works even with the workout default Off")
+        workout = try XCTUnwrap(store.activeWorkout)
+        workout.exercises[0].sets[2].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        XCTAssertNil(store.activeWorkout?.restTimer, "The final set never starts rest")
+    }
+
+    @MainActor
+    func testSessionSettingsPreserveCountdownAndStaleLoggingCannotRevertThem() async throws {
+        let store = WorkoutStore(fileURL: try file())
+        var workout = try start(store)
+        let stale = workout
+        workout.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        let timer = try XCTUnwrap(store.activeWorkout?.restTimer)
+        XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, restSeconds: 60))
+        XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, exerciseID: workout.exercises[0].id, restSeconds: 15))
+        XCTAssertEqual(store.activeWorkout?.restTimer, timer)
+        XCTAssertEqual(store.activeWorkout?.activitySnapshot.restInterval?.lowerBound, now)
+        XCTAssertEqual(store.templates.first { $0.id == workout.templateID }?.restSeconds, 120)
+        workout = try XCTUnwrap(store.activeWorkout)
+        workout.restSeconds = stale.restSeconds
+        workout.exercises[0].restSeconds = stale.exercises[0].restSeconds
+        workout.exercises[0].sets[1].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        XCTAssertEqual(store.activeWorkout?.restSeconds, 60)
+        XCTAssertEqual(store.activeWorkout?.exercises[0].restSeconds, 15)
+        XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, 15)
+        XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, exerciseID: workout.exercises[0].id, restSeconds: nil))
+        XCTAssertNil(store.activeWorkout?.exercises[0].restSeconds)
+        XCTAssertEqual(store.activeWorkout?.restTimer?.durationSeconds, 15)
+    }
+
+    @MainActor
+    func testRestSettingsPersistThroughHistoryBackupAndRestoreWithAtomicFailures() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        var workout = try start(store)
+        let id = workout.exercises[0].id
+        let before = store.activeWorkout
+        let db = try SQLiteConnection(url: url)
+        try db.execute("CREATE TRIGGER reject_rest BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END")
+        XCTAssertFalse(store.updateRestSettings(workoutID: workout.id, exerciseID: id, restSeconds: 30))
+        XCTAssertEqual(store.activeWorkout, before)
+        XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout, before)
+        try db.execute("DROP TRIGGER reject_rest")
+        XCTAssertTrue(store.updateRestSettings(workoutID: workout.id, exerciseID: id, restSeconds: 30))
+        workout = try XCTUnwrap(store.activeWorkout)
+        workout.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(workout, now: now))
+        let saved = try XCTUnwrap(store.activeWorkout)
+        let backup = url.deletingLastPathComponent().appendingPathComponent("rest-backup.sqlite")
+        try WorkoutDatabase(url: url).backup(to: backup)
+        XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout, saved)
+        XCTAssertTrue(store.finishWorkout())
+        XCTAssertEqual(store.history[0].exercises[0].restSeconds, 30)
+        try store.restoreDatabase(from: backup)
+        XCTAssertEqual(store.activeWorkout, saved)
+        store.beginRestore()
+        XCTAssertFalse(store.updateRestSettings(workoutID: saved.id, exerciseID: id, restSeconds: nil))
+        store.endRestore()
+        XCTAssertEqual(store.activeWorkout, saved)
+        XCTAssertFalse(store.updateRestSettings(workoutID: UUID(), restSeconds: 30))
+        XCTAssertFalse(store.updateRestSettings(workoutID: saved.id, exerciseID: UUID(), restSeconds: 30))
+        XCTAssertFalse(store.updateRestSettings(workoutID: saved.id, restSeconds: nil))
+        XCTAssertFalse(store.updateRestSettings(workoutID: saved.id, exerciseID: id, restSeconds: -1))
+        XCTAssertFalse(store.updateRestSettings(workoutID: saved.id, exerciseID: id, restSeconds: 3601))
+        var invalid = template()
+        invalid.exercises[0].restSeconds = -1
+        XCTAssertFalse(store.saveTemplate(invalid))
+        invalid.exercises[0].restSeconds = 3601
+        XCTAssertFalse(store.saveTemplate(invalid))
+    }
+
+    func testLegacyExerciseAndTimerJSONInheritWithoutChangingDeadlines() throws {
+        let exercise = template().exercises[0]
+        XCTAssertNil(try JSONDecoder().decode(TemplateExercise.self, from: JSONEncoder().encode(exercise)).restSeconds)
+        let entry = WorkoutExercise(exercise: exercise.exercise)
+        XCTAssertNil(try JSONDecoder().decode(WorkoutExercise.self, from: JSONEncoder().encode(entry)).restSeconds)
+        let timer = WorkoutRestTimer(completedSetID: entry.sets[0].id, endsAt: now)
+        let decoded = try JSONDecoder().decode(WorkoutRestTimer.self, from: JSONEncoder().encode(timer))
+        XCTAssertNil(decoded.durationSeconds)
+        XCTAssertEqual(decoded.endsAt, now)
+        XCTAssertEqual(WorkoutSession(restSeconds: 75).restDuration(for: decoded), 75)
+    }
+
+    func testSchemaEightRemainsReadOnlyAndFailedNineMigrationRollsBack() throws {
+        let url = try file()
+        let database = WorkoutDatabase(url: url)
+        var plan = template()
+        plan.versions = [WorkoutTemplateVersion(number: 1, name: plan.name, exercises: plan.exercises, unit: .lb)]
+        let snapshot = WorkoutSnapshot(templates: [plan], history: [], activeWorkout: WorkoutSession(exercises: [WorkoutExercise(exercise: plan.exercises[0].exercise)]), unit: .lb)
+        try database.save(snapshot)
+        let db = try SQLiteConnection(url: url)
+        try db.execute("ALTER TABLE exercise_entries DROP COLUMN rest_seconds")
+        try db.execute("PRAGMA user_version = 8")
+        try db.execute("CREATE TRIGGER reject_rest BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END")
+        let bytes = try Data(contentsOf: url)
+        XCTAssertEqual(try database.load().templates, snapshot.templates)
+        XCTAssertEqual(try database.load().activeWorkout, snapshot.activeWorkout)
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+        XCTAssertThrowsError(try database.save(snapshot))
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+        XCTAssertEqual(try db.rows("PRAGMA user_version").first?.integer("user_version"), 8)
+        XCTAssertFalse(try db.rows("PRAGMA table_info(exercise_entries)").contains { try $0.text("name") == "rest_seconds" })
+        try db.execute("DROP TRIGGER reject_rest")
+        try database.save(snapshot)
+        XCTAssertEqual(try db.rows("PRAGMA user_version").first?.integer("user_version"), 9)
+        XCTAssertEqual(try database.load().templates, snapshot.templates)
+        XCTAssertEqual(try database.load().activeWorkout, snapshot.activeWorkout)
+    }
+
+    @MainActor
+    func testChangingLegacyTimerSettingsPreservesItsOriginalActivityInterval() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        var workout = try start(store, rest: 90)
+        workout.exercises[0].sets[0].isCompleted = true
+        workout.restTimer = WorkoutRestTimer(completedSetID: workout.exercises[0].sets[0].id, endsAt: now.addingTimeInterval(90))
+        try WorkoutDatabase(url: url).save(WorkoutSnapshot(templates: store.templates, history: [], activeWorkout: workout, unit: .lb))
+        let reloaded = WorkoutStore(fileURL: url)
+        XCTAssertTrue(reloaded.updateRestSettings(workoutID: workout.id, restSeconds: 0))
+        XCTAssertEqual(reloaded.activeWorkout?.restTimer?.endsAt, workout.restTimer?.endsAt)
+        XCTAssertEqual(reloaded.activeWorkout?.restTimer?.durationSeconds, 90)
+        XCTAssertEqual(reloaded.activeWorkout?.activitySnapshot.restInterval?.lowerBound, now)
+    }
+
+    func testReplacementRetainsEntryRestAndHistoryCorrectionsCannotRewriteIt() throws {
+        var plan = template()
+        plan.exercises[0].restSeconds = 30
+        let replacement = try ExerciseReplacement.replacing(plan, expectedEntry: plan.exercises[0], with: ExerciseCatalog.all[1])
+        XCTAssertEqual(replacement.exercises[0].restSeconds, 30)
+        var workout = WorkoutSession(exercises: [WorkoutExercise(exercise: plan.exercises[0].exercise, restSeconds: 30)])
+        let swapped = try ExerciseReplacement.replacing(workout, expectedEntry: workout.exercises[0], with: ExerciseCatalog.all[1])
+        XCTAssertEqual(swapped.exercises[0].restSeconds, 30)
+        workout.finishedAt = workout.startedAt.addingTimeInterval(60)
+        workout.exercises[0].sets[0].isCompleted = true
+        var correction = workout
+        correction.exercises[0].restSeconds = 60
+        XCTAssertThrowsError(try WorkoutHistoryEditing.validated(correction, replacing: workout))
+    }
+
 }

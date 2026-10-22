@@ -64,27 +64,29 @@ struct LiftLogApp: App {
         let summaryStore: WorkoutSummaryStore
         #if DEBUG
         if WorkoutSummaryUITestFixture.isEnabled {
-            summaryStore = WorkoutSummaryUITestFixture.makeStore(store: workoutStore, accounts: accountStore)
+            summaryStore = WorkoutSummaryUITestFixture.makeStore(store: workoutStore, accounts: accountStore, assistant: workoutAssistant)
         } else {
-            summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore)
+            summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore, assistant: workoutAssistant)
         }
         #else
-        summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore)
+        summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore, assistant: workoutAssistant)
         #endif
         accountStore.onConnectionChange = { [weak workoutAssistant, weak summaryStore] in
             workoutAssistant?.accountWillChange()
             summaryStore?.accountWillChange()
         }
+        workoutAssistant.onProviderChange = { [weak summaryStore] in summaryStore?.providerWillChange() }
         _assistant = State(initialValue: workoutAssistant)
         _workoutSummary = State(initialValue: summaryStore)
     }
 
-    private static func makeWorkoutSummary(store: WorkoutStore, accounts: ChatGPTAccountStore) -> WorkoutSummaryStore {
+    private static func makeWorkoutSummary(store: WorkoutStore, accounts: ChatGPTAccountStore, assistant: WorkoutAssistant) -> WorkoutSummaryStore {
         WorkoutSummaryStore(store: store, accessToken: {
             try await accounts.accessToken()
         }, accountIdentity: {
             "\(accounts.currentAccount?.id ?? "none"):\(accounts.revision):\(accounts.canUsePlan)"
-        }, healthDataProvider: AppleHealthDataProvider())
+        }, healthDataProvider: AppleHealthDataProvider(),
+        selectedProvider: { assistant.selectedProvider }, localInferenceClient: AppleFoundationModelsProvider())
     }
 
     private static func makeAssistant(store: WorkoutStore, accounts: ChatGPTAccountStore) -> WorkoutAssistant {
@@ -94,7 +96,7 @@ struct LiftLogApp: App {
             "\(accounts.currentAccount?.id ?? "none"):\(accounts.revision):\(accounts.canUsePlan)"
         }, storageURL: assistantStorageURL,
         archiveAccountIdentity: { accounts.currentAccount?.id },
-        healthDataProvider: AppleHealthDataProvider())
+        healthDataProvider: AppleHealthDataProvider(), appleFoundationModels: AppleFoundationModelsProvider())
     }
 
     private static var assistantStorageURL: URL {
@@ -139,6 +141,7 @@ struct LiftLogApp: App {
                     if phase == .active {
                         store.cloudBackup.scheduleBackup()
                         watchWorkout.synchronize()
+                        assistant.refreshProviderAvailability()
                     }
                     else if phase == .background {
                         assistant.saveChats()

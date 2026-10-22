@@ -31,6 +31,78 @@ final class WorkoutAgentToolsTests: XCTestCase {
         XCTAssertTrue(JSONSerialization.isValidJSONObject(WorkoutAgentTools.definitions))
     }
 
+    @MainActor func testTemplatePaginationAndNameFilterPreserveLegacyArrayAndExactIdentities() throws {
+        let url = file()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = WorkoutStore(fileURL: url)
+        for index in 0..<3 {
+            XCTAssertTrue(store.saveTemplate(WorkoutTemplate(name: "Training \(index)", exercises: [
+                TemplateExercise(exercise: store.exercises[0], sets: [TemplateSet(weight: 100, targetReps: 8)])
+            ])))
+        }
+        let tools = WorkoutAgentTools(store: store)
+        func decoded(_ arguments: [String: Any]) throws -> Any {
+            let output = try tools.execute(name: "get_templates", arguments: json(arguments)).outputJSONString
+            return try JSONSerialization.jsonObject(with: Data(output.utf8))
+        }
+        let legacy = try XCTUnwrap(try decoded([:]) as? [[String: Any]])
+        XCTAssertEqual(legacy.count, store.templates.count)
+        let nullDefaults = try XCTUnwrap(try decoded(["query": NSNull(), "template_id": NSNull(), "limit": NSNull(), "offset": NSNull()]) as? [[String: Any]])
+        XCTAssertEqual(nullDefaults.count, legacy.count)
+        let filtered = try XCTUnwrap(try decoded(["query": "training", "limit": 1, "offset": 1]) as? [String: Any])
+        XCTAssertEqual(filtered["total"] as? Int, 3)
+        XCTAssertEqual(filtered["offset"] as? Int, 1)
+        let page = try XCTUnwrap(filtered["templates"] as? [[String: Any]])
+        XCTAssertEqual(page.count, 1)
+        XCTAssertEqual(page[0]["name"] as? String, "Training 1")
+        let target = try XCTUnwrap(store.templates.first { $0.name == "Training 2" })
+        let exact = try XCTUnwrap(try decoded(["template_id": target.id.uuidString, "limit": 1]) as? [String: Any])
+        let record = try XCTUnwrap((exact["templates"] as? [[String: Any]])?.first)
+        XCTAssertEqual(record["id"] as? String, target.id.uuidString)
+        XCTAssertEqual(record["currentVersionID"] as? String, target.currentVersion?.id.uuidString)
+        for invalid: [String: Any] in [["limit": 0], ["offset": -1], ["query": String(repeating: "A", count: 121)], ["unknown": "field"]] {
+            XCTAssertThrowsError(try decoded(invalid))
+        }
+        XCTAssertThrowsError(try decoded(["query": "Training 2", "template_id": "synthetic_plan_8", "limit": 1])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("retry"))
+            XCTAssertTrue(error.localizedDescription.contains("query"))
+            XCTAssertTrue(error.localizedDescription.contains("OMIT or null template_id"))
+        }
+    }
+
+    @MainActor func testAddOneRepUsesUpdateWithEntryIdentityAndAppOwnedSetIDs() throws {
+        let url = file()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = WorkoutStore(fileURL: url)
+        let tools = WorkoutAgentTools(store: store)
+        let template = try XCTUnwrap(store.templates.first)
+        let version = try XCTUnwrap(template.currentVersion)
+        let entry = try XCTUnwrap(template.exercises.first)
+        func arguments(operation: String, entryID: UUID) -> [String: Any] {
+            ["template_id": template.id.uuidString, "base_version_id": version.id.uuidString, "unit": store.unit.rawValue,
+             "operations": [["operation": operation, "entry_id": entryID.uuidString, "exercise_id": entry.exercise.id.uuidString,
+                "sets": entry.sets.map { ["weight": $0.weight, "reps": $0.targetReps + 1] as [String: Any] }]]]
+        }
+        XCTAssertThrowsError(try tools.execute(name: "propose_template_version", arguments: json(arguments(operation: "add", entryID: entry.exercise.id)))) { error in
+            XCTAssertTrue(error.localizedDescription.contains("NEW EXERCISE"))
+            XCTAssertTrue(error.localizedDescription.contains("operation update"))
+            XCTAssertTrue(error.localizedDescription.contains("ENTRY id"))
+            XCTAssertTrue(error.localizedDescription.contains("never ask the user"))
+        }
+        XCTAssertTrue(tools.pendingProposals.isEmpty)
+        XCTAssertThrowsError(try tools.execute(name: "propose_template_version", arguments: json(arguments(operation: "update", entryID: entry.exercise.id))))
+        let result = try tools.execute(name: "propose_template_version", arguments: json(arguments(operation: "update", entryID: entry.id)))
+        let proposal = try XCTUnwrap(result.proposal)
+        XCTAssertEqual(proposal.status, .pending)
+        XCTAssertEqual(store.templates.first { $0.id == template.id }?.currentVersion?.id, version.id)
+        XCTAssertEqual(proposal.afterTemplate?.exercises.count, template.exercises.count)
+        XCTAssertEqual(proposal.afterTemplate?.exercises.first?.id, entry.id)
+        XCTAssertEqual(proposal.afterTemplate?.exercises.first?.sets.map(\.targetReps), entry.sets.map { $0.targetReps + 1 })
+        XCTAssertEqual(proposal.afterTemplate?.exercises.first?.sets.map(\.id), entry.sets.map(\.id))
+        XCTAssertEqual(try tools.applyProposal(proposal.id).status, .applied)
+        XCTAssertEqual(store.templates.first { $0.id == template.id }?.exercises.first?.sets.map(\.targetReps), entry.sets.map { $0.targetReps + 1 })
+    }
+
     @MainActor func testCreateNeedsReviewAndAppliesExactlyOncePersistently() async throws {
         let url = file()
         let store = WorkoutStore(fileURL: url)

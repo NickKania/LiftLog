@@ -6,11 +6,15 @@ import Foundation
 enum AssistantUITestFixture {
     static var isEnabled: Bool {
         let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("--ui-testing") && arguments.contains("--assistant-ui-fixture")
+        return arguments.contains("--ui-testing")
+            && (arguments.contains("--assistant-ui-fixture") || arguments.contains("--foundation-models-ui-fixture"))
     }
 
     static func makeAccounts() -> ChatGPTAccountStore {
         precondition(isEnabled, "Assistant fixtures require an explicit UI test launch.")
+        if ProcessInfo.processInfo.arguments.contains("--foundation-models-ui-fixture") {
+            return ChatGPTAccountStore(storage: AssistantFixtureCredentialStorage(snapshot: ChatGPTAuthSnapshot()))
+        }
         let tokenJSON = """
         {"id_token":"fixture-identity","access_token":"fixture-access","token_type":"Bearer","expires_in":3600,"scope":"resource.invoke chatgpt.tokens.use.direct"}
         """
@@ -44,10 +48,43 @@ enum AssistantUITestFixture {
         if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
             try? FileManager.default.removeItem(at: archiveURL)
         }
-        return WorkoutAssistant(store: store, accessToken: { "local-ui-fixture-token" },
+        if ProcessInfo.processInfo.arguments.contains("--foundation-models-corrupt-archive-ui-fixture") {
+            do { try Data("Synthetic unreadable chat archive".utf8).write(to: archiveURL, options: .atomic) }
+            catch { preconditionFailure("Could not create the synthetic unreadable archive: \(error.localizedDescription)") }
+        }
+        let assistant = WorkoutAssistant(store: store, accessToken: { "local-ui-fixture-token" },
             transport: AssistantFixtureTransport(exerciseID: exerciseID), storageURL: archiveURL,
             archiveAccountIdentity: { "local-ui-fixture-account" },
-            healthDataProvider: AssistantFixtureHealthDataProvider.shared)
+            healthDataProvider: AssistantFixtureHealthDataProvider.shared,
+            appleFoundationModels: AssistantFixtureFoundationModelsProvider(exerciseID: exerciseID))
+        if ProcessInfo.processInfo.arguments.contains("--foundation-models-ui-fixture"),
+           ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
+            assistant.selectedProvider = .appleFoundationModels
+        }
+        return assistant
+    }
+}
+
+@MainActor
+private final class AssistantFixtureFoundationModelsProvider: AppleFoundationModelsProviding {
+    private let client: ChatGPTInferenceClient
+    var availability: AppleFoundationModelsAvailability {
+        ProcessInfo.processInfo.arguments.contains("--foundation-models-unavailable-ui-fixture") ? .modelNotReady : .available
+    }
+
+    init(exerciseID: UUID) {
+        client = ChatGPTInferenceClient(accessToken: { "synthetic-local-provider" },
+            transport: AssistantFixtureTransport(exerciseID: exerciseID))
+    }
+
+    func models() async throws -> [ChatGPTModel] { AppleFoundationModelsModel.catalog }
+    func respond(model: String, input: [[String: Any]], tools: [[String: Any]], instructions: String,
+                 onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
+        guard availability.isAvailable else { throw AppleFoundationModelsError(availability.explanation) }
+        // Reuse only the in-memory synthetic transport, never URLSession or account tokens.
+        let isTitle = tools.isEmpty && instructions.contains("title")
+        return try await client.respond(model: isTitle ? "gpt-6-luna" : "fixture-model", input: input,
+            tools: tools, instructions: instructions, onText: onText)
     }
 }
 

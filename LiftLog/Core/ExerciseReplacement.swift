@@ -11,7 +11,7 @@ enum ExerciseReplacement {
         updated.exercises[index] = TemplateExercise(
             exercise: exercise,
             sets: expectedEntry.sets.map { TemplateSet(weight: 0, targetReps: $0.targetReps) },
-            supersetID: expectedEntry.supersetID
+            supersetID: expectedEntry.supersetID, restSeconds: expectedEntry.restSeconds
         )
         return updated
     }
@@ -26,7 +26,7 @@ enum ExerciseReplacement {
         updated.exercises[index] = WorkoutExercise(
             exercise: exercise,
             sets: expectedEntry.sets.map { WorkoutSet(weight: 0, reps: $0.reps) },
-            supersetID: expectedEntry.supersetID
+            supersetID: expectedEntry.supersetID, restSeconds: expectedEntry.restSeconds
         )
         return updated
     }

@@ -35,3 +35,7 @@ assistant-chats*.json
 *.dSYM/
 *.xcarchive/
 *.xcresult/
+
+# Screenshots captured for change review and validation
+/artifacts/screenshots/
+/docs/screenshots/

@@ -88,7 +88,7 @@ struct AssistantChatListView: View {
                     Button("Done") { dismiss() }
                         .accessibilityIdentifier("assistantChatListDoneButton")
                 }
-                if accounts.canUsePlan {
+                if assistant.selectedProvider == .chatGPT ? accounts.canUsePlan : assistant.appleFoundationModelsAvailability.isAvailable {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("New chat", systemImage: "square.and.pencil", action: onCreate)
                             .accessibilityIdentifier("assistantChatListNewButton")

@@ -1,5 +1,111 @@
 import SwiftUI
 
+/// Shared provider controls keep Assistant and Settings on the same selection.
+struct AssistantProviderPicker: View {
+    @Environment(WorkoutAssistant.self) private var assistant
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    static let switchingDisclosure = "Switching providers clears unsent questions and tags from every chat. Saved messages stay separate for each provider."
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            providerMenu
+            AssistantProviderStorageNotice()
+        }
+    }
+
+    private var providerMenu: some View {
+        Menu {
+            ForEach(AssistantProvider.allCases) { provider in
+                Button {
+                    assistant.selectedProvider = provider
+                } label: {
+                    if assistant.selectedProvider == provider {
+                        Label(provider.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(provider.displayName)
+                    }
+                }
+            }
+        } label: {
+            HStack(alignment: .center, spacing: 8) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Provider").font(.caption).foregroundStyle(.secondary)
+                        Text(assistant.selectedProvider.displayName)
+                    }
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Provider").foregroundStyle(.primary)
+                    Spacer(minLength: 8)
+                    Text(assistant.selectedProvider.displayName)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption).accessibilityHidden(true)
+            }
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Provider, \(assistant.selectedProvider.displayName)")
+        .accessibilityValue(assistant.selectedProvider.displayName)
+        .accessibilityIdentifier("assistantProviderPicker")
+        .accessibilityHint(Self.switchingDisclosure)
+    }
+}
+
+/// Every provider control reports the same guarded chat-storage failure.
+struct AssistantProviderStorageNotice: View {
+    @Environment(WorkoutAssistant.self) private var assistant
+
+    var body: some View {
+        if let error = assistant.storageErrorMessage {
+            Label {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Assistant changes could not be saved").font(.headline)
+                    Text(error).font(.subheadline).foregroundStyle(.secondary)
+                    Text("Provider changes require saving chats. Resolve the storage error, then try choosing the provider again.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "externaldrive.badge.exclamationmark")
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("assistantProviderStorageError")
+        }
+    }
+}
+
+struct AssistantProviderSettingsView: View {
+    @Environment(WorkoutAssistant.self) private var assistant
+
+    var body: some View {
+        Section {
+            AssistantProviderPicker()
+            if assistant.selectedProvider == .appleFoundationModels {
+                Label(assistant.appleFoundationModelsAvailability.isAvailable ? "Available on this iPhone" : "On-device assistant unavailable",
+                      systemImage: assistant.appleFoundationModelsAvailability.isAvailable ? "checkmark.circle" : "exclamationmark.circle")
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(assistant.appleFoundationModelsAvailability.explanation)
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("assistantProviderAvailability")
+                Button("Check availability") { assistant.refreshProviderAvailability() }
+                    .accessibilityIdentifier("assistantRefreshAvailabilityButton")
+            }
+        } header: {
+            Text("Assistant provider")
+        } footer: {
+            Text((assistant.selectedProvider == .appleFoundationModels
+                 ? "Apple’s Foundation Models run on this iPhone with Apple Intelligence. Ask about workouts, create charts, review proposed changes, and generate workout summaries, offline and without a ChatGPT account. Questions and selected data stay on this device. Lift Log never switches to ChatGPT automatically."
+                 : "Uses your eligible ChatGPT plan. Submitted questions and relevant workout data are sent to OpenAI. Apple Intelligence is a separate on-device option.") + " " + AssistantProviderPicker.switchingDisclosure)
+                .accessibilityIdentifier("assistantProviderDisclosure")
+        }
+    }
+}
+
 /// Form sections reused in app Settings and the Assistant account sheet.
 struct ChatGPTAccountSettingsView: View {
     @Environment(ChatGPTAccountStore.self) private var accounts

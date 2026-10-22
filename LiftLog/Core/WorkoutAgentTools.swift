@@ -51,8 +51,27 @@ final class WorkoutAgentTools {
             return try result(Overview(unit: store.unit, activeWorkout: store.activeWorkout,
                                        templateCount: store.templates.count, completedWorkoutCount: store.history.count))
         case "get_templates":
-            try keys(args, allowed: [])
-            return try result(store.templates.map { WorkoutAgentTemplateSnapshot(template: $0, unit: store.unit) })
+            try keys(args, allowed: ["query", "template_id", "limit", "offset"])
+            // Preserve the original unpaginated array for existing callers. New
+            // filters/pagination opt into an explicit page with a matching total.
+            if args.values.allSatisfy({ isNull($0) }) {
+                return try result(store.templates.map { WorkoutAgentTemplateSnapshot(template: $0, unit: store.unit) })
+            }
+            let query = (try optionalString(args, "query") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard query.count <= 120 else { throw invalid("Template search text is too long.") }
+            let templateID: UUID?
+            do { templateID = try optionalUUID(args, "template_id") }
+            catch {
+                throw invalid("template_id must be an exact template ID supplied by the app. To search by name, retry with the name in query and OMIT or null template_id; do not ask the user for a UUID when a name search is available.")
+            }
+            let limit = try integer(args, "limit", default: 3, range: 1...100)
+            let offset = try integer(args, "offset", default: 0, range: 0...Int.max)
+            let matches = store.templates.filter {
+                (templateID == nil || $0.id == templateID) && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query))
+            }
+            return try result(TemplatesPage(templates: matches.dropFirst(offset).prefix(limit).map {
+                WorkoutAgentTemplateSnapshot(template: $0, unit: store.unit)
+            }, total: matches.count, offset: offset))
         case "get_template_versions":
             try keys(args, allowed: ["template_id", "limit", "offset"])
             let templateID = try uuid(args, "template_id")
@@ -146,7 +165,9 @@ final class WorkoutAgentTools {
         let entryID = try optionalUUID(args, "entry_id")
         let inputUnit = try unit(args, "unit")
         if operation == "add" {
-            guard entryID == nil else { throw invalid("Adding an exercise must not specify an existing entry ID.") }
+            guard entryID == nil else {
+                throw invalid("operation add creates a NEW EXERCISE and requires null entry_id. To increase reps/weight use operation update with the existing exercise ENTRY id, not catalog exercise.id or set.id. The app generates new set IDs; never ask the user for them.")
+            }
         } else if entryID == nil { throw invalid("Updating or removing an exercise requires its entry ID.") }
         if operation == "remove" {
             guard isNull(args["sets"]), isNull(args["exercise_id"]) else { throw invalid("Removing an entry does not accept a replacement exercise or sets.") }
@@ -163,6 +184,7 @@ final class WorkoutAgentTools {
                     var entry = try templateEntry(args, inputUnit: inputUnit, outputUnit: store.unit)
                     entry.id = after.exercises[index].id
                     entry.supersetID = after.exercises[index].supersetID
+                    entry.restSeconds = after.exercises[index].restSeconds
                     for setIndex in entry.sets.indices where after.exercises[index].sets.indices.contains(setIndex) {
                         entry.sets[setIndex].id = after.exercises[index].sets[setIndex].id
                     }
@@ -189,6 +211,7 @@ final class WorkoutAgentTools {
                 replacement.id = after.exercises[index].id
                 let existing = after.exercises[index]
                 replacement.supersetID = existing.supersetID
+                replacement.restSeconds = existing.restSeconds
                 if existing.exercise.id == replacement.exercise.id {
                     replacement.templateExerciseID = existing.templateExerciseID
                     for setIndex in replacement.sets.indices where existing.sets.indices.contains(setIndex) {
@@ -208,7 +231,7 @@ final class WorkoutAgentTools {
     private func workoutEntry(_ entry: TemplateExercise) -> WorkoutExercise {
         WorkoutExercise(exercise: entry.exercise, sets: entry.sets.map {
             WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
-        }, supersetID: entry.supersetID)
+        }, supersetID: entry.supersetID, restSeconds: entry.restSeconds)
     }
 
     private func exerciseEntries(_ args: [String: Any], inputUnit: WeightUnit, outputUnit: WeightUnit) throws -> [TemplateExercise] {
@@ -355,6 +378,7 @@ final class WorkoutAgentTools {
     private struct Overview: Encodable { let unit: WeightUnit; let activeWorkout: WorkoutSession?; let templateCount: Int; let completedWorkoutCount: Int }
     private struct HistoryPage: Encodable { let workouts: [WorkoutSession]; let total: Int; let offset: Int }
     private struct CatalogPage: Encodable { let exercises: [Exercise]; let total: Int; let offset: Int }
+    private struct TemplatesPage: Encodable { let templates: [WorkoutAgentTemplateSnapshot]; let total: Int; let offset: Int }
     private struct TemplateVersionsPage: Encodable {
         let templateID: UUID
         let currentVersionID: UUID?

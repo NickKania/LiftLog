@@ -64,6 +64,38 @@ final class AssistantChatTitleGeneratorTests: XCTestCase {
         }
         XCTAssertTrue(transport.requests.isEmpty)
     }
+
+    @MainActor
+    func testLocalMissingModelAndAvailabilityErrorsNeverMentionChatGPTOrLuna() async throws {
+        let client = TitleLocalClient()
+        for available in [true, false] {
+            client.availability = available ? .available : .modelNotReady
+            do {
+                _ = try await AssistantChatTitleGenerator.generate(client: client,
+                    models: available ? [model("unrelated-model")] : AppleFoundationModelsModel.catalog,
+                    messages: [], provider: .appleFoundationModels)
+                XCTFail("An unavailable local title model must not start inference")
+            } catch {
+                XCTAssertFalse(error.localizedDescription.contains("ChatGPT"))
+                XCTAssertFalse(error.localizedDescription.contains("Luna"))
+                XCTAssertTrue(error.localizedDescription.contains("Apple"))
+                XCTAssertTrue(error.localizedDescription.contains("rename"))
+            }
+        }
+        XCTAssertEqual(client.requestCount, 0)
+    }
+}
+
+@MainActor
+private final class TitleLocalClient: AppleFoundationModelsProviding {
+    var availability: AppleFoundationModelsAvailability = .available
+    var requestCount = 0
+    func models() async throws -> [ChatGPTModel] { AppleFoundationModelsModel.catalog }
+    func respond(model: String, input: [[String: Any]], tools: [[String: Any]], instructions: String,
+                 onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
+        requestCount += 1
+        throw AppleFoundationModelsError("Unexpected title request")
+    }
 }
 
 private final class TitleInferenceTransport: ChatGPTInferenceTransport {

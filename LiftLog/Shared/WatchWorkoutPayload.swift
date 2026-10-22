@@ -22,6 +22,7 @@ struct WatchExerciseState: Codable, Equatable, Identifiable, Sendable {
     let name: String
     let supersetID: UUID?
     let sets: [WatchSetState]
+    var restSeconds: Int? = nil
 }
 
 struct WatchWorkoutState: Codable, Equatable, Sendable {
@@ -153,9 +154,10 @@ extension WatchWorkoutState {
                 guard !set.isCompleted else { return set }
                 return .init(id: set.id, weight: weight, reps: reps, targetWeight: set.targetWeight,
                              targetReps: set.targetReps, isCompleted: set.id == setID)
-            })
-            if active.restSeconds > 0 && exercises.contains(where: { $0.sets.contains { !$0.isCompleted } }) {
-                endsAt = completedAt.addingTimeInterval(TimeInterval(active.restSeconds))
+            }, restSeconds: exercise.restSeconds)
+            let duration = exercise.restSeconds ?? active.restSeconds
+            if duration > 0 && exercises.contains(where: { $0.sets.contains { !$0.isCompleted } }) {
+                endsAt = completedAt.addingTimeInterval(TimeInterval(duration))
                 timerID = restTimerID
             } else {
                 endsAt = nil
@@ -169,7 +171,7 @@ extension WatchWorkoutState {
                 guard set.id == setID else { return set }
                 return .init(id: set.id, weight: set.weight, reps: set.reps, targetWeight: set.targetWeight,
                              targetReps: set.targetReps, isCompleted: false)
-            })
+            }, restSeconds: exercise.restSeconds)
             // The payload has no completedSetID for the timer. Conservatively clear the local
             // alert on undo; the phone restores a still-valid timer in its next snapshot.
             endsAt = nil

@@ -15,7 +15,7 @@ extension WorkoutStore {
                     WatchSetState(id: set.id, weight: set.weight, reps: set.reps,
                                   targetWeight: set.targetWeight, targetReps: set.targetReps,
                                   isCompleted: set.isCompleted)
-                })
+                }, restSeconds: exercise.restSeconds)
             })
         }, unitRaw: (activeWorkout?.unit ?? unit).rawValue, revision: revision)
     }

@@ -5,6 +5,7 @@ let chatGPTUsageURL = URL(string: "https://chatgpt.com/settings/usage")!
 struct AssistantView: View {
     @Environment(ChatGPTAccountStore.self) private var accounts
     @Environment(WorkoutAssistant.self) private var assistant
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("liftlog.assistant.welcomeShown") private var welcomeShown = false
     @State private var composer = ""
     @State private var showAccountSettings = false
@@ -17,6 +18,7 @@ struct AssistantView: View {
     @State private var restoreComposerAfterReferencePicker = false
     @State private var showChats = false
     @State private var drafts: [UUID: ChatDraft] = [:]
+    @State private var draftProvider: AssistantProvider?
     @FocusState private var composerFocused: Bool
 
     private struct ChatDraft {
@@ -25,20 +27,40 @@ struct AssistantView: View {
     }
 
     private var accountIdentity: String {
-        "\(accounts.currentAccount?.id ?? "none"):\(accounts.currentAccount?.isConnected ?? false):\(accounts.canUsePlan)"
+        if assistant.selectedProvider == .appleFoundationModels { return AssistantProvider.appleFoundationModels.rawValue }
+        return "\(accounts.currentAccount?.id ?? "none"):\(accounts.currentAccount?.isConnected ?? false):\(accounts.canUsePlan)"
+    }
+
+    private var canUseProvider: Bool {
+        assistant.selectedProvider == .chatGPT ? accounts.canUsePlan : assistant.appleFoundationModelsAvailability.isAvailable
+    }
+
+    private var scrollsProviderControls: Bool {
+        dynamicTypeSize.isAccessibilitySize || assistant.storageErrorMessage != nil
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if accounts.canUsePlan {
-                modelBar
+            if !scrollsProviderControls {
+                providerBar
+            }
+            if canUseProvider {
+                if !scrollsProviderControls { modelBar }
                 transcript
                     .id(assistant.selectedChatID)
                 composerBar
             } else if !assistant.messages.isEmpty {
                 transcript
                     .id(assistant.selectedChatID)
-                ChatGPTSignInButton().padding()
+                if assistant.selectedProvider == .chatGPT {
+                    ChatGPTSignInButton().padding()
+                } else {
+                    Button("Check availability") { assistant.refreshProviderAvailability() }
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("assistantRefreshAvailabilityButton")
+                }
+            } else if assistant.selectedProvider == .appleFoundationModels {
+                localUnavailableView
             } else {
                 connectionView
             }
@@ -55,7 +77,7 @@ struct AssistantView: View {
                 .labelStyle(.iconOnly)
                 .accessibilityIdentifier("assistantChatsButton")
             }
-            if accounts.canUsePlan {
+            if canUseProvider {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("New chat", systemImage: "square.and.pencil") { startNewChat() }
                         .labelStyle(.iconOnly)
@@ -63,7 +85,7 @@ struct AssistantView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("ChatGPT Account", systemImage: "person.crop.circle") { showAccountSettings = true }
+                Button("Assistant settings", systemImage: "gearshape") { showAccountSettings = true }
                     .labelStyle(.iconOnly)
                     .accessibilityIdentifier("assistantAccountButton")
             }
@@ -79,8 +101,11 @@ struct AssistantView: View {
         }
         .sheet(isPresented: $showAccountSettings) {
             NavigationStack {
-                Form { ChatGPTAccountSettingsView() }
-                    .navigationTitle("ChatGPT Account")
+                Form {
+                    AssistantProviderSettingsView()
+                    ChatGPTAccountSettingsView()
+                }
+                    .navigationTitle("Assistant Settings")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
@@ -103,12 +128,13 @@ struct AssistantView: View {
         }
         .sheet(isPresented: $showReferencePicker, onDismiss: {
             referenceMentionDraft = nil
-            if restoreComposerAfterReferencePicker, accounts.canUsePlan, !assistant.isWorking {
+            if restoreComposerAfterReferencePicker, canUseProvider, !assistant.isWorking {
                 composerFocused = true
             }
             restoreComposerAfterReferencePicker = false
         }) {
             AssistantReferencePicker(
+                provider: assistant.selectedProvider,
                 references: assistant.availableReferences,
                 selectedReferences: selectedReferences.map(currentReference),
                 isDisabled: assistant.isWorking,
@@ -129,12 +155,27 @@ struct AssistantView: View {
                 drafts = [:]
             }
             previousAccountIdentity = accountIdentity
+            draftProvider = assistant.selectedProvider
             presentWelcomeIfNeeded()
+        }
+        .onChange(of: assistant.selectedProvider) { _, provider in
+            composerFocused = false
+            clearDraft()
+            drafts = [:]
+            draftProvider = provider
+            proposalError = nil
+            showWelcome = false
         }
         .onChange(of: showAccountSettings) { _, isPresented in
             if !isPresented { presentWelcomeIfNeeded() }
         }
         .onChange(of: assistant.selectedChatID) { oldID, newID in
+            guard draftProvider == assistant.selectedProvider else {
+                clearDraft()
+                drafts = [:]
+                draftProvider = assistant.selectedProvider
+                return
+            }
             if let oldID { drafts[oldID] = ChatDraft(text: composer, references: selectedReferences) }
             composerFocused = false
             clearDraft()
@@ -161,7 +202,7 @@ struct AssistantView: View {
     }
 
     private func presentWelcomeIfNeeded() {
-        guard accounts.canUsePlan, !welcomeShown, !showAccountSettings else { return }
+        guard assistant.selectedProvider == .chatGPT, accounts.canUsePlan, !welcomeShown, !showAccountSettings else { return }
         showWelcome = true
         welcomeShown = true
     }
@@ -183,64 +224,113 @@ struct AssistantView: View {
         assistant.availableReferences.first { $0.key == reference.key } ?? reference
     }
 
+    private var localUnavailableView: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                if scrollsProviderControls { providerBar }
+                VStack(alignment: .leading, spacing: 20) {
+                    AssistantNotice(title: "On-device assistant unavailable",
+                                    message: assistant.appleFoundationModelsAvailability.explanation,
+                                    systemImage: "iphone")
+                        .accessibilityIdentifier("assistantLocalUnavailableNotice")
+                    Text("Apple’s Foundation Models use Apple Intelligence on a supported iPhone with iOS 26 or later. When available, questions and selected data are processed on this device, offline and without a ChatGPT account.")
+                        .foregroundStyle(.secondary)
+                    Button("Check availability") { assistant.refreshProviderAvailability() }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("assistantRefreshAvailabilityButton")
+                    Text("You can choose ChatGPT above to use an eligible account. Lift Log never switches providers automatically. Workout logging and history remain available offline.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                .padding(20)
+            }
+        }
+    }
+
     private var connectionView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 36)).foregroundStyle(.blue)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Your training, in perspective.").font(.title2.bold())
-                    Text("Ask about your workout history, see your progress, or review a suggested change to your routine.")
-                        .foregroundStyle(.secondary)
-                }
-                VStack(alignment: .leading, spacing: 14) {
-                    Label("Grounded in your recorded workouts", systemImage: "chart.xyaxis.line")
-                    Label("Review changes before applying them", systemImage: "checkmark.shield")
-                    Label("Uses your eligible ChatGPT plan", systemImage: "person.crop.circle.badge.checkmark")
-                }.font(.subheadline)
-                Text("Your submitted question and relevant workout data are shared with OpenAI. Apple Health is included only when you select a Health tag using @ and send that message. Workout logging stays on your device and works offline.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("assistantPrivacyDisclosure")
-                ChatGPTSignInButton()
-                if let error = accounts.errorMessage {
-                    AssistantNotice(title: "Connection unavailable", message: error, systemImage: "exclamationmark.circle")
-                }
-                Text("Charts are available. General image generation is unavailable through the ChatGPT plan preview.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }.padding(24)
+            VStack(spacing: 0) {
+                if scrollsProviderControls { providerBar }
+                VStack(alignment: .leading, spacing: 24) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 36)).foregroundStyle(.blue)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Your training, in perspective.").font(.title2.bold())
+                        Text("Ask about your workout history, see your progress, or review a suggested change to your routine.")
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label("Grounded in your recorded workouts", systemImage: "chart.xyaxis.line")
+                        Label("Review changes before applying them", systemImage: "checkmark.shield")
+                        Label("Uses your eligible ChatGPT plan", systemImage: "person.crop.circle.badge.checkmark")
+                    }.font(.subheadline)
+                    Text("Your submitted question and relevant workout data are shared with OpenAI. Apple Health is included only when you select a Health tag using @ and send that message. Workout logging stays on your device and works offline.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("assistantPrivacyDisclosure")
+                    ChatGPTSignInButton()
+                    if let error = accounts.errorMessage {
+                        AssistantNotice(title: "Connection unavailable", message: error, systemImage: "exclamationmark.circle")
+                    }
+                    Text("Charts are available. General image generation is unavailable through the ChatGPT plan preview.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }.padding(24)
+            }
         }
     }
 
     private var modelBar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                planStatus
-                Spacer(minLength: 8)
-                modelPicker
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                stackedModelControls
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        planStatus
+                        Spacer(minLength: 8)
+                        if assistant.selectedProvider == .chatGPT || assistant.models.isEmpty { modelPicker }
+                    }
+                    stackedModelControls
+                }
             }
-            VStack(alignment: .leading, spacing: 4) {
-                planStatus
-                modelPicker
-            }.frame(maxWidth: .infinity, alignment: .leading)
         }
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .padding(.horizontal, 16).padding(.vertical, 2)
         .background(Color(.secondarySystemGroupedBackground))
     }
 
-    private var planStatus: some View {
-        HStack(spacing: 4) {
-            Label("ChatGPT plan", systemImage: "checkmark.seal.fill")
-                .font(.caption.weight(.semibold)).foregroundStyle(.blue)
-                .fixedSize()
-                .accessibilityIdentifier("assistantPlanBadge")
-            Link(destination: chatGPTUsageURL) {
-                Image(systemName: "gauge.with.dots.needle.33percent")
-                    .frame(minWidth: 44, minHeight: 44)
+    private var stackedModelControls: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            planStatus
+            if assistant.selectedProvider == .chatGPT || assistant.models.isEmpty { modelPicker }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var providerBar: some View {
+        AssistantProviderPicker()
+            .padding(.horizontal, 16)
+            .background(Color(.secondarySystemGroupedBackground))
+    }
+
+    @ViewBuilder private var planStatus: some View {
+        if assistant.selectedProvider == .appleFoundationModels {
+            Label("On-device · Works offline", systemImage: "iphone")
+                .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 8)
+                .accessibilityIdentifier("assistantOnDeviceBadge")
+        } else {
+            HStack(spacing: 4) {
+                Label("ChatGPT plan", systemImage: "checkmark.seal.fill")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.blue)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("assistantPlanBadge")
+                Link(destination: chatGPTUsageURL) {
+                    Image(systemName: "gauge.with.dots.needle.33percent")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel("Manage usage in ChatGPT")
+                .accessibilityIdentifier("assistantPlanManageUsageLink")
             }
-            .accessibilityLabel("Manage usage in ChatGPT")
-            .accessibilityIdentifier("assistantPlanManageUsageLink")
         }
     }
 
@@ -249,16 +339,32 @@ struct AssistantView: View {
             if assistant.isLoadingModels {
                 ProgressView().accessibilityLabel("Loading available models")
             } else if !assistant.models.isEmpty {
-                Picker("Model", selection: Binding(get: { assistant.selectedModel }, set: { assistant.selectedModel = $0 })) {
-                    ForEach(assistant.models) { model in Text(model.displayName).tag(model.slug) }
+                Menu {
+                    ForEach(assistant.models) { model in
+                        Button {
+                            assistant.selectedModel = model.slug
+                        } label: {
+                            if model.slug == assistant.selectedModel {
+                                Label(model.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(model.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(selectedModelName)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption).accessibilityHidden(true)
+                    }
+                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
-                .pickerStyle(.menu)
                 .font(.subheadline)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(minHeight: 44)
                 .disabled(assistant.isWorking)
+                .accessibilityLabel("Model, \(selectedModelName)")
+                .accessibilityValue(selectedModelName)
                 .accessibilityIdentifier("assistantModelPicker")
             } else {
                 Button("Reload models") { Task { await assistant.refreshModels() } }
@@ -268,30 +374,46 @@ struct AssistantView: View {
         }
     }
 
+    private var selectedModelName: String {
+        assistant.models.first { $0.slug == assistant.selectedModel }?.displayName ?? assistant.selectedModel
+    }
+
     private var transcript: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
-                    if let error = assistant.storageErrorMessage {
-                        AssistantNotice(title: "Chats could not be saved", message: error, systemImage: "externaldrive.badge.exclamationmark")
+                VStack(spacing: 0) {
+                    if scrollsProviderControls {
+                        // Large controls stay fully sized and scroll out of the way
+                        // instead of reserving most of a small phone's viewport.
+                        providerBar
+                        if canUseProvider { modelBar }
                     }
-                    if assistant.messages.isEmpty {
-                        emptyTranscript
-                    }
-                    ForEach(assistant.messages) { message in
-                        messageView(message)
-                    }
-                    if let error = assistant.errorMessage {
-                        VStack(alignment: .leading, spacing: 12) {
-                            AssistantNotice(title: assistant.usageLimitReached ? "ChatGPT usage limit reached" : "Assistant unavailable", message: error, systemImage: "exclamationmark.circle")
-                            if assistant.usageLimitReached {
-                                Link("Manage usage in ChatGPT", destination: chatGPTUsageURL)
-                                    .accessibilityIdentifier("assistantManageUsageLink")
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        if assistant.selectedProvider == .appleFoundationModels, !assistant.appleFoundationModelsAvailability.isAvailable {
+                            AssistantNotice(title: "On-device assistant unavailable",
+                                            message: assistant.appleFoundationModelsAvailability.explanation,
+                                            systemImage: "iphone")
+                                .accessibilityIdentifier("assistantLocalUnavailableNotice")
+                        }
+                        if assistant.messages.isEmpty {
+                            emptyTranscript
+                        }
+                        ForEach(assistant.messages) { message in
+                            messageView(message)
+                        }
+                        if let error = assistant.errorMessage, error != assistant.storageErrorMessage {
+                            VStack(alignment: .leading, spacing: 12) {
+                                AssistantNotice(title: assistant.usageLimitReached ? "ChatGPT usage limit reached" : "Assistant unavailable", message: error, systemImage: "exclamationmark.circle")
+                                    .accessibilityIdentifier("assistantRequestErrorNotice")
+                                if assistant.usageLimitReached {
+                                    Link("Manage usage in ChatGPT", destination: chatGPTUsageURL)
+                                        .accessibilityIdentifier("assistantManageUsageLink")
+                                }
                             }
                         }
-                    }
-                    Color.clear.frame(height: 1).id("assistantBottom")
-                }.padding(.horizontal, 20).padding(.vertical, 12)
+                        Color.clear.frame(height: 1).id("assistantBottom")
+                    }.padding(.horizontal, 20).padding(.vertical, 12)
+                }
             }
             .scrollDismissesKeyboard(.interactively)
             .task(id: assistant.isWorking) {
@@ -314,7 +436,7 @@ struct AssistantView: View {
             Text("What would you like to learn?").font(.title3.bold())
             Text("Ask about completed workouts, request a progress chart, or propose a routine adjustment.")
                 .foregroundStyle(.secondary)
-            ForEach(["Chart my training volume", "How has my bench press progressed?", "Help me adjust my next workout"], id: \.self) { question in
+            ForEach(suggestedQuestions, id: \.self) { question in
                 Button {
                     composer = question
                     composerFocused = true
@@ -327,8 +449,11 @@ struct AssistantView: View {
                         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            Text("Charts use recorded completed sets. Use @ to add Apple Health for a selected workout. General image generation is unavailable through the ChatGPT plan preview.")
+            Text(assistant.selectedProvider == .appleFoundationModels
+                 ? "Questions and selected data stay on this iPhone. Use @ to add Apple Health for a selected workout. Review proposed changes before applying them. No ChatGPT account is needed, and Lift Log never switches providers automatically."
+                 : "Charts use recorded completed sets. Use @ to add Apple Health for a selected workout. General image generation is unavailable through the ChatGPT plan preview.")
                 .font(.footnote).foregroundStyle(.secondary)
+                .accessibilityIdentifier("assistantCapabilitiesDisclosure")
         }.assistantCard()
             .accessibilityIdentifier("assistantEmptyState")
     }
@@ -340,7 +465,7 @@ struct AssistantView: View {
             }
             if let chart = message.chart { AssistantChartView(chart: chart) }
             if let proposal = message.proposal {
-                AssistantProposalView(proposal: proposal, isWorking: assistant.isWorking || !accounts.canUsePlan, apply: {
+                AssistantProposalView(proposal: proposal, isWorking: assistant.isWorking || !canUseProvider, apply: {
                     do { try assistant.applyProposal(proposal.id) }
                     catch { proposalError = error.localizedDescription }
                 }, discard: {
@@ -444,9 +569,7 @@ struct AssistantView: View {
                     .accessibilityIdentifier("assistantSendButton")
                 }
             }
-            Text(selectedReferences.contains { $0.kind == .health }
-                 ? "Sending reads Apple Health for tagged sessions and shares it with OpenAI for this message. Health replies and charts aren’t saved."
-                 : "Question + relevant workout data shared with OpenAI. Health requires an @ Health tag.")
+            Text(composerPrivacyDisclosure)
                 .font(.caption2).foregroundStyle(.secondary)
                 .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 .accessibilityIdentifier("assistantComposerPrivacyDisclosure")
@@ -456,8 +579,24 @@ struct AssistantView: View {
     }
 
     private var canSendQuestion: Bool {
-        !composer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        canUseProvider && !composer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !assistant.selectedModel.isEmpty && !assistant.isLoadingModels && !assistant.usageLimitReached
+            && (assistant.selectedProvider == .chatGPT || assistant.canUseSelectedProvider)
+    }
+
+    private var suggestedQuestions: [String] {
+        ["Chart my training volume", "How has my bench press progressed?", "Help me adjust my next workout"]
+    }
+
+    private var composerPrivacyDisclosure: String {
+        if assistant.selectedProvider == .appleFoundationModels {
+            return selectedReferences.contains { $0.kind == .health }
+                ? "Sending reads Apple Health for tagged sessions and processes it on this iPhone for this message. Health questions and replies aren’t saved."
+                : "Questions and selected data stay on this iPhone. Works offline. Health requires an @ Health tag."
+        }
+        return selectedReferences.contains { $0.kind == .health }
+            ? "Sending reads Apple Health for tagged sessions and shares it with OpenAI for this message. Health replies and charts aren’t saved."
+            : "Question + relevant workout data shared with OpenAI. Health requires an @ Health tag."
     }
 }
 
