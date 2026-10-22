@@ -83,10 +83,12 @@ Use existing DEBUG-only synthetic fixtures and test launch arguments described i
 
 **Every change affecting visible UI must include screenshots in the completion reply for user review.** This includes layout, styling, text, navigation, charts, sheets, and widget/Live Activity presentation.
 
+Screenshots and other images captured to review or validate changes are review artifacts only; never commit them to source control.
+
 1. Build and run the changed app or extension on an iOS simulator or device. Navigate to the affected screen with synthetic, representative data and capture the final implementation. Mockups and SwiftUI previews do not substitute for running-app evidence.
 2. Capture each materially changed screen and relevant states (for example an expanded editor, validation error, empty state, or presented sheet). For appearance/layout changes, include light and dark mode; for text/layout changes, include an accessibility Dynamic Type size. Check a smaller supported iPhone size when space constraints matter.
 3. Inspect the screenshots before finishing. Fix clipped text, overlaps, obscured controls, incorrect safe areas, poor contrast, and unintended changes, then recapture after the final edit.
-4. Save PNG artifacts in an accessible location such as `artifacts/screenshots/<feature>/` or an external artifact directory. Use descriptive filenames indicating the screen and configuration. Keep personal data, credentials, and unrelated screens out of captures; avoid committing generated artifacts unless requested or established by repository convention.
+4. Save PNG artifacts in an accessible location such as the ignored `artifacts/screenshots/<feature>/` directory or an external artifact directory. Use descriptive filenames indicating the screen and configuration. Keep personal data, credentials, and unrelated screens out of captures.
 5. Embed or attach the screenshots in the final reply so the user can review them directly. In T3 Code, Markdown images with absolute file paths are supported: `![Screen — dark mode, large text](/absolute/path/to/screenshot.png)`. Label the state and report the device/OS used, checks run, and any remaining verification gaps. A screenshot buried only in an `.xcresult` bundle is insufficient; export and attach it.
 
 Prefer the available T3 device tools to open the simulator/device for the user and capture screenshots. A terminal fallback for an already selected simulator is `xcrun simctl io <SIMULATOR_UDID> screenshot <OUTPUT_PATH>.png`; use an explicit UDID to avoid capturing the wrong device.

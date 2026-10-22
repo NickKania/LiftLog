@@ -163,6 +163,7 @@ final class WorkoutAgentTools {
                     var entry = try templateEntry(args, inputUnit: inputUnit, outputUnit: store.unit)
                     entry.id = after.exercises[index].id
                     entry.supersetID = after.exercises[index].supersetID
+                    entry.restSeconds = after.exercises[index].restSeconds
                     for setIndex in entry.sets.indices where after.exercises[index].sets.indices.contains(setIndex) {
                         entry.sets[setIndex].id = after.exercises[index].sets[setIndex].id
                     }
@@ -189,6 +190,7 @@ final class WorkoutAgentTools {
                 replacement.id = after.exercises[index].id
                 let existing = after.exercises[index]
                 replacement.supersetID = existing.supersetID
+                replacement.restSeconds = existing.restSeconds
                 if existing.exercise.id == replacement.exercise.id {
                     replacement.templateExerciseID = existing.templateExerciseID
                     for setIndex in replacement.sets.indices where existing.sets.indices.contains(setIndex) {
@@ -208,7 +210,7 @@ final class WorkoutAgentTools {
     private func workoutEntry(_ entry: TemplateExercise) -> WorkoutExercise {
         WorkoutExercise(exercise: entry.exercise, sets: entry.sets.map {
             WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
-        }, supersetID: entry.supersetID)
+        }, supersetID: entry.supersetID, restSeconds: entry.restSeconds)
     }
 
     private func exerciseEntries(_ args: [String: Any], inputUnit: WeightUnit, outputUnit: WeightUnit) throws -> [TemplateExercise] {
