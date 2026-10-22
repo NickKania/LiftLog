@@ -5,6 +5,8 @@ struct ActiveWorkoutView: View {
     @Environment(WorkoutStore.self) private var store
     @Environment(RestTimerAlerts.self) private var restAlerts
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var restSettings: WorkoutRestSettingsContext?
     @State private var reorderWorkout: WorkoutSession?
     @State private var pickingExercise = false
     @State private var supersetEditor: SupersetEditorContext?
@@ -21,7 +23,7 @@ struct ActiveWorkoutView: View {
                 ContentUnavailableView("Workout saved", systemImage: "checkmark.circle", description: Text("Find your completed sets in History."))
             }
         }
-        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && swapContext == nil && reorderWorkout == nil)
+        .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && swapContext == nil && reorderWorkout == nil && restSettings == nil)
         .navigationTitle(store.activeWorkout?.name ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -38,6 +40,14 @@ struct ActiveWorkoutView: View {
                     .accessibilityIdentifier("finishWorkoutButton")
             }
             ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { hideKeyboard() } }
+        }
+        .sheet(item: $restSettings) { context in
+            RestSettingsEditorView(title: context.exercise?.exercise.name ?? "Workout default",
+                restSeconds: context.exercise == nil ? context.workout.restSeconds : context.exercise?.restSeconds,
+                workoutRestSeconds: context.exercise == nil ? nil : context.workout.restSeconds,
+                footer: "This workout only. Changes apply after your next set; running timers stay unchanged.") { seconds in
+                store.updateRestSettings(workoutID: context.workout.id, exerciseID: context.exercise?.id, restSeconds: seconds)
+            }
         }
         .sheet(item: $reorderWorkout) { workout in
             WorkoutExerciseOrderView(workout: workout)
@@ -92,13 +102,16 @@ struct ActiveWorkoutView: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                         .accessibilityIdentifier("activeWorkoutTemplateVersion")
                 }
-                HStack {
+                let metricsLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+                    : AnyLayout(HStackLayout())
+                metricsLayout {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("DURATION", systemImage: "timer").font(.caption2.bold()).foregroundStyle(.secondary)
                         Text(workout.startedAt, style: .timer).font(.title2.monospacedDigit().bold())
                     }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 6) {
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+                    VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: 6) {
                         Text("COMPLETED SETS").font(.caption2.bold()).foregroundStyle(.secondary)
                         Text("\(workout.exercises.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count }) / \(workout.exercises.reduce(0) { $0 + $1.sets.count })")
                             .font(.title2.monospacedDigit().bold())
@@ -106,14 +119,17 @@ struct ActiveWorkoutView: View {
                 }
                 .padding(.vertical, 8)
             }
-            if workout.restTimer == nil {
-                Section {
-                    LabeledContent("Rest between sets", value: workout.restSeconds == 0 ? "Off" : "\(workout.restSeconds / 60):\(String(format: "%02d", workout.restSeconds % 60))")
-                        .foregroundStyle(.secondary)
-                } footer: {
-                    if restAlerts.backgroundSoundUnavailable && workout.restSeconds > 0 {
-                        restNotificationHint
-                    }
+            Section {
+                Button {
+                    hideKeyboard()
+                    restSettings = WorkoutRestSettingsContext(workout: workout, exercise: nil)
+                } label: {
+                    LabeledContent("Workout rest", value: RestTime.description(workout.restSeconds))
+                }
+                .accessibilityIdentifier("workoutRestSettingsButton")
+            } footer: {
+                if workout.restTimer == nil && restAlerts.backgroundSoundUnavailable && (workout.restSeconds > 0 || workout.exercises.contains { ($0.restSeconds ?? 0) > 0 }) {
+                    restNotificationHint
                 }
             }
             if workout.exercises.isEmpty {
@@ -133,6 +149,13 @@ struct ActiveWorkoutView: View {
             ForEach(workout.exercises) { exercise in
                 let group = SupersetStyle.group(for: exercise, in: workout.exercises)
                 Section {
+                    Button {
+                        hideKeyboard()
+                        restSettings = WorkoutRestSettingsContext(workout: workout, exercise: exercise)
+                    } label: {
+                        LabeledContent("Rest", value: RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: workout.restSeconds))
+                    }
+                    .accessibilityIdentifier("workoutExerciseRest-\(exercise.id)")
                     SetColumnHeader(unit: workout.unit, completion: true)
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                         SetInputRow(number: index + 1, unit: workout.unit, weight: set.weight, reps: set.reps, targetReps: set.targetReps, targetWeight: set.targetWeight, completed: set.isCompleted, onChange: { weight, reps in
@@ -156,7 +179,7 @@ struct ActiveWorkoutView: View {
                             }
                         }
                         if let timer = workout.restTimer, timer.completedSetID == set.id {
-                            inlineRestTimer(timer, duration: workout.restSeconds)
+                            inlineRestTimer(timer, duration: workout.restDuration(for: timer))
                                 .listRowSeparator(.hidden)
                         }
                     }
@@ -397,4 +420,10 @@ private struct WorkoutExerciseOrderView: View {
             .workoutErrorAlert()
         }
     }
+}
+
+private struct WorkoutRestSettingsContext: Identifiable {
+    let workout: WorkoutSession
+    let exercise: WorkoutExercise?
+    var id: UUID { exercise?.id ?? workout.id }
 }

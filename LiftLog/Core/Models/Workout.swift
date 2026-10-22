@@ -59,15 +59,18 @@ struct WorkoutExercise: Codable, Equatable, SupersetExercise {
     var exercise: Exercise
     var sets: [WorkoutSet]
     var supersetID: UUID?
+    /// Nil inherits the workout default; zero explicitly disables rest.
+    var restSeconds: Int?
     /// Stable source entry identity, including repeated occurrences of a catalog exercise.
     var templateExerciseID: UUID?
     var notes: String?
 
-    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil, templateExerciseID: UUID? = nil, notes: String? = nil) {
+    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil, templateExerciseID: UUID? = nil, notes: String? = nil, restSeconds: Int? = nil) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
         self.supersetID = supersetID
+        self.restSeconds = restSeconds
         self.templateExerciseID = templateExerciseID
         self.notes = notes
     }

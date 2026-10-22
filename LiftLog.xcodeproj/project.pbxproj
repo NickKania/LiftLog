@@ -36,6 +36,7 @@
 		2E27C6D69F63656D43365534 /* WorkoutSummaryUITestFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F307A49667F63857F965E /* WorkoutSummaryUITestFixture.swift */; };
 		313BC4792449F5406B8CB64F /* WorkoutHistoryEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6C7BE38DD927A807CC3555 /* WorkoutHistoryEditing.swift */; };
 		32FFDBE40F7B764D3F2C628E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A7362A4BF1BBB49DF08484B /* Assets.xcassets */; };
+		34C50C9300CBADCBF4B8417E /* RestSettingsEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F83601F67C1B7A7EAA0B77 /* RestSettingsEditorView.swift */; };
 		363BD090350C9F0D9D5F785C /* WorkoutSummaryContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0176A4BB7323F0116C9371F0 /* WorkoutSummaryContext.swift */; };
 		386B1C3544D2988E8ABB41D2 /* WorkoutActivitySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04666D52791EA44B0CA0AF4 /* WorkoutActivitySnapshot.swift */; };
 		394FB38AC8EDD450310D426D /* ChatGPTAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0707C737AF1238FD6D50D21F /* ChatGPTAuth.swift */; };
@@ -253,6 +254,7 @@
 		8E9EBBC898D0C315487A5DA9 /* SetInputValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetInputValidation.swift; sourceTree = "<group>"; };
 		905E48623A5C0958CD7D47A4 /* AssistantMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMessageView.swift; sourceTree = "<group>"; };
 		90A74A37BFA25C258BA4CA1A /* RestTimerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerUITests.swift; sourceTree = "<group>"; };
+		91F83601F67C1B7A7EAA0B77 /* RestSettingsEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestSettingsEditorView.swift; sourceTree = "<group>"; };
 		91FA75E1DEDD18D0588358E8 /* HealthDashboardAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDashboardAnalytics.swift; sourceTree = "<group>"; };
 		937217B83F84CD9827FEE598 /* WorkflowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowUITests.swift; sourceTree = "<group>"; };
 		96680B1F29D0F9E030FEF720 /* HealthDashboardUITestFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDashboardUITestFixture.swift; sourceTree = "<group>"; };
@@ -396,6 +398,7 @@
 				045A6DEE6FB67219108CFC2C /* HealthDashboardConsistencyView.swift */,
 				5E309AAE258A97366189597D /* HealthDashboardView.swift */,
 				7237F52AA6DB9D4CC9820320 /* HealthDashboardWeightView.swift */,
+				91F83601F67C1B7A7EAA0B77 /* RestSettingsEditorView.swift */,
 				2C6024B29CF57ADD9CD63AD4 /* RootView.swift */,
 				AD233303C0E4A42364D069A8 /* SupersetEditorView.swift */,
 				307670086F599871C2ED930C /* TemplateEditorView.swift */,
@@ -789,6 +792,7 @@
 				4E30ADDA229B0E3518428537 /* HealthDashboardView.swift in Sources */,
 				090C433F21920EB1BF1301C1 /* HealthDashboardWeightView.swift in Sources */,
 				729B7917B33319B426F22D3E /* LiftLogApp.swift in Sources */,
+				34C50C9300CBADCBF4B8417E /* RestSettingsEditorView.swift in Sources */,
 				69D18762723AAA18FBEDB320 /* RestTimerAlerts.swift in Sources */,
 				4711E8127252D78816B258F2 /* RestTimerSoundPlayer.swift in Sources */,
 				141A8FA4F70C64BD03FA09CB /* RootView.swift in Sources */,
