@@ -40,17 +40,28 @@ final class WatchWorkoutPayloadTests: XCTestCase {
 
     func testStateAndAllActionsRoundTripThroughPropertyListSafeDictionaries() throws {
         let workout = active(exercises: [.init(id: UUID(), name: "Squat", supersetID: nil, sets: [set()])])
-        let state = WatchWorkoutState(templates: [.init(id: UUID(), name: "Plan", exerciseCount: 1, setCount: 3)],
+        var state = WatchWorkoutState(templates: [.init(id: UUID(), name: "Plan", exerciseCount: 1, setCount: 3)],
                                       active: workout, unitRaw: "kg", revision: UInt64.max)
+        let terminalRequest = WatchActionRequest(operationID: UUID(), action: .finish(workoutID: workout.id))
+        state.processedThroughOperationID = terminalRequest.operationID
+        state.lastTerminalResult = WatchTerminalResult(request: terminalRequest, succeeded: false)
+        state.phoneSessionID = UUID()
+        state.publicationSequence = UInt64.max
         let dictionary = try WatchWorkoutTransport.encode(state: state)
         let plist = try PropertyListSerialization.data(fromPropertyList: dictionary, format: .binary, options: 0)
         let transported = try XCTUnwrap(PropertyListSerialization.propertyList(from: plist, format: nil) as? [String: Any])
         XCTAssertEqual(try WatchWorkoutTransport.decodeState(from: transported), state)
+        var v1State = dictionary
+        v1State[WatchWorkoutTransport.versionKey] = 1
+        XCTAssertThrowsError(try WatchWorkoutTransport.decodeState(from: v1State)) { error in
+            XCTAssertEqual(error as? WatchWorkoutTransport.PayloadError, .unsupportedVersion)
+        }
         let actions: [WatchAction] = [.startTemplate(id: UUID()), .startEmpty,
-                                     .completeSet(setID: UUID(), weight: 52.5, reps: 7), .uncompleteSet(setID: UUID()),
-                                     .skipRest(workoutID: UUID(), restTimerID: UUID()), .extendRest(workoutID: UUID(), restTimerID: UUID(), seconds: 30), .finish(workoutID: UUID()), .discard(workoutID: UUID())]
+                                     .completeSet(setID: UUID(), weight: 52.5, reps: 7, completedAt: Date(), restTimerID: UUID()), .uncompleteSet(setID: UUID()),
+                                     .skipRest(workoutID: UUID(), restTimerID: UUID()), .extendRest(workoutID: UUID(), restTimerID: UUID(), seconds: 30, requestedAt: Date(), resultingRestTimerID: UUID()), .finish(workoutID: UUID()), .discard(workoutID: UUID())]
         for action in actions {
-            XCTAssertEqual(try WatchWorkoutTransport.decodeAction(from: WatchWorkoutTransport.encode(action: action)), action)
+            let request = WatchActionRequest(operationID: UUID(), action: action)
+            XCTAssertEqual(try WatchWorkoutTransport.decodeRequest(from: WatchWorkoutTransport.encode(request: request)), request)
         }
         let idle = WatchWorkoutState(templates: [], active: nil, unitRaw: "lb", revision: 0)
         XCTAssertEqual(try WatchWorkoutTransport.decodeState(from: WatchWorkoutTransport.encode(state: idle)), idle)
@@ -58,15 +69,15 @@ final class WatchWorkoutPayloadTests: XCTestCase {
 
     func testTransportRejectsMissingUnsupportedAndMalformedPayloads() throws {
         XCTAssertThrowsError(try WatchWorkoutTransport.decodeState(from: [:]))
-        var dictionary = try WatchWorkoutTransport.encode(action: .skipRest(workoutID: UUID(), restTimerID: UUID()))
-        dictionary[WatchWorkoutTransport.versionKey] = WatchWorkoutTransport.payloadVersion + 1
-        XCTAssertThrowsError(try WatchWorkoutTransport.decodeAction(from: dictionary))
+        var dictionary = try WatchWorkoutTransport.encode(request: .init(operationID: UUID(), action: .skipRest(workoutID: UUID(), restTimerID: UUID())))
+        dictionary[WatchWorkoutTransport.versionKey] = 1
+        XCTAssertThrowsError(try WatchWorkoutTransport.decodeRequest(from: dictionary))
         dictionary[WatchWorkoutTransport.versionKey] = WatchWorkoutTransport.payloadVersion
         dictionary[WatchWorkoutTransport.actionKey] = "not Data"
-        XCTAssertThrowsError(try WatchWorkoutTransport.decodeAction(from: dictionary))
+        XCTAssertThrowsError(try WatchWorkoutTransport.decodeRequest(from: dictionary))
         dictionary[WatchWorkoutTransport.actionKey] = Data("malformed JSON".utf8)
-        XCTAssertThrowsError(try WatchWorkoutTransport.decodeAction(from: dictionary))
-        dictionary = try WatchWorkoutTransport.encode(action: .skipRest(workoutID: UUID(), restTimerID: UUID()))
+        XCTAssertThrowsError(try WatchWorkoutTransport.decodeRequest(from: dictionary))
+        dictionary = try WatchWorkoutTransport.encode(request: .init(operationID: UUID(), action: .skipRest(workoutID: UUID(), restTimerID: UUID())))
         XCTAssertThrowsError(try WatchWorkoutTransport.decodeState(from: dictionary))
     }
 
@@ -87,7 +98,7 @@ final class WatchWorkoutPayloadTests: XCTestCase {
         workout.exercises[0].supersetID = group
         workout.exercises[1].supersetID = group
         XCTAssertTrue(store.updateActiveWorkout(workout))
-        XCTAssertTrue(store.applyWatchAction(.completeSet(setID: workout.exercises[0].sets[0].id, weight: 55, reps: 7)))
+        XCTAssertTrue(store.applyWatchAction(.completeSet(setID: workout.exercises[0].sets[0].id, weight: 55, reps: 7, completedAt: Date(), restTimerID: UUID())))
         XCTAssertTrue(store.setUnit(.kg))
         workout = try XCTUnwrap(store.activeWorkout)
         let state = store.watchWorkoutState

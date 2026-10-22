@@ -22,7 +22,7 @@ extension WorkoutStore {
 
     /// All writes use the same validation, rest derivation and atomic commit as phone edits.
     @discardableResult
-    func applyWatchAction(_ action: WatchAction) -> Bool {
+    func applyWatchAction(_ action: WatchAction, now: Date = Date()) -> Bool {
         switch action {
         case .startTemplate(let id):
             guard activeWorkout == nil, let template = templates.first(where: { $0.id == id }) else { return false }
@@ -30,8 +30,9 @@ extension WorkoutStore {
         case .startEmpty:
             guard activeWorkout == nil else { return false }
             return startWorkout(template: nil)
-        case .completeSet(let setID, let weight, let reps):
-            guard var workout = activeWorkout,
+        case .completeSet(let setID, let weight, let reps, let completedAt, let restTimerID):
+            guard completedAt.timeIntervalSinceReferenceDate.isFinite, now.timeIntervalSinceReferenceDate.isFinite,
+                  var workout = activeWorkout,
                   let exerciseIndex = workout.exercises.firstIndex(where: { $0.sets.contains { $0.id == setID } }),
                   let setIndex = workout.exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setID }),
                   !workout.exercises[exerciseIndex].sets[setIndex].isCompleted else { return false }
@@ -39,7 +40,7 @@ extension WorkoutStore {
             // ones completed out of order. Completed results and original targets stay fixed.
             workout.exercises[exerciseIndex].updateSetValues(weight: weight, reps: reps)
             workout.exercises[exerciseIndex].sets[setIndex].isCompleted = true
-            return updateActiveWorkout(workout)
+            return updateActiveWorkout(workout, now: min(completedAt, now), newRestTimerID: restTimerID)
         case .uncompleteSet(let setID):
             guard var workout = activeWorkout,
                   let exerciseIndex = workout.exercises.firstIndex(where: { $0.sets.contains { $0.id == setID } }),
@@ -50,9 +51,10 @@ extension WorkoutStore {
         case .skipRest(let workoutID, let restTimerID):
             guard activeWorkout?.id == workoutID, activeWorkout?.restTimer?.id == restTimerID else { return false }
             return skipRest()
-        case .extendRest(let workoutID, let restTimerID, let seconds):
-            guard activeWorkout?.id == workoutID, activeWorkout?.restTimer?.id == restTimerID else { return false }
-            return extendRest(by: seconds)
+        case .extendRest(let workoutID, let restTimerID, let seconds, let requestedAt, let resultingRestTimerID):
+            guard requestedAt.timeIntervalSinceReferenceDate.isFinite, now.timeIntervalSinceReferenceDate.isFinite,
+                  activeWorkout?.id == workoutID, activeWorkout?.restTimer?.id == restTimerID else { return false }
+            return extendRest(by: seconds, now: min(requestedAt, now), resultingRestTimerID: resultingRestTimerID)
         case .finish(let workoutID):
             guard activeWorkout?.id == workoutID else { return false }
             return finishWorkout()

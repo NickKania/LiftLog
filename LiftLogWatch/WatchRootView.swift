@@ -15,7 +15,9 @@ struct WatchRootView: View {
         NavigationStack {
             Group {
                 if client.showSaved {
-                    WatchSavedView { client.showSaved = false }
+                    WatchSavedView(title: client.savedConfirmed ? "Workout saved" : "Saving…",
+                                   message: client.savedConfirmed ? "Full summary on iPhone." : "Waiting for iPhone.",
+                                   isConfirmed: client.savedConfirmed) { client.showSaved = false }
                 } else if let workout = client.visibleWorkout {
                     WatchActiveView(client: client, workout: workout)
                         .id(workout.id)
@@ -46,7 +48,9 @@ struct WatchRootView: View {
         }
         .onAppear {
             #if DEBUG
-            if WatchPreviewFixture.screen == "saved" { client.showSaved = true }
+            if ["saved", "saving"].contains(WatchPreviewFixture.screen), let id = client.state.active?.id {
+                client.send(.finish(workoutID: id))
+            }
             #endif
         }
         .onChange(of: scenePhase) { _, phase in
@@ -83,7 +87,9 @@ private struct WatchActiveView: View {
                     if endsAt > context.date {
                         WatchRestView(client: client, workout: workout, now: context.date, endsAt: endsAt)
                     } else {
-                        WatchRestDoneView(client: client, workout: workout)
+                        // Rest is over: show the next set immediately. The expiry
+                        // task below sends the clearing action; no tap is needed.
+                        WatchNowView(client: client, workout: workout)
                     }
                 }
                 .tag(WorkoutPage.rest)
@@ -164,15 +170,19 @@ struct WatchStartView: View {
 }
 
 struct WatchSavedView: View {
+    let title: String
+    let message: String
+    let isConfirmed: Bool
     let done: () -> Void
     var body: some View {
         WatchPage(showsPages: false) {
-            VStack(spacing: 8) {
-                WatchRing(fraction: 1, size: 70) {
-                    Image(systemName: "checkmark").font(.title).foregroundStyle(.green)
+            VStack(spacing: 5) {
+                WatchRing(fraction: isConfirmed ? 1 : 0.75, size: 54) {
+                    Image(systemName: isConfirmed ? "checkmark" : "arrow.triangle.2.circlepath")
+                        .font(.system(size: 28)).foregroundStyle(.green)
                 }.accessibilityHidden(true)
-                Text("Workout saved").font(.headline)
-                Text("Full summary on iPhone.").font(.caption).foregroundStyle(.secondary)
+                Text(title).font(.headline)
+                Text(message).font(.caption).foregroundStyle(.secondary)
             }
             .multilineTextAlignment(.center)
         } actions: {

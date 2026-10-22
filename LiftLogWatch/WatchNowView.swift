@@ -66,7 +66,7 @@ struct WatchNowView: View {
         } actions: {
             if let next = workout.nextIncompleteSet {
                 Button {
-                    if client.send(.completeSet(setID: next.set.id, weight: next.set.weight, reps: next.set.reps)) {
+                    if client.completeSet(setID: next.set.id, weight: next.set.weight, reps: next.set.reps) {
                         WKInterfaceDevice.current().play(.success)
                     }
                 } label: {

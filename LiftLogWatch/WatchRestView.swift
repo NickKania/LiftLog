@@ -26,8 +26,8 @@ struct WatchRestView: View {
         } actions: {
             HStack(spacing: 6) {
                 Button("+30s") {
-                    if let id = workout.restTimerID {
-                        client.send(.extendRest(workoutID: workout.id, restTimerID: id, seconds: 30))
+                    if let action = client.state.restExtensionAction(by: 30, at: Date(), newTimerID: UUID()) {
+                        client.send(action)
                     }
                 }
                 .buttonStyle(WatchPill(color: .gray))
@@ -41,40 +41,6 @@ struct WatchRestView: View {
                 .buttonStyle(WatchPill(color: .orange))
                 .disabled(workout.restTimerID == nil)
                 .accessibilityIdentifier("watchSkipRestButton")
-            }
-        }
-    }
-}
-
-struct WatchRestDoneView: View {
-    let client: WatchSessionClient
-    let workout: WatchActiveWorkout
-
-    var body: some View {
-        WatchPage {
-            VStack(spacing: 4) {
-                Label("Rest complete", systemImage: "bell.badge.fill").font(.headline).foregroundStyle(.green)
-                WatchNextSetLabel(workout: workout, unit: client.state.unitRaw)
-            }
-            .multilineTextAlignment(.center)
-        } actions: {
-            VStack(spacing: 4) {
-                Button("Go — Set \((workout.nextIncompleteSet?.setIndex ?? 0) + 1)") {
-                    if let id = workout.restTimerID {
-                        client.send(.skipRest(workoutID: workout.id, restTimerID: id))
-                    }
-                }
-                .buttonStyle(WatchPill())
-                .disabled(workout.restTimerID == nil)
-                .accessibilityIdentifier("watchSkipRestButton")
-                Button("+0:30 Rest") {
-                    if let id = workout.restTimerID {
-                        client.send(.extendRest(workoutID: workout.id, restTimerID: id, seconds: 30))
-                    }
-                }
-                .buttonStyle(WatchPill(color: .white.opacity(0.12), foreground: .white))
-                .disabled(workout.restTimerID == nil)
-                .accessibilityIdentifier("watchExtendRestButton")
             }
         }
     }

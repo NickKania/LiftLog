@@ -85,7 +85,7 @@ struct WatchAdjustView: View {
                 Button("Log Set") {
                     guard client.state.active?.id == workoutID,
                           client.state.active?.nextIncompleteSet?.set.id == set.id else { dismiss(); return }
-                    if client.send(.completeSet(setID: set.id, weight: weight, reps: Int(reps))) {
+                    if client.completeSet(setID: set.id, weight: weight, reps: Int(reps)) {
                         WKInterfaceDevice.current().play(.success)
                         dismiss()
                     }

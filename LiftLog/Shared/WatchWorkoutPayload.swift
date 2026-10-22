@@ -26,11 +26,18 @@ struct WatchExerciseState: Codable, Equatable, Identifiable, Sendable {
 
 struct WatchWorkoutState: Codable, Equatable, Sendable {
     let templates: [WatchTemplateSummary]
-    let active: WatchActiveWorkout?
+    var active: WatchActiveWorkout?
     /// The active session's recorded unit, or the preferred unit when idle.
     let unitRaw: String
     /// Copied from WorkoutStore; increases after successful commits in that store's lifetime.
     let revision: UInt64
+    var processedThroughOperationID: UUID? = nil
+    var lastTerminalResult: WatchTerminalResult? = nil
+    /// Store/fixture placeholder only; the phone service stamps its own lifetime ID.
+    var phoneSessionID: UUID = unpublishedSessionID
+    var publicationSequence: UInt64 = 0
+
+    static let unpublishedSessionID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 }
 
 struct WatchActiveWorkout: Codable, Equatable, Sendable {
@@ -68,25 +75,77 @@ struct WatchActiveWorkout: Codable, Equatable, Sendable {
 enum WatchAction: Codable, Equatable, Sendable {
     case startTemplate(id: UUID)
     case startEmpty
-    case completeSet(setID: UUID, weight: Double, reps: Int)
+    case completeSet(setID: UUID, weight: Double, reps: Int, completedAt: Date, restTimerID: UUID)
     case uncompleteSet(setID: UUID)
     case skipRest(workoutID: UUID, restTimerID: UUID)
-    case extendRest(workoutID: UUID, restTimerID: UUID, seconds: Int)
+    case extendRest(workoutID: UUID, restTimerID: UUID, seconds: Int, requestedAt: Date, resultingRestTimerID: UUID)
     case finish(workoutID: UUID)
     case discard(workoutID: UUID)
 }
 
+struct WatchActionRequest: Codable, Equatable, Sendable {
+    let operationID: UUID
+    let action: WatchAction
+}
+
+struct WatchTerminalResult: Codable, Equatable, Sendable {
+    let operationID: UUID
+    let workoutID: UUID
+    let isFinish: Bool
+    let succeeded: Bool
+
+    init?(request: WatchActionRequest, succeeded: Bool) {
+        switch request.action {
+        case .finish(let id): workoutID = id; isFinish = true
+        case .discard(let id): workoutID = id; isFinish = false
+        default: return nil
+        }
+        operationID = request.operationID
+        self.succeeded = succeeded
+    }
+}
+
+/// Small phone-local receipt, independent of workout revision and delivery success.
+struct WatchActionReceipt: Codable, Equatable, Sendable {
+    var processedThroughOperationID: UUID?
+    var lastTerminalResult: WatchTerminalResult?
+
+    mutating func record(_ request: WatchActionRequest, succeeded: Bool) {
+        processedThroughOperationID = request.operationID
+        if let result = WatchTerminalResult(request: request, succeeded: succeeded) {
+            lastTerminalResult = result
+        }
+    }
+}
+
 extension WatchWorkoutState {
-    /// A bounded, ephemeral mirror. Every phone snapshot replaces it, including lower revisions.
-    /// Dates and timer identity are inputs so offline behavior can be tested deterministically.
-    func applyingOptimistically(_ action: WatchAction, at now: Date, newTimerID: UUID) -> Self {
+    /// Rest ends on its own: once the deadline passes, the Watch rolls into
+    /// the next set without asking the user to acknowledge it.
+    func restExpiryAction(at now: Date) -> WatchAction? {
+        guard let active, let restTimerID = active.restTimerID,
+              let endsAt = active.restEndsAt, endsAt <= now else { return nil }
+        return .skipRest(workoutID: active.id, restTimerID: restTimerID)
+    }
+
+    func restExtensionAction(by seconds: Int, at requestedAt: Date, newTimerID: UUID) -> WatchAction? {
+        guard let active, let id = active.restTimerID, let deadline = active.restEndsAt else { return nil }
+        return .extendRest(workoutID: active.id, restTimerID: id, seconds: seconds, requestedAt: requestedAt,
+                           resultingRestTimerID: deadline > requestedAt ? id : newTimerID)
+    }
+
+    func applyingPending(_ actions: [WatchAction]) -> Self {
+        actions.reduce(self) { $0.applyingOptimistically($1) }
+    }
+
+    /// Replay is deterministic: timestamps and timer identities belong to the action.
+    func applyingOptimistically(_ action: WatchAction) -> Self {
         guard let active else { return self }
         var exercises = active.exercises
         var endsAt = active.restEndsAt
         var timerID = active.restTimerID
         switch action {
-        case .completeSet(let setID, let weight, let reps):
-            guard weight.isFinite, weight >= 0, reps > 0,
+        case .completeSet(let setID, let weight, let reps, let completedAt, let restTimerID):
+            guard completedAt.timeIntervalSinceReferenceDate.isFinite, weight.isFinite, weight >= 0, reps > 0,
                   let index = exercises.firstIndex(where: { $0.sets.contains { $0.id == setID && !$0.isCompleted } }) else { return self }
             let exercise = exercises[index]
             exercises[index] = .init(id: exercise.id, name: exercise.name, supersetID: exercise.supersetID,
@@ -96,8 +155,8 @@ extension WatchWorkoutState {
                              targetReps: set.targetReps, isCompleted: set.id == setID)
             })
             if active.restSeconds > 0 && exercises.contains(where: { $0.sets.contains { !$0.isCompleted } }) {
-                endsAt = now.addingTimeInterval(TimeInterval(active.restSeconds))
-                timerID = newTimerID
+                endsAt = completedAt.addingTimeInterval(TimeInterval(active.restSeconds))
+                timerID = restTimerID
             } else {
                 endsAt = nil
                 timerID = nil
@@ -119,13 +178,13 @@ extension WatchWorkoutState {
             guard workoutID == active.id, timerID == restTimerID else { return self }
             endsAt = nil
             timerID = nil
-        case .extendRest(let workoutID, let restTimerID, let seconds):
-            guard workoutID == active.id, timerID == restTimerID, seconds > 0, let deadline = endsAt else { return self }
-            let expired = deadline <= now
-            let extended = min((expired ? now : deadline).addingTimeInterval(TimeInterval(seconds)), now.addingTimeInterval(3600))
+        case .extendRest(let workoutID, let restTimerID, let seconds, let requestedAt, let resultingRestTimerID):
+            guard requestedAt.timeIntervalSinceReferenceDate.isFinite, workoutID == active.id, timerID == restTimerID, seconds > 0, let deadline = endsAt else { return self }
+            let expired = deadline <= requestedAt
+            let extended = min((expired ? requestedAt : deadline).addingTimeInterval(TimeInterval(seconds)), requestedAt.addingTimeInterval(3600))
             guard extended > deadline else { return self }
             endsAt = extended
-            if expired { timerID = newTimerID }
+            timerID = resultingRestTimerID
         default:
             // Starts and terminal actions need the phone's authoritative persistence result.
             return self
@@ -133,13 +192,83 @@ extension WatchWorkoutState {
         return .init(templates: templates,
                      active: .init(id: active.id, name: active.name, startedAt: active.startedAt,
                                    restSeconds: active.restSeconds, restEndsAt: endsAt, restTimerID: timerID,
-                                   exercises: exercises), unitRaw: unitRaw, revision: revision)
+                                   exercises: exercises), unitRaw: unitRaw, revision: revision,
+                     processedThroughOperationID: processedThroughOperationID, lastTerminalResult: lastTerminalResult,
+                     phoneSessionID: phoneSessionID, publicationSequence: publicationSequence)
     }
+}
+
+/// The same ledger drives the Watch client and deterministic reconciliation tests.
+struct WatchWorkoutReconciler {
+    private(set) var baseState: WatchWorkoutState
+    private(set) var pending: [WatchActionRequest] = []
+    private(set) var pendingTerminal: WatchActionRequest?
+    private(set) var showSaved = false
+    private(set) var savedConfirmed = false
+    private(set) var errorMessage: String?
+    private var hasAcceptedSnapshot = false
+
+    var state: WatchWorkoutState { baseState.applyingPending(pending.map(\.action)) }
+    var terminalWorkoutID: UUID? {
+        pendingTerminal.flatMap { WatchTerminalResult(request: $0, succeeded: false)?.workoutID }
+    }
+
+    mutating func enqueue(_ request: WatchActionRequest) {
+        pending.append(request)
+        if let terminal = WatchTerminalResult(request: request, succeeded: false) {
+            pendingTerminal = request
+            showSaved = terminal.isFinish
+            savedConfirmed = false
+        }
+    }
+
+    @discardableResult
+    mutating func accept(_ incoming: WatchWorkoutState) -> Bool {
+        if hasAcceptedSnapshot, incoming.phoneSessionID == baseState.phoneSessionID,
+           incoming.publicationSequence <= baseState.publicationSequence { return false }
+        hasAcceptedSnapshot = true
+        baseState = incoming
+        if let watermark = incoming.processedThroughOperationID,
+           let index = pending.firstIndex(where: { $0.operationID == watermark }) {
+            pending.removeFirst(index + 1)
+        }
+        if let request = pendingTerminal, let result = incoming.lastTerminalResult,
+           result.operationID == request.operationID,
+           let expected = WatchTerminalResult(request: request, succeeded: result.succeeded), result == expected {
+            pendingTerminal = nil
+            if result.succeeded {
+                showSaved = result.isFinish
+                savedConfirmed = result.isFinish
+            } else {
+                showSaved = false
+                savedConfirmed = false
+                errorMessage = "iPhone couldn’t \(result.isFinish ? "save" : "discard") this workout. Review it on iPhone and try again."
+            }
+        }
+        return true
+    }
+
+    /// Transport failures affect only edits still awaiting an acknowledgement.
+    @discardableResult
+    mutating func fail(operationID: UUID) -> Bool {
+        guard let index = pending.firstIndex(where: { $0.operationID == operationID }) else { return false }
+        pending.remove(at: index)
+        if pendingTerminal?.operationID == operationID {
+            pendingTerminal = nil
+            showSaved = false
+            savedConfirmed = false
+        }
+        errorMessage = "A queued change couldn’t sync. Check your workout on iPhone and try again."
+        return true
+    }
+
+    mutating func dismissSaved() { showSaved = false }
+    mutating func clearError() { errorMessage = nil }
 }
 
 /// Property-list-safe dictionaries for application context, messages and queued user info.
 enum WatchWorkoutTransport {
-    static let payloadVersion = 1
+    static let payloadVersion = 2
     static let versionKey = "watchPayloadVersion"
     static let stateKey = "watchState"
     static let actionKey = "watchAction"
@@ -157,12 +286,12 @@ enum WatchWorkoutTransport {
         try JSONDecoder().decode(WatchWorkoutState.self, from: data(in: dictionary, key: stateKey))
     }
 
-    static func encode(action: WatchAction) throws -> [String: Any] {
-        [versionKey: payloadVersion, actionKey: try JSONEncoder().encode(action)]
+    static func encode(request: WatchActionRequest) throws -> [String: Any] {
+        [versionKey: payloadVersion, actionKey: try JSONEncoder().encode(request)]
     }
 
-    static func decodeAction(from dictionary: [String: Any]) throws -> WatchAction {
-        try JSONDecoder().decode(WatchAction.self, from: data(in: dictionary, key: actionKey))
+    static func decodeRequest(from dictionary: [String: Any]) throws -> WatchActionRequest {
+        try JSONDecoder().decode(WatchActionRequest.self, from: data(in: dictionary, key: actionKey))
     }
 
     private static func data(in dictionary: [String: Any], key: String) throws -> Data {
