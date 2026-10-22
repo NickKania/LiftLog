@@ -39,6 +39,18 @@ xcodegen generate
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
+After changing Watch app icons, also inspect an unsigned Release archive. A simulator build can succeed with an empty icon catalog even though App Store Connect rejects the upload with errors 90713 and 90391.
+
+```sh
+xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -configuration Release -destination 'generic/platform=iOS' -archivePath /tmp/LiftLog-icon-check.xcarchive CODE_SIGNING_ALLOWED=NO archive
+plutil -extract CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName raw /tmp/LiftLog-icon-check.xcarchive/Products/Applications/LiftLog.app/Watch/LiftLogWatch.app/Info.plist
+xcrun assetutil --info /tmp/LiftLog-icon-check.xcarchive/Products/Applications/LiftLog.app/Watch/LiftLogWatch.app/Assets.car
+```
+
+The plist check must print `AppIcon`; the compiled catalog must contain an opaque `Icon Image` named `AppIcon` at 1024 × 1024. Xcode generates this metadata from the Watch catalog's source image; do not add hardcoded icon plist keys to hide a missing asset. Install the Watch simulator build, launch the app with `--watch-preview-fixture`, and inspect its circular icon in the Watch launcher. These checks verify local packaging; a signed Xcode Cloud build and successful App Store Connect processing are still required for distribution.
+
+Watch icon verification (2026-10-22): the asset compiler produced an empty icon plist before the fix and `AppIcon` metadata plus an opaque compiled image afterward. XcodeGen regeneration, the generic iOS Simulator build, and the unsigned Release iOS archive pass. The embedded Watch bundle contains the expected icon metadata and image. The final app launched with synthetic workout data and its launcher icon was inspected on an isolated Apple Watch Series 12 (46 mm), watchOS 27.0. Review screenshots are kept outside source control. A new signed cloud upload has not been run for this change.
+
 The `LiftLogUITests` Xcode target, under `Tests/LiftLogUITests`, exercises template creation and validation, set completion, resume after relaunch, finishing, history navigation, catalog search and custom exercises, discard confirmation, unit preferences, workout imports, and the assistant. Run it with an installed iPhone simulator, for example:
 
 ```sh
