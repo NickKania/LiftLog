@@ -293,9 +293,19 @@ struct WorkoutSummaryView: View {
     }
 
     private var workingState: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ProgressView("Generating insights…")
-                .accessibilityIdentifier("workoutSummaryProgress")
+        let progressLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+        return VStack(alignment: .leading, spacing: 14) {
+            progressLayout {
+                ProgressView()
+                    .accessibilityHidden(true)
+                Text("Generating insights…")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("workoutSummaryProgress")
             Text(activeRequestIncludesHealth ? "Apple Health is included only because you selected it for this request." : "Using workout data and comparable saved sessions.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -307,8 +317,11 @@ struct WorkoutSummaryView: View {
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("workoutSummaryStopButton")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("workoutSummaryWorkingCard")
     }
 
     private var summaryResult: some View {

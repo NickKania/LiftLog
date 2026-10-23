@@ -209,6 +209,50 @@ final class WorkoutSummaryUITests: XCTestCase {
     }
 
     @MainActor
+    func testLoadingCardAlignsWithSavedStats() {
+        checkLoadingCard(includeHealth: false, largeText: false)
+    }
+
+    @MainActor
+    func testLoadingCardWithHealthAlignsWithSavedStats() {
+        checkLoadingCard(includeHealth: true, largeText: false)
+    }
+
+    @MainActor
+    func testLoadingCardWithHealthSupportsAccessibilityText() {
+        checkLoadingCard(includeHealth: true, largeText: true)
+    }
+
+    @MainActor
+    private func checkLoadingCard(includeHealth: Bool, largeText: Bool) {
+        var arguments: [String] = []
+        if !largeText {
+            arguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"]
+        }
+        let app = launchFixture(reset: true, delayed: true, largeText: largeText,
+                                additionalArguments: arguments)
+        finishFixtureWorkout(in: app)
+        if includeHealth { setToggle("workoutSummaryIncludeHealthToggle", enabled: true, in: app) }
+        let generate = app.buttons["workoutSummaryGenerateButton"]
+        reveal(generate, in: app)
+        generate.tap()
+        let card = app.otherElements["workoutSummaryWorkingCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        let stats = app.otherElements["workoutSummarySavedStats"]
+        XCTAssertEqual(card.frame.minX, stats.frame.minX, accuracy: 1)
+        let leadingMargin = stats.frame.minX - app.frame.minX
+        XCTAssertEqual(card.frame.maxX, app.frame.maxX - leadingMargin, accuracy: 1,
+                       "The loading card must keep equal leading and trailing margins")
+        let stop = app.buttons["workoutSummaryStopButton"]
+        reveal(stop, in: app)
+        XCTAssertGreaterThanOrEqual(stop.frame.minX, card.frame.minX + 15)
+        XCTAssertLessThanOrEqual(stop.frame.maxX, card.frame.maxX - 15)
+        keepScreenshot(of: app, named: "Workout insights loading \(includeHealth ? "with Health" : "workout only") \(largeText ? "accessibility XXXL" : "default text")")
+        stop.tap()
+        XCTAssertTrue(generate.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testStopDismissAndHistoryReopenClearTransientResponse() {
         let app = launchFixture(reset: true, delayed: true)
         app.buttons["resumeWorkoutButton"].tap()
