@@ -202,7 +202,8 @@ final class WorkoutSummaryStore {
         try Task.checkCancellation()
         try validateSnapshot(workout: workout, revision: revision, scope: scope, generationID: generationID)
         let request = try WorkoutSummaryRequest(workout: workout, history: history, health: health,
-                                                prompt: store.workoutSummaryPrompt, provider: scope.provider)
+                                                prompt: store.workoutSummaryPrompt, provider: scope.provider,
+                                                contextTokens: localInferenceClient.contextTokens)
         try Task.checkCancellation()
         try validateSnapshot(workout: workout, revision: revision, scope: scope, generationID: generationID)
 

@@ -12,6 +12,7 @@ private final class SummaryLocalInferenceClient: AppleFoundationModelsProviding 
     }
 
     var availability: AppleFoundationModelsAvailability = .available
+    var contextTokens = 4_096
     var requests: [Request] = []
     var responseText = "Local summary ready"
     var error: Error?
@@ -23,7 +24,7 @@ private final class SummaryLocalInferenceClient: AppleFoundationModelsProviding 
     func respond(model: String, input: [[String: Any]], tools: [[String: Any]],
                  instructions: String, onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
         requests.append(Request(model: model, input: input, tools: tools, instructions: instructions))
-        _ = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions)
+        _ = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions, contextTokens: contextTokens)
         onText("Uncommitted partial summary")
         if suspend {
             // Deliberately ignore cancellation to verify the store rejects late output.
@@ -95,6 +96,36 @@ final class WorkoutSummaryProviderTests: XCTestCase {
     }
 
     @MainActor
+    func testLocalSummaryUsesProviderContextWindowForBothPreflights() async throws {
+        let store = WorkoutStore(fileURL: try file())
+        let workout = try completedWorkout(in: store)
+        XCTAssertTrue(store.setWorkoutSummaryPrompt(String(repeating: "🏋️", count: 500)))
+        let local = SummaryLocalInferenceClient()
+        let transport = SummaryTransport()
+        let summary = WorkoutSummaryStore(store: store, accessToken: {
+            XCTFail("A local summary must not read cloud credentials")
+            return ""
+        }, transport: transport, selectedProvider: { .appleFoundationModels }, localInferenceClient: local)
+
+        await summary.generate(workoutID: workout.id, model: "", includeHealth: false)
+        XCTAssertTrue(summary.errorMessage?.contains("Shorten your summary prompt") == true)
+        XCTAssertTrue(local.requests.isEmpty)
+
+        local.contextTokens = 8_192
+        await summary.generate(workoutID: workout.id, model: "", includeHealth: false)
+        XCTAssertNil(summary.errorMessage)
+        XCTAssertEqual(summary.text, "Local summary ready")
+        XCTAssertEqual(local.requests.count, 1)
+        let sent = try XCTUnwrap(local.requests.first)
+        let projected = try FoundationModelsRequest(input: sent.input, tools: sent.tools,
+            instructions: sent.instructions, contextTokens: local.contextTokens)
+        XCTAssertGreaterThan(projected.textStage.estimatedTotalTokens, FoundationModelsBudget.contextTokens)
+        XCTAssertLessThanOrEqual(projected.textStage.estimatedTotalTokens, local.contextTokens)
+        XCTAssertTrue((sent.input.first?["content"] as? String)?.contains(store.workoutSummaryPrompt) == true)
+        XCTAssertTrue(transport.requests.isEmpty)
+    }
+
+    @MainActor
     func testLocalSummaryPreservesRecordedFactsAndPromptWithoutCredentialsOrNetwork() async throws {
         let store = WorkoutStore(fileURL: try file())
         let earlier = try completedWorkout(in: store)
@@ -148,6 +179,14 @@ final class WorkoutSummaryProviderTests: XCTestCase {
         XCTAssertEqual(body["instructions"] as? String, WorkoutSummaryRequest.immutableInstructions)
         XCTAssertTrue(localRequest.instructions.contains("Never invent a workout"))
         XCTAssertTrue(localRequest.instructions.contains("Do not call tools"))
+        XCTAssertTrue(localRequest.instructions.contains("sessionTotals and per-exercise comparisonFacts/comparisonVerdict are Swift-computed"))
+        XCTAssertTrue(localRequest.instructions.contains("copy their numbers exactly, never recompute or invent arithmetic"))
+        XCTAssertTrue(localRequest.instructions.contains("Copy comparisonVerdict into each verdict"))
+        XCTAssertTrue(localRequest.instructions.contains("do not restate session totals or list every set"))
+        XCTAssertTrue(localRequest.instructions.contains("nextSession (max 2), each tied to a finding"))
+        XCTAssertTrue(localRequest.instructions.contains("healthNote only restates neutral overview facts"))
+        XCTAssertEqual(localRequest.input.first?["responseFormat"] as? String, "workoutSummary")
+        XCTAssertNil(cloudInput.first?["responseFormat"])
         XCTAssertTrue((localRequest.input.first?["content"] as? String)?.contains(store.workoutSummaryPrompt) == true)
         XCTAssertEqual(store.history.first, workout)
     }

@@ -3,6 +3,29 @@ import XCTest
 @testable import LiftLogCore
 
 final class FoundationModelsBudgetTests: XCTestCase {
+    @MainActor
+    func testInjectedContextPropagatesToDecisionArgumentsAndEditModes() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("InjectedNativeBudget-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+        let tools = WorkoutAgentTools(store: store)
+        let template = try XCTUnwrap(store.templates.first)
+        let result = try tools.execute(name: "get_templates", arguments: #"{"template_id":"\#(template.id.uuidString)","limit":1}"#)
+        let request = try FoundationModelsRequest(input: [
+            ["role": "user", "content": "Add one rep to this template's first exercise."],
+            ["type": "function_call", "call_id": "read", "name": "get_templates", "arguments": "{}"],
+            ["type": "function_call_output", "call_id": "read", "output": result.outputJSONString]
+        ], tools: tools.definitions, instructions: WorkoutAssistant.instructions, contextTokens: 8_192)
+        XCTAssertNotNil(request.decisionStage)
+        let intent = try XCTUnwrap(request.editModeStage(forToolNamed: "propose_template_version"))
+        let narrowed = try request.argumentStage(forToolNamed: "propose_template_version",
+            editMode: .changeExistingExerciseOrItsSets, preserveSetCounts: true)
+        for stage in request.stages + [intent, narrowed] {
+            XCTAssertEqual(stage.contextTokens, 8_192)
+            XCTAssertNoThrow(try stage.validate())
+        }
+    }
+
     func testOutputAndFramingReserveAreIncludedAtExactBoundary() throws {
         let available = FoundationModelsBudget.contextTokens - FoundationModelsBudget.framingReserveTokens
         for output in [FoundationModelsBudget.textResponseTokens, FoundationModelsBudget.argumentResponseTokens, FoundationModelsBudget.decisionResponseTokens] {

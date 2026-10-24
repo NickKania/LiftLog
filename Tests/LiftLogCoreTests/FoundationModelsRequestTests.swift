@@ -3,6 +3,70 @@ import XCTest
 @testable import LiftLogCore
 
 final class FoundationModelsRequestTests: XCTestCase {
+    func testWorkoutSummarySelectsGuidedFieldsWhileChatKeepsCompletedAnswer() throws {
+        let request = try FoundationModelsRequest(input: [["role": "user", "content": "Summarize.", "responseFormat": "workoutSummary"]],
+            tools: [], instructions: "", contextTokens: 5_000)
+        XCTAssertTrue(request.isWorkoutSummary)
+        let schema = try XCTUnwrap(request.textStage.schema)
+        XCTAssertEqual(schema.name, "WorkoutSummaryResponse")
+        XCTAssertTrue(try schema.jsonString.contains("exerciseFindings"))
+        XCTAssertTrue(try schema.jsonString.contains("nextSession"))
+        XCTAssertLessThanOrEqual(request.textStage.estimatedTotalTokens, 5_000)
+        guard case .object(let properties) = schema.kind else { return XCTFail("Expected summary object") }
+        XCTAssertEqual(Set(properties.filter(\.isRequired).map(\.name)), ["headline", "exerciseFindings", "nextSession", "completion"])
+        for name in ["healthNote", "limitations"] {
+            let property = try XCTUnwrap(properties.first { $0.name == name })
+            XCTAssertTrue(property.isOptional)
+            XCTAssertTrue(property.schema.isNullable)
+        }
+        guard case .array(let finding, let minimum, let maximum) = properties.first(where: { $0.name == "exerciseFindings" })?.schema.kind,
+              case .object(let findingFields) = finding.kind,
+              case .string(let verdicts, _, _) = findingFields.first(where: { $0.name == "verdict" })?.schema.kind,
+              case .array(_, let nextMinimum, let nextMaximum) = properties.first(where: { $0.name == "nextSession" })?.schema.kind else {
+            return XCTFail("Expected bounded findings, verdicts and suggestions")
+        }
+        XCTAssertEqual(minimum, 1)
+        XCTAssertEqual(maximum, 12)
+        XCTAssertEqual(Set(findingFields.filter(\.isRequired).map(\.name)), ["exercise", "finding", "verdict"])
+        XCTAssertEqual(verdicts, ["improved", "maintained", "regressed", "mixed", "insufficientData"])
+        XCTAssertEqual(nextMinimum, 1)
+        XCTAssertEqual(nextMaximum, 2)
+
+        let chat = try FoundationModelsRequest(input: [["role": "user", "content": "Help me train."]], tools: [], instructions: "")
+        XCTAssertFalse(chat.isWorkoutSummary)
+        let expected = try FoundationModelsSchema(json: ["type": "object", "properties": [
+            "answer": ["type": "string", "description": "The complete concise answer to the user."],
+            "completion": ["type": "string", "enum": ["complete"], "description": "Emit only after the answer is finished."]
+        ], "required": ["answer", "completion"]], name: "CompletedAnswer")
+        XCTAssertEqual(chat.textStage.schema, expected)
+        XCTAssertEqual(chat.textStage.maximumResponseTokens, 900)
+    }
+
+    func testWorkoutSummaryFlagRequiresExactStringOnAnyInputItem() throws {
+        let flagged = try FoundationModelsRequest(input: [["role": "user", "responseFormat": "workoutSummary"],
+            ["role": "assistant", "content": "Other input"]], tools: [], instructions: "")
+        XCTAssertTrue(flagged.isWorkoutSummary)
+        for format: Any in [true, ["workoutSummary"], "WorkoutSummary", "chat"] {
+            let request = try FoundationModelsRequest(input: [["role": "user", "responseFormat": format]], tools: [], instructions: "")
+            XCTAssertFalse(request.isWorkoutSummary)
+        }
+    }
+
+    func testLargerInjectedContextAdmitsWholePayloadRejectedByDefault() throws {
+        let content = String(repeating: "Recorded workout evidence. ", count: 400)
+        let input: [[String: Any]] = [["role": "user", "content": content, "responseFormat": "workoutSummary"]]
+        XCTAssertThrowsError(try FoundationModelsRequest(input: input, tools: [], instructions: "")) {
+            XCTAssertEqual(($0 as? AppleFoundationModelsError)?.kind, .contextTooLarge)
+        }
+        let request = try FoundationModelsRequest(input: input, tools: [], instructions: "", contextTokens: 8_192)
+        XCTAssertEqual(request.textStage.contextTokens, 8_192)
+        XCTAssertGreaterThan(request.textStage.estimatedTotalTokens, FoundationModelsBudget.contextTokens)
+        XCTAssertLessThanOrEqual(request.textStage.estimatedTotalTokens, 8_192)
+        XCTAssertNoThrow(try request.textStage.validate())
+        XCTAssertTrue(request.prompt.contains(content))
+        XCTAssertFalse(request.omittedEarlierTurns)
+    }
+
     @MainActor
     func testNarrowTemplateReadAndChartProposalRoundsFitWithoutSlicingData() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("NativePrompt-\(UUID())")

@@ -22,6 +22,7 @@ private final class ProviderLocalClient: AppleFoundationModelsProviding {
         let instructions: String
     }
     var availability: AppleFoundationModelsAvailability = .available
+    var contextTokens = 4_096
     var replies: [ChatGPTInferenceResponse] = []
     var requests: [Request] = []
     var modelLoads = 0
@@ -37,7 +38,7 @@ private final class ProviderLocalClient: AppleFoundationModelsProviding {
                  onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
         XCTAssertEqual(model, AppleFoundationModelsModel.slug)
         if validatesNativeBudget {
-            _ = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions)
+            _ = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions, contextTokens: contextTokens)
         }
         requests.append(Request(input: input, tools: tools, instructions: instructions))
         let requestIndex = requests.count - 1

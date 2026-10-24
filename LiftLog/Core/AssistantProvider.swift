@@ -48,6 +48,12 @@ protocol AssistantInferenceClient {
 @MainActor
 protocol AppleFoundationModelsProviding: AssistantInferenceClient {
     var availability: AppleFoundationModelsAvailability { get }
+    var contextTokens: Int { get }
+}
+
+extension AppleFoundationModelsProviding {
+    // Synthetic app fixtures and providers without a native window use the fallback.
+    var contextTokens: Int { FoundationModelsBudget.contextTokens }
 }
 
 extension ChatGPTInferenceClient: AssistantInferenceClient {}
@@ -55,6 +61,7 @@ extension ChatGPTInferenceClient: AssistantInferenceClient {}
 @MainActor
 struct UnavailableAppleFoundationModelsProvider: AppleFoundationModelsProviding {
     let availability: AppleFoundationModelsAvailability
+    var contextTokens: Int { FoundationModelsBudget.contextTokens }
     nonisolated init(availability: AppleFoundationModelsAvailability = .frameworkUnavailable) { self.availability = availability }
     func models() async throws -> [ChatGPTModel] { throw AppleFoundationModelsError(availability.explanation) }
     func respond(model: String, input: [[String: Any]], tools: [[String: Any]],

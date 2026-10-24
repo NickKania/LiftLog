@@ -6,6 +6,7 @@ import Foundation
 /// aliases. Prose, names, notes and embedded user-selected snapshots stay verbatim.
 struct FoundationModelsRequest {
     let instructions: String
+    let isWorkoutSummary: Bool
     let textStage: FoundationModelsGenerationStage
     let decisionStage: FoundationModelsGenerationStage?
     private let argumentStages: [String: FoundationModelsGenerationStage]
@@ -18,8 +19,12 @@ struct FoundationModelsRequest {
     let tools: [[String: Any]]
     let omittedEarlierTurns: Bool
     private let identifiers: [String: String]
+    private let contextTokens: Int
 
-    init(input: [[String: Any]], tools namespaces: [[String: Any]], instructions: String) throws {
+    init(input: [[String: Any]], tools namespaces: [[String: Any]], instructions: String,
+         contextTokens: Int = FoundationModelsBudget.contextTokens) throws {
+        self.contextTokens = contextTokens
+        isWorkoutSummary = input.contains { $0["responseFormat"] as? String == "workoutSummary" }
         tools = namespaces.flatMap { $0["tools"] as? [[String: Any]] ?? [] }
         self.instructions = FoundationModelsBudget.instructions(base: instructions, hasTools: !tools.isEmpty)
         let lastQuestion = input.lastIndex { $0["role"] as? String == "user" } ?? 0
@@ -36,7 +41,7 @@ struct FoundationModelsRequest {
             evidence = FoundationModelsMutationSchema(input: Array(input.dropFirst(start)), aliases: aliases)
             generation = try Self.generationStages(prompt: result, tools: tools, instructions: self.instructions,
                 suppliedIdentifiers: Self.suppliedIdentifiers(in: Array(input.dropFirst(start)), aliases: aliases),
-                mutationEvidence: evidence)
+                mutationEvidence: evidence, isWorkoutSummary: isWorkoutSummary, contextTokens: contextTokens)
             do {
                 // Sending an answerable question must not reserve every possible
                 // mutation's schema/output. The adapter validates only the selected
@@ -77,7 +82,8 @@ struct FoundationModelsRequest {
         if preserveSetCounts { selected = try mutationEvidence.preservingSetCounts(in: selected, toolName: name) }
         return try FoundationModelsGenerationStage(prompt: stage.prompt + "\nSelected semantic edit mode: \(editMode.rawValue)."
             + (preserveSetCounts ? " Preserve the current number of sets for each updated entry." : ""),
-            instructions: instructions, schema: selected, maximumResponseTokens: stage.maximumResponseTokens)
+            instructions: instructions, schema: selected, maximumResponseTokens: stage.maximumResponseTokens,
+            contextTokens: contextTokens)
     }
 
     func editModeStage(forToolNamed name: String) throws -> FoundationModelsGenerationStage? {
@@ -88,7 +94,8 @@ struct FoundationModelsRequest {
             "setCountPolicy": ["type": "string", "enum": ["keepExistingSetCounts", "changeExistingSetCounts"]]
         ], "required": ["mode", "setCountPolicy"]], name: "ExerciseEditIntent")
         return try FoundationModelsGenerationStage(prompt: prompt + "\nClassify the requested exercise edit. Changing reps, load, or sets of an EXISTING entry (including adding reps/load/sets) is changeExistingExerciseOrItsSets. Inserting a NEW exercise is insertNewExerciseEntry. Deleting an entry is removeExerciseEntry. Use mixedChanges only when multiple kinds are requested. Choose keepExistingSetCounts when changing reps/load while retaining existing sets; choose changeExistingSetCounts only when the user wants to add/remove sets. Select intent only; do not execute or prepare sets yet.",
-            instructions: instructions, schema: schema, maximumResponseTokens: FoundationModelsBudget.decisionResponseTokens)
+            instructions: instructions, schema: schema, maximumResponseTokens: FoundationModelsBudget.decisionResponseTokens,
+            contextTokens: contextTokens)
     }
 
     private static func toolMenu(_ tools: [[String: Any]]) -> String {
@@ -99,14 +106,35 @@ struct FoundationModelsRequest {
         }.joined(separator: "\n")
     }
 
-    private static func generationStages(prompt: String, tools: [[String: Any]], instructions: String, suppliedIdentifiers: [String], mutationEvidence: FoundationModelsMutationSchema) throws
+    private static func generationStages(prompt: String, tools: [[String: Any]], instructions: String, suppliedIdentifiers: [String],
+                                         mutationEvidence: FoundationModelsMutationSchema, isWorkoutSummary: Bool, contextTokens: Int) throws
         -> (text: FoundationModelsGenerationStage, decision: FoundationModelsGenerationStage?, arguments: [String: FoundationModelsGenerationStage], failures: [String: FoundationModelsToolDispatchError]) {
-        let completionSchema = try FoundationModelsSchema(json: ["type": "object", "properties": [
-            "answer": ["type": "string", "description": "The complete concise answer to the user."],
-            "completion": ["type": "string", "enum": ["complete"], "description": "Emit only after the answer is finished."]
-        ], "required": ["answer", "completion"]], name: "CompletedAnswer")
+        let completionSchema: FoundationModelsSchema
+        if isWorkoutSummary {
+            completionSchema = try FoundationModelsSchema(json: ["type": "object", "properties": [
+                "headline": ["type": "string", "description": "One short sentence summarizing the session. Use only numbers from sessionTotals or comparisonFacts."],
+                "exerciseFindings": ["type": "array", "minItems": 1, "maxItems": 12, "items": [
+                    "type": "object", "properties": [
+                        "exercise": ["type": "string", "description": "Exact exerciseName from completedWorkout in the evidence."],
+                        "finding": ["type": "string", "description": "One sentence, at most 25 words, using only that exercise's comparisonFacts and completedActual. Do not list every set."],
+                        "verdict": ["type": "string", "enum": ["improved", "maintained", "regressed", "mixed", "insufficientData"],
+                                    "description": "Copy comparisonVerdict for this exercise when present; otherwise use insufficientData."]
+                    ], "required": ["exercise", "finding", "verdict"]
+                ]],
+                "nextSession": ["type": "array", "minItems": 1, "maxItems": 2, "items": ["type": "string"],
+                                "description": "Concrete suggestion tied to a finding above. Suggest a load or rep change only when comparisonFacts support it."],
+                "healthNote": ["type": ["string", "null"], "description": "Neutral facts copied from the health overview only. Omit when no health evidence is present."],
+                "limitations": ["type": ["string", "null"], "description": "What the evidence cannot show. Omit when nothing material is missing."],
+                "completion": ["type": "string", "enum": ["complete"], "description": "Emit only after the answer is finished."]
+            ], "required": ["headline", "exerciseFindings", "nextSession", "completion"]], name: "WorkoutSummaryResponse")
+        } else {
+            completionSchema = try FoundationModelsSchema(json: ["type": "object", "properties": [
+                "answer": ["type": "string", "description": "The complete concise answer to the user."],
+                "completion": ["type": "string", "enum": ["complete"], "description": "Emit only after the answer is finished."]
+            ], "required": ["answer", "completion"]], name: "CompletedAnswer")
+        }
         let text = try FoundationModelsGenerationStage(prompt: prompt, instructions: instructions, schema: completionSchema,
-            maximumResponseTokens: FoundationModelsBudget.textResponseTokens)
+            maximumResponseTokens: FoundationModelsBudget.textResponseTokens, contextTokens: contextTokens)
         guard !tools.isEmpty else { return (text, nil, [:], [:]) }
         let names = tools.compactMap { $0["name"] as? String }
         let schema = try FoundationModelsSchema(json: ["type": "object", "properties": [
@@ -114,7 +142,7 @@ struct FoundationModelsRequest {
         ], "required": ["action"]], name: "WorkoutAction")
         let decision = try FoundationModelsGenerationStage(prompt: prompt + "\nAvailable tools:\n" + toolMenu(tools)
             + "\nChoose the next action. Choose respond when the supplied evidence suffices.", instructions: instructions,
-            schema: schema, maximumResponseTokens: FoundationModelsBudget.decisionResponseTokens)
+            schema: schema, maximumResponseTokens: FoundationModelsBudget.decisionResponseTokens, contextTokens: contextTokens)
         var arguments: [String: FoundationModelsGenerationStage] = [:]
         var failures: [String: FoundationModelsToolDispatchError] = [:]
         for tool in tools {
@@ -146,7 +174,7 @@ struct FoundationModelsRequest {
                     + (tool["description"] as? String ?? "") + searchRule + editRule
                     + (FoundationModelsMutationSchema.isMutation(name) ? mutationEvidence.identityEvidence : ""),
                     instructions: instructions, schema: schema,
-                    maximumResponseTokens: FoundationModelsBudget.argumentResponseTokens(forToolNamed: name))
+                    maximumResponseTokens: FoundationModelsBudget.argumentResponseTokens(forToolNamed: name), contextTokens: contextTokens)
             } catch let error as FoundationModelsToolDispatchError {
                 failures[name] = error
             }
@@ -239,21 +267,27 @@ struct FoundationModelsRequest {
             if item["type"] as? String == "function_call_output", let output = projected["output"] {
                 projected["output"] = try compactTables(output)
             }
+            if item["responseFormat"] as? String == "workoutSummary", let evidence = projected["evidence"] {
+                // Summary records are read-only evidence. Share repeated field names
+                // without changing values or slicing sets, notes or whole sessions.
+                // A missing optional field becomes an unavailable (null) table cell.
+                projected["evidence"] = try compactTables(evidence, allowingMissingFields: true)
+            }
             let data = try JSONSerialization.data(withJSONObject: projected, options: [.sortedKeys, .withoutEscapingSlashes])
             return String(decoding: data, as: UTF8.self)
         }
         return parts.joined(separator: "\n")
     }
 
-    private static func compactTables(_ value: Any) throws -> Any {
+    private static func compactTables(_ value: Any, allowingMissingFields: Bool = false) throws -> Any {
         if let object = value as? [String: Any] {
-            return try object.mapValues { try compactTables($0) }
+            return try object.mapValues { try compactTables($0, allowingMissingFields: allowingMissingFields) }
         }
         guard let array = value as? [Any] else { return value }
-        let values = try array.map { try compactTables($0) }
+        let values = try array.map { try compactTables($0, allowingMissingFields: allowingMissingFields) }
         guard values.count >= 3, let objects = values as? [[String: Any]], let first = objects.first else { return values }
-        let columns = first.keys.sorted()
-        guard !columns.isEmpty, objects.allSatisfy({ Set($0.keys) == Set(columns) }) else { return values }
+        let columns = allowingMissingFields ? Set(objects.flatMap(\.keys)).sorted() : first.keys.sorted()
+        guard !columns.isEmpty, allowingMissingFields || objects.allSatisfy({ Set($0.keys) == Set(columns) }) else { return values }
         let table: [String: Any] = ["columns": columns, "rows": objects.map { object in columns.map { object[$0] ?? NSNull() } }]
         let plain = try JSONSerialization.data(withJSONObject: values, options: [.sortedKeys, .withoutEscapingSlashes])
         let compact = try JSONSerialization.data(withJSONObject: table, options: [.sortedKeys, .withoutEscapingSlashes])
