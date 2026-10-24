@@ -111,21 +111,24 @@ struct FoundationModelsRequest {
         -> (text: FoundationModelsGenerationStage, decision: FoundationModelsGenerationStage?, arguments: [String: FoundationModelsGenerationStage], failures: [String: FoundationModelsToolDispatchError]) {
         let completionSchema: FoundationModelsSchema
         if isWorkoutSummary {
+            // Descriptions stay terse: schema text is charged against the same
+            // context window as the evidence, and the request instructions
+            // carry the full format and safety rules.
             completionSchema = try FoundationModelsSchema(json: ["type": "object", "properties": [
-                "headline": ["type": "string", "description": "One short sentence summarizing the session. Use only numbers from sessionTotals or comparisonFacts."],
+                "headline": ["type": "string", "description": "One sentence; numbers only from sessionTotals/comparisonFacts."],
                 "exerciseFindings": ["type": "array", "minItems": 1, "maxItems": 12, "items": [
                     "type": "object", "properties": [
-                        "exercise": ["type": "string", "description": "Exact exerciseName from completedWorkout in the evidence."],
-                        "finding": ["type": "string", "description": "One sentence, at most 25 words, using only that exercise's comparisonFacts and completedActual. Do not list every set."],
+                        "exercise": ["type": "string", "description": "Exact exerciseName from evidence."],
+                        "finding": ["type": "string", "description": "One sentence, max 25 words, from comparisonFacts."],
                         "verdict": ["type": "string", "enum": ["improved", "maintained", "regressed", "mixed", "insufficientData"],
-                                    "description": "Copy comparisonVerdict for this exercise when present; otherwise use insufficientData."]
+                                    "description": "Copy comparisonVerdict; else insufficientData."]
                     ], "required": ["exercise", "finding", "verdict"]
                 ]],
                 "nextSession": ["type": "array", "minItems": 1, "maxItems": 2, "items": ["type": "string"],
-                                "description": "Concrete suggestion tied to a finding above. Suggest a load or rep change only when comparisonFacts support it."],
-                "healthNote": ["type": ["string", "null"], "description": "Neutral facts copied from the health overview only. Omit when no health evidence is present."],
-                "limitations": ["type": ["string", "null"], "description": "What the evidence cannot show. Omit when nothing material is missing."],
-                "completion": ["type": "string", "enum": ["complete"], "description": "Emit only after the answer is finished."]
+                                "description": "Tied to a finding; change load/reps only if facts support it."],
+                "healthNote": ["type": ["string", "null"], "description": "Health overview facts only; omit if none."],
+                "limitations": ["type": ["string", "null"], "description": "Evidence gaps; omit if none material."],
+                "completion": ["type": "string", "enum": ["complete"], "description": "Emit last."]
             ], "required": ["headline", "exerciseFindings", "nextSession", "completion"]], name: "WorkoutSummaryResponse")
         } else {
             completionSchema = try FoundationModelsSchema(json: ["type": "object", "properties": [
@@ -134,7 +137,9 @@ struct FoundationModelsRequest {
             ], "required": ["answer", "completion"]], name: "CompletedAnswer")
         }
         let text = try FoundationModelsGenerationStage(prompt: prompt, instructions: instructions, schema: completionSchema,
-            maximumResponseTokens: FoundationModelsBudget.textResponseTokens, contextTokens: contextTokens)
+            maximumResponseTokens: isWorkoutSummary ? FoundationModelsBudget.summaryResponseTokens
+                                                     : FoundationModelsBudget.textResponseTokens,
+            contextTokens: contextTokens)
         guard !tools.isEmpty else { return (text, nil, [:], [:]) }
         let names = tools.compactMap { $0["name"] as? String }
         let schema = try FoundationModelsSchema(json: ["type": "object", "properties": [

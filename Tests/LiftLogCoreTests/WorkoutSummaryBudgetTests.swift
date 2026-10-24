@@ -128,8 +128,10 @@ final class WorkoutSummaryBudgetTests: XCTestCase {
         let payload = try evidence(request)
         let health = try XCTUnwrap(payload["health"] as? [String: Any])
         XCTAssertNil(health["sampleColumns"])
-        XCTAssertEqual(health["intervalStart"] as? String, ISO8601DateFormatter().string(from: target.startedAt))
-        XCTAssertEqual(health["intervalEnd"] as? String, ISO8601DateFormatter().string(from: target.startedAt.addingTimeInterval(3_600)))
+        // Interval dates duplicate the scoped workout's own dates already in
+        // the payload, so the bounded local projection omits them.
+        XCTAssertNil(health["intervalStart"])
+        XCTAssertNil(health["intervalEnd"])
         let metrics = try XCTUnwrap(health["metrics"] as? [[String: Any]])
         XCTAssertEqual(metrics.count, 3)
         for metric in metrics {
@@ -206,7 +208,9 @@ final class WorkoutSummaryBudgetTests: XCTestCase {
             provider: .appleFoundationModels)
         let projected = try FoundationModelsRequest(input: request.input, tools: [], instructions: request.instructions)
         XCTAssertLessThanOrEqual(projected.textStage.estimatedTotalTokens, FoundationModelsBudget.contextTokens)
-        XCTAssertEqual(projected.textStage.maximumResponseTokens, 900)
+        // Guided summary output reserves its own bounded budget; free-text
+        // chat keeps the larger 900-token reserve.
+        XCTAssertEqual(projected.textStage.maximumResponseTokens, FoundationModelsBudget.summaryResponseTokens)
         let payload = try evidence(request)
         let history = try XCTUnwrap(payload["earlierCompletedWorkouts"] as? [[String: Any]])
         XCTAssertGreaterThanOrEqual(history.count, 1)

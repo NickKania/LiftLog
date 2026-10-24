@@ -6,6 +6,10 @@ enum FoundationModelsBudget {
     static let contextTokens = 4_096
     static let framingReserveTokens = 128
     static let textResponseTokens = 900
+    /// Guided summary output is structurally bounded (short headline, capped
+    /// findings and suggestions, instructions already cap prose near 700
+    /// tokens), so it reserves slightly less than free-text chat answers.
+    static let summaryResponseTokens = 800
     static let argumentResponseTokens = 900
     static let decisionResponseTokens = 80
 
