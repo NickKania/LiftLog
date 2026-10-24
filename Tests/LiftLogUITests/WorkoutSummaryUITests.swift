@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 final class WorkoutSummaryUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
@@ -206,6 +207,74 @@ final class WorkoutSummaryUITests: XCTestCase {
         XCTAssertTrue(app.buttons["closeWorkoutSummaryButton"].exists)
         reveal(app.buttons["workoutSummaryRetryButton"], in: app)
         keepScreenshot(of: app, named: "Workout summary request error with retry")
+    }
+
+    @MainActor
+    func testLoadingCardAlignsWithSavedStats() {
+        checkLoadingCard(includeHealth: false, largeText: false)
+    }
+
+    @MainActor
+    func testLoadingCardWithHealthAlignsWithSavedStats() {
+        checkLoadingCard(includeHealth: true, largeText: false)
+    }
+
+    @MainActor
+    func testLoadingCardWithHealthSupportsAccessibilityText() {
+        checkLoadingCard(includeHealth: true, largeText: true)
+    }
+
+    @MainActor
+    private func checkLoadingCard(includeHealth: Bool, largeText: Bool) {
+        var arguments: [String] = []
+        if !largeText {
+            arguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"]
+        }
+        let app = launchFixture(reset: true, delayed: true, largeText: largeText,
+                                additionalArguments: arguments)
+        finishFixtureWorkout(in: app)
+        if includeHealth { setToggle("workoutSummaryIncludeHealthToggle", enabled: true, in: app) }
+        let generate = app.buttons["workoutSummaryGenerateButton"]
+        reveal(generate, in: app)
+        generate.tap()
+        let card = app.otherElements["workoutSummaryWorkingCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        let stats = app.otherElements["workoutSummarySavedStats"]
+        XCTAssertEqual(card.frame.minX, stats.frame.minX, accuracy: 1)
+        let leadingMargin = stats.frame.minX - app.frame.minX
+        XCTAssertEqual(card.frame.maxX, app.frame.maxX - leadingMargin, accuracy: 1,
+                       "The loading card must keep equal leading and trailing margins")
+        let stop = app.buttons["workoutSummaryStopButton"]
+        reveal(stop, in: app)
+        XCTAssertGreaterThanOrEqual(stop.frame.minX, card.frame.minX + 15)
+        XCTAssertLessThanOrEqual(stop.frame.maxX, card.frame.maxX - 15)
+        if largeText {
+            let progress = app.staticTexts["workoutSummaryProgress"]
+            XCTAssertTrue(progress.exists)
+            XCTAssertTrue(progress.isHittable)
+            let status = progress.staticTexts["Generating insights…"]
+            let spinner = progress.activityIndicators.firstMatch
+            XCTAssertTrue(status.exists)
+            XCTAssertTrue(status.isHittable, "The loading status must remain visible at accessibility XXXL")
+            XCTAssertTrue(spinner.exists)
+            let statusFrame = status.frame
+            XCTAssertTrue(app.scrollViews.firstMatch.frame.contains(statusFrame),
+                          "The entire loading status must fit in the visible scroll area")
+            XCTAssertGreaterThanOrEqual(statusFrame.minY, app.navigationBars["Workout Summary"].frame.maxY)
+            let singleLineHeight = UIFont.preferredFont(
+                forTextStyle: .body,
+                compatibleWith: UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+            ).lineHeight
+            XCTAssertGreaterThan(statusFrame.height, singleLineHeight * 1.5,
+                                 "The loading status must wrap instead of truncating to one line")
+            XCTAssertLessThanOrEqual(spinner.frame.maxY, statusFrame.minY,
+                                     "The spinner must stack above the loading status at accessibility XXXL")
+            XCTAssertEqual(spinner.frame.minX, statusFrame.minX, accuracy: 1,
+                           "The stacked spinner and loading status must share leading alignment")
+        }
+        keepScreenshot(of: app, named: "Workout insights loading \(includeHealth ? "with Health" : "workout only") \(largeText ? "accessibility XXXL" : "default text")")
+        stop.tap()
+        XCTAssertTrue(generate.waitForExistence(timeout: 5))
     }
 
     @MainActor
