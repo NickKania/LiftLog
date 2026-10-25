@@ -117,6 +117,16 @@ final class WorkoutSummaryStructuredOutputTests: XCTestCase {
         XCTAssertNoThrow(try render(object))
     }
 
+    func testExpectedVerdictsRejectInventedExercisesAndMismatchedVerdicts() throws {
+        let json = String(decoding: try JSONSerialization.data(withJSONObject: response), as: UTF8.self)
+        let expected = ["Bench Press": "improved", "Barbell Row": "maintained"]
+        XCTAssertNoThrow(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json, expectedVerdicts: expected))
+        XCTAssertThrowsError(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json,
+            expectedVerdicts: ["Bench Press": "regressed", "Barbell Row": "maintained"]))
+        XCTAssertThrowsError(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json,
+            expectedVerdicts: ["Bench Press": "improved"]))
+    }
+
     func testMalformedJSONAndWrongFieldTypesThrowProviderErrors() throws {
         for json in ["", "{", "[]", "null", #"{"completion":"complete"}"#] {
             XCTAssertThrowsError(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json)) {

@@ -183,7 +183,8 @@ private extension AppleFoundationModelsProvider {
             guard final.rawContent.isComplete else {
                 throw AppleFoundationModelsError("The on-device answer did not finish. Ask for a shorter answer or resend the question in smaller parts.")
             }
-            let completed = request.restoringIdentifiers(in: try WorkoutSummaryStructuredOutput.markdown(fromJSON: final.content.jsonString))
+            let completed = request.restoringIdentifiers(in: try WorkoutSummaryStructuredOutput.markdown(
+                fromJSON: final.content.jsonString, expectedVerdicts: request.summaryVerdicts))
             return ChatGPTInferenceResponse(text: completed,
                 output: [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": completed]]]], calls: [])
         }

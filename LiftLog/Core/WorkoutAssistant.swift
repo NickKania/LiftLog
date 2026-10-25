@@ -318,7 +318,7 @@ final class WorkoutAssistant {
                 // send(false) leaves the screen-owned draft and tags untouched.
                 _ = try FoundationModelsRequest(input: chat.history + [["role": "user", "content": context.content]],
                     tools: chat.tools.definitions(includingHealth: isHealthTurn, allowingProposals: !isHealthTurn),
-                    instructions: Self.instructions)
+                    instructions: Self.instructions, contextTokens: appleFoundationModels.contextTokens)
             } catch { record(error); return false }
         }
         errorMessage = nil
@@ -468,7 +468,8 @@ final class WorkoutAssistant {
             do {
                 let content = try healthContext(text: text, snapshots: compact, maximumIntervalsPerMetric: intervals)
                 let input = history + [["role": "user", "content": content]]
-                _ = try FoundationModelsRequest(input: input, tools: tools, instructions: Self.instructions)
+                _ = try FoundationModelsRequest(input: input, tools: tools, instructions: Self.instructions,
+                                                contextTokens: appleFoundationModels.contextTokens)
                 return (input, intervals)
             } catch let error as AppleFoundationModelsError where error.kind == .contextTooLarge { continue }
         }
@@ -776,7 +777,8 @@ final class WorkoutAssistant {
                                      originalText: String, healthSnapshots: [WorkoutHealthSnapshot],
                                      healthIntervals: inout Int?, artifacts: [ProducedArtifact]) throws {
         func validate() throws {
-            _ = try FoundationModelsRequest(input: input, tools: definitions, instructions: Self.instructions)
+            _ = try FoundationModelsRequest(input: input, tools: definitions, instructions: Self.instructions,
+                                            contextTokens: appleFoundationModels.contextTokens)
         }
         do { try validate(); return }
         catch let error as AppleFoundationModelsError where error.kind == .contextTooLarge { /* Retry whole-result eviction below. */ }

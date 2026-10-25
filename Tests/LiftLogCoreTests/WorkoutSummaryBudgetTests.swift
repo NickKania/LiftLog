@@ -82,6 +82,11 @@ final class WorkoutSummaryBudgetTests: XCTestCase {
         XCTAssertNil(targetExercises[5]["supersetGroup"])
         XCTAssertEqual(targetExercises.last?["completedActual"] as? String, "1 sets: 0.0 lb x 12 reps each")
         XCTAssertNil(targetExercises.last?["recordedPlan"])
+        // Aggregated comparison facts attach to the first entry of a repeated
+        // movement only; the duplicate row carries no second verdict.
+        XCTAssertNotNil(targetExercises[0]["comparisonVerdict"])
+        XCTAssertNil(targetExercises[6]["comparisonVerdict"])
+        XCTAssertNil(targetExercises[6]["comparisonFacts"])
 
         let history = try XCTUnwrap(payload["earlierCompletedWorkouts"] as? [[String: Any]])
         let coverage = try XCTUnwrap(payload["coverage"] as? [String: Int])

@@ -7,6 +7,12 @@ import Foundation
 struct FoundationModelsRequest {
     let instructions: String
     let isWorkoutSummary: Bool
+    /// Swift-computed verdicts by exercise name, extracted from the summary
+    /// evidence so the adapter can verify the model's copied verdicts (and
+    /// reject invented exercise names) before rendering. Names shared by
+    /// distinct movements are omitted because a name-keyed check cannot
+    /// tell them apart. Empty for every non-summary request.
+    let summaryVerdicts: [String: String]
     let textStage: FoundationModelsGenerationStage
     let decisionStage: FoundationModelsGenerationStage?
     private let argumentStages: [String: FoundationModelsGenerationStage]
@@ -24,7 +30,13 @@ struct FoundationModelsRequest {
     init(input: [[String: Any]], tools namespaces: [[String: Any]], instructions: String,
          contextTokens: Int = FoundationModelsBudget.contextTokens) throws {
         self.contextTokens = contextTokens
-        isWorkoutSummary = input.contains { $0["responseFormat"] as? String == "workoutSummary" }
+        // Summary mode requires the summary's own single user item bearing
+        // structured evidence, so a stray/replayed item can never flip a
+        // chat request onto the summary schema.
+        let summaryItem = input.first { $0["responseFormat"] as? String == "workoutSummary"
+            && $0["role"] as? String == "user" && $0["evidence"] as? [String: Any] != nil }
+        isWorkoutSummary = summaryItem != nil
+        summaryVerdicts = Self.summaryVerdicts(evidence: summaryItem?["evidence"] as? [String: Any])
         tools = namespaces.flatMap { $0["tools"] as? [[String: Any]] ?? [] }
         self.instructions = FoundationModelsBudget.instructions(base: instructions, hasTools: !tools.isEmpty)
         let lastQuestion = input.lastIndex { $0["role"] as? String == "user" } ?? 0
@@ -71,6 +83,21 @@ struct FoundationModelsRequest {
     }
 
     var toolMenu: String { Self.toolMenu(tools) }
+
+    private static func summaryVerdicts(evidence: [String: Any]?) -> [String: String] {
+        guard let completed = evidence?["completedWorkout"] as? [String: Any],
+              let exercises = completed["exercises"] as? [[String: Any]] else { return [:] }
+        var verdicts: [String: String] = [:]
+        var ambiguous: Set<String> = []
+        for exercise in exercises {
+            guard let name = exercise["exerciseName"] as? String,
+                  let verdict = exercise["comparisonVerdict"] as? String else { continue }
+            if let existing = verdicts[name], existing != verdict { ambiguous.insert(name) }
+            verdicts[name] = verdict
+        }
+        for name in ambiguous { verdicts.removeValue(forKey: name) }
+        return verdicts
+    }
 
     func argumentStage(forToolNamed name: String, editMode: FoundationModelsEditMode? = nil, preserveSetCounts: Bool = false) throws -> FoundationModelsGenerationStage {
         if let error = argumentFailures[name] { throw error }
@@ -120,7 +147,7 @@ struct FoundationModelsRequest {
                     "type": "object", "properties": [
                         "exercise": ["type": "string", "description": "Exact exerciseName from evidence."],
                         "finding": ["type": "string", "description": "One sentence, max 25 words, from comparisonFacts."],
-                        "verdict": ["type": "string", "enum": ["improved", "maintained", "regressed", "mixed", "insufficientData"],
+                        "verdict": ["type": "string", "enum": WorkoutSummaryExerciseComparison.Verdict.allCases.map(\.rawValue),
                                     "description": "Copy comparisonVerdict; else insufficientData."]
                     ], "required": ["exercise", "finding", "verdict"]
                 ]],
@@ -128,7 +155,7 @@ struct FoundationModelsRequest {
                                 "description": "Tied to a finding; change load/reps only if facts support it."],
                 "healthNote": ["type": ["string", "null"], "description": "Health overview facts only; omit if none."],
                 "limitations": ["type": ["string", "null"], "description": "Evidence gaps; omit if none material."],
-                "completion": ["type": "string", "enum": ["complete"], "description": "Emit last."]
+                "completion": ["type": "string", "enum": ["complete"], "description": "Completion marker."]
             ], "required": ["headline", "exerciseFindings", "nextSession", "completion"]], name: "WorkoutSummaryResponse")
         } else {
             completionSchema = try FoundationModelsSchema(json: ["type": "object", "properties": [

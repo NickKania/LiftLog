@@ -1,8 +1,11 @@
 import Foundation
 
 /// Validates the completed guided response before rendering any summary structure.
+/// When `expectedVerdicts` is non-empty, every finding must name a known
+/// exercise and copy its Swift-computed verdict exactly; invented names or
+/// mismatched verdicts reject the whole response instead of rendering.
 enum WorkoutSummaryStructuredOutput {
-    static func markdown(fromJSON json: String) throws -> String {
+    static func markdown(fromJSON json: String, expectedVerdicts: [String: String] = [:]) throws -> String {
         let unfinished = AppleFoundationModelsError("The on-device answer did not finish. Ask for a shorter answer or resend the question in smaller parts.")
         let empty = AppleFoundationModelsError("The on-device model returned an empty response. Try again.")
         guard let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else {
@@ -29,11 +32,15 @@ enum WorkoutSummaryStructuredOutput {
             // Reject out-of-bounds arrays rather than silently dropping advice.
             throw unfinished
         }
-        let verdicts: Set<String> = ["improved", "maintained", "regressed", "mixed", "insufficientData"]
+        let verdicts = Set(WorkoutSummaryExerciseComparison.Verdict.allCases.map(\.rawValue))
         let bullets = try findings.map { finding in
             let exercise = try requiredText(finding["exercise"])
             let text = try requiredText(finding["finding"])
-            guard try verdicts.contains(trimmed(finding["verdict"])) else { throw unfinished }
+            let verdict = try trimmed(finding["verdict"])
+            guard verdicts.contains(verdict) else { throw unfinished }
+            if !expectedVerdicts.isEmpty {
+                guard expectedVerdicts[exercise] == verdict else { throw unfinished }
+            }
             return "- **\(exercise):** \(text)"
         }
         let suggestions = try nextSession.enumerated().map { index, item in

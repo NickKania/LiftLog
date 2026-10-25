@@ -4,9 +4,14 @@ import XCTest
 
 final class FoundationModelsRequestTests: XCTestCase {
     func testWorkoutSummarySelectsGuidedFieldsWhileChatKeepsCompletedAnswer() throws {
-        let request = try FoundationModelsRequest(input: [["role": "user", "content": "Summarize.", "responseFormat": "workoutSummary"]],
-            tools: [], instructions: "", contextTokens: 5_000)
+        let evidence: [String: Any] = ["completedWorkout": ["exercises": [
+            ["exerciseName": "Bench Press", "comparisonVerdict": "improved"],
+            ["exerciseName": "Barbell Row", "comparisonVerdict": "maintained"]
+        ]]]
+        let request = try FoundationModelsRequest(input: [["role": "user", "content": "Summarize.", "responseFormat": "workoutSummary",
+            "evidence": evidence]], tools: [], instructions: "", contextTokens: 5_000)
         XCTAssertTrue(request.isWorkoutSummary)
+        XCTAssertEqual(request.summaryVerdicts, ["Bench Press": "improved", "Barbell Row": "maintained"])
         let schema = try XCTUnwrap(request.textStage.schema)
         XCTAssertEqual(schema.name, "WorkoutSummaryResponse")
         XCTAssertTrue(try schema.jsonString.contains("exerciseFindings"))
@@ -34,6 +39,7 @@ final class FoundationModelsRequestTests: XCTestCase {
 
         let chat = try FoundationModelsRequest(input: [["role": "user", "content": "Help me train."]], tools: [], instructions: "")
         XCTAssertFalse(chat.isWorkoutSummary)
+        XCTAssertTrue(chat.summaryVerdicts.isEmpty)
         let expected = try FoundationModelsSchema(json: ["type": "object", "properties": [
             "answer": ["type": "string", "description": "The complete concise answer to the user."],
             "completion": ["type": "string", "enum": ["complete"], "description": "Emit only after the answer is finished."]
@@ -42,10 +48,15 @@ final class FoundationModelsRequestTests: XCTestCase {
         XCTAssertEqual(chat.textStage.maximumResponseTokens, 900)
     }
 
-    func testWorkoutSummaryFlagRequiresExactStringOnAnyInputItem() throws {
-        let flagged = try FoundationModelsRequest(input: [["role": "user", "responseFormat": "workoutSummary"],
-            ["role": "assistant", "content": "Other input"]], tools: [], instructions: "")
+    func testWorkoutSummaryFlagRequiresExactStringOnEvidenceBearingUserItem() throws {
+        let flagged = try FoundationModelsRequest(input: [["role": "user", "responseFormat": "workoutSummary",
+            "evidence": [String: Any]()], ["role": "assistant", "content": "Other input"]], tools: [], instructions: "")
         XCTAssertTrue(flagged.isWorkoutSummary)
+        // The bare flag without structured evidence must not flip a request
+        // (e.g. a replayed chat item) onto the summary schema.
+        let flagOnly = try FoundationModelsRequest(input: [["role": "user", "responseFormat": "workoutSummary"]],
+            tools: [], instructions: "")
+        XCTAssertFalse(flagOnly.isWorkoutSummary)
         for format: Any in [true, ["workoutSummary"], "WorkoutSummary", "chat"] {
             let request = try FoundationModelsRequest(input: [["role": "user", "responseFormat": format]], tools: [], instructions: "")
             XCTAssertFalse(request.isWorkoutSummary)
@@ -54,7 +65,8 @@ final class FoundationModelsRequestTests: XCTestCase {
 
     func testLargerInjectedContextAdmitsWholePayloadRejectedByDefault() throws {
         let content = String(repeating: "Recorded workout evidence. ", count: 400)
-        let input: [[String: Any]] = [["role": "user", "content": content, "responseFormat": "workoutSummary"]]
+        let input: [[String: Any]] = [["role": "user", "content": content, "responseFormat": "workoutSummary",
+                                        "evidence": [String: Any]()]]
         XCTAssertThrowsError(try FoundationModelsRequest(input: input, tools: [], instructions: "")) {
             XCTAssertEqual(($0 as? AppleFoundationModelsError)?.kind, .contextTooLarge)
         }

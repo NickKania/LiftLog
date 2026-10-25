@@ -1,7 +1,7 @@
 import Foundation
 
 struct WorkoutSummaryExerciseComparison: Equatable, Sendable {
-    enum Verdict: String, Equatable, Sendable {
+    enum Verdict: String, CaseIterable, Equatable, Sendable {
         case improved, maintained, regressed, mixed, insufficientData
     }
 
@@ -138,9 +138,20 @@ enum WorkoutSummaryAnalytics {
         if sharedCount > 1 {
             facts.append("Shared set \(sharedCount): \(setFact(current.sets[sharedCount - 1], unit: unit)) versus \(setFact(prior.sets[sharedCount - 1], unit: unit)) earlier.")
         }
-        let confounded = current.sets[0].weight < prior.sets[0].weight &&
+        // A single shared set is both opener and "late" set, so the lighter-
+        // opener confound only applies when at least two sets align.
+        let confounded = sharedCount > 1 && current.sets[0].weight < prior.sets[0].weight &&
             current.sets[sharedCount - 1].reps > prior.sets[sharedCount - 1].reps
-        if confounded {
+        // Bodyweight work has zero volume in both sessions; total reps are
+        // then the only progression signal available to the verdict rules.
+        let signalPercent = percent ?? (currentVolume == 0 && priorVolume == 0
+            ? volumePercent(current: Double(current.totalReps), prior: Double(prior.totalReps)) : nil)
+        let movementVerdict = verdict(topDelta: topDelta, currentTopReps: currentTop.reps,
+                                      priorTopReps: priorTop.reps, volumePercent: signalPercent,
+                                      confounded: confounded)
+        // Never contradict an improved verdict with the confound caution: a
+        // heavier top set already settles the strength question it qualifies.
+        if confounded && movementVerdict != .improved {
             facts.append("Late-set reps rose from \(prior.sets[sharedCount - 1].reps) to \(current.sets[sharedCount - 1].reps), but opening load was lighter (\(current.sets[0].weight) \(unit.rawValue) versus \(prior.sets[0].weight) \(unit.rawValue)); not clear evidence of strength gain.")
         }
         let sameUnitHistory = history.filter { session in
@@ -158,8 +169,7 @@ enum WorkoutSummaryAnalytics {
         }) {
             facts.append("Performed load matches the recorded plan for every completed set; the reason for the reduction is not in the evidence.")
         }
-        return result(verdict(topDelta: topDelta, currentTopReps: currentTop.reps,
-                              priorTopReps: priorTop.reps, volumePercent: percent, confounded: confounded), facts)
+        return result(movementVerdict, facts)
     }
 
     private static func currentFact(_ performance: Performance, unit: WeightUnit) -> String {

@@ -276,6 +276,31 @@ final class WorkoutSummaryAnalyticsTests: XCTestCase {
         XCTAssertTrue(invalidPriorResult.facts.contains("Completed load data is unavailable or not finite; load comparisons are unavailable."))
     }
 
+    func testSingleSetComparisonDoesNotClaimLateSetConfound() throws {
+        let prior = session([WorkoutExercise(exercise: bench, sets: [set(120, 10)])], day: 0, name: "Earlier Bench")
+        let current = session([WorkoutExercise(exercise: bench, sets: [set(80, 15)])])
+        let result = try comparison(current, earlier: [prior])
+        XCTAssertFalse(result.facts.contains { $0.contains("Late-set reps rose") }, result.facts.joined(separator: " | "))
+    }
+
+    func testImprovedVerdictSuppressesContradictoryConfoundCaution() throws {
+        let prior = session([WorkoutExercise(exercise: bench, sets: [set(120, 10), set(100, 6)])], day: 0, name: "Earlier Bench")
+        let current = session([WorkoutExercise(exercise: bench, sets: [set(80, 10), set(130, 10)])])
+        let result = try comparison(current, earlier: [prior])
+        XCTAssertEqual(result.verdict, .improved)
+        XCTAssertFalse(result.facts.contains { $0.contains("not clear evidence of strength gain") }, result.facts.joined(separator: " | "))
+    }
+
+    func testBodyweightRepProgressionUsesRepsWhenBothVolumesAreZero() throws {
+        let pushUp = Exercise(name: "Push-Up")
+        let prior = session([WorkoutExercise(exercise: pushUp, sets: [set(0, 10)])], day: 0, name: "Earlier Push-Up")
+        let current = session([WorkoutExercise(exercise: pushUp, sets: [set(0, 20)])], name: "Current Push-Up")
+        let result = try comparison(current, earlier: [prior])
+        XCTAssertEqual(result.verdict, .improved, result.facts.joined(separator: " | "))
+        let regressed = session([WorkoutExercise(exercise: pushUp, sets: [set(0, 5)])], day: 2, name: "Later Push-Up")
+        XCTAssertEqual(try comparison(regressed, earlier: [current]).verdict, .regressed)
+    }
+
     func testNonFiniteHistoryDatesAndPercentageAreGuarded() throws {
         let current = session([WorkoutExercise(exercise: bench, sets: [set(1, 1)])])
         var invalidDate = session([WorkoutExercise(exercise: bench, sets: [set(999, 1)])], day: 0)
