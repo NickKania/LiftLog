@@ -13,6 +13,8 @@ The upstream repository describes its dataset as public domain. Its license perm
 
 The complete upstream JSON is retained for audit and future use. Only IDs, names, and muscle categories are exposed in the current app. Instructions and image paths remain in the vendor snapshot; images are not downloaded, bundled, or loaded by the app.
 
+The maintainer separately reports unknown image origins and reuse rights in [image-license issue #2](https://github.com/yuhonas/free-exercise-db/issues/2). Do not treat the repository's Unlicense declaration as verified permission for those photographs. Future catalog enrichment must follow the text/media provenance policy and source recommendations in [Open exercise-data sources](EXERCISE_DATA_SOURCES.md). The [implementation plan](IMPLEMENTATION_PLAN.md) keeps the current identities and starts with offline text and metadata; imagery is a separate, optional milestone.
+
 ## Generation
 
 Run from the repository root:

@@ -1,0 +1,3 @@
+// Local signing identity, intentionally excluded from Git.
+DEVELOPMENT_TEAM = 2CUP94Z3Q9
+LIFTLOG_BUNDLE_IDENTIFIER = nkania.WeightsTracker
