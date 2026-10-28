@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# Preserve existing organization review settings unless overridden below.
+inheritance: true
+
+reviews:
+  auto_review:
+    enabled: true
+    auto_incremental_review: false
+    drafts: false
+    # The default branch (main) is reviewed automatically. No additional branches.
+    base_branches: []
