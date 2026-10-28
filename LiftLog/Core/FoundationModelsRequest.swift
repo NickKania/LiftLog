@@ -9,10 +9,10 @@ struct FoundationModelsRequest {
     let isWorkoutSummary: Bool
     /// Swift-computed verdicts by exercise name, extracted from the summary
     /// evidence so the adapter can verify the model's copied verdicts (and
-    /// reject invented exercise names) before rendering. Names shared by
-    /// distinct movements are omitted because a name-keyed check cannot
-    /// tell them apart. Empty for every non-summary request.
-    let summaryVerdicts: [String: String]
+    /// reject invented exercise names) before rendering. A name shared by
+    /// distinct movements keeps every verdict those movements carry, since
+    /// findings identify movements by name only. Empty for non-summary requests.
+    let summaryVerdicts: [String: Set<String>]
     let textStage: FoundationModelsGenerationStage
     let decisionStage: FoundationModelsGenerationStage?
     private let argumentStages: [String: FoundationModelsGenerationStage]
@@ -84,18 +84,15 @@ struct FoundationModelsRequest {
 
     var toolMenu: String { Self.toolMenu(tools) }
 
-    private static func summaryVerdicts(evidence: [String: Any]?) -> [String: String] {
+    private static func summaryVerdicts(evidence: [String: Any]?) -> [String: Set<String>] {
         guard let completed = evidence?["completedWorkout"] as? [String: Any],
               let exercises = completed["exercises"] as? [[String: Any]] else { return [:] }
-        var verdicts: [String: String] = [:]
-        var ambiguous: Set<String> = []
+        var verdicts: [String: Set<String>] = [:]
         for exercise in exercises {
             guard let name = exercise["exerciseName"] as? String,
                   let verdict = exercise["comparisonVerdict"] as? String else { continue }
-            if let existing = verdicts[name], existing != verdict { ambiguous.insert(name) }
-            verdicts[name] = verdict
+            verdicts[name, default: []].insert(verdict)
         }
-        for name in ambiguous { verdicts.removeValue(forKey: name) }
         return verdicts
     }
 

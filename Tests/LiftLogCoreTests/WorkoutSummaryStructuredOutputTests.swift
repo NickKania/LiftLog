@@ -119,12 +119,41 @@ final class WorkoutSummaryStructuredOutputTests: XCTestCase {
 
     func testExpectedVerdictsRejectInventedExercisesAndMismatchedVerdicts() throws {
         let json = String(decoding: try JSONSerialization.data(withJSONObject: response), as: UTF8.self)
-        let expected = ["Bench Press": "improved", "Barbell Row": "maintained"]
+        let expected: [String: Set<String>] = ["Bench Press": ["improved"], "Barbell Row": ["maintained"]]
         XCTAssertNoThrow(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json, expectedVerdicts: expected))
         XCTAssertThrowsError(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json,
-            expectedVerdicts: ["Bench Press": "regressed", "Barbell Row": "maintained"]))
+            expectedVerdicts: ["Bench Press": ["regressed"], "Barbell Row": ["maintained"]]))
         XCTAssertThrowsError(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json,
-            expectedVerdicts: ["Bench Press": "improved"]))
+            expectedVerdicts: ["Bench Press": ["improved"]]))
+    }
+
+    func testSameNameMovementsWithDifferentVerdictsBothRender() throws {
+        // Two distinct catalog movements can share one exerciseName. The
+        // verdict check must accept a finding carrying either movement's
+        // Swift verdict for that name, and still reject a third verdict.
+        let evidence: [String: Any] = ["completedWorkout": ["exercises": [
+            ["exerciseName": "Bench Press", "comparisonVerdict": "improved"],
+            ["exerciseName": "Bench Press", "comparisonVerdict": "regressed"],
+            ["exerciseName": "Barbell Row", "comparisonVerdict": "maintained"]
+        ]]]
+        let request = try FoundationModelsRequest(input: [["role": "user", "content": "Summarize.",
+            "responseFormat": "workoutSummary", "evidence": evidence]], tools: [], instructions: "",
+            contextTokens: 5_000)
+        var object = response
+        object["exerciseFindings"] = [
+            ["exercise": "Bench Press", "finding": "Completed load increased by 10 lb with the same reps.", "verdict": "improved"],
+            ["exercise": "Bench Press", "finding": "Second entry load fell against the earlier session.", "verdict": "regressed"],
+            ["exercise": "Barbell Row", "finding": "Recorded load and reps matched the earlier session.", "verdict": "maintained"]
+        ]
+        let json = String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+        XCTAssertNoThrow(try WorkoutSummaryStructuredOutput.markdown(fromJSON: json,
+            expectedVerdicts: request.summaryVerdicts))
+        object["exerciseFindings"] = [
+            ["exercise": "Bench Press", "finding": "Completed load increased by 10 lb with the same reps.", "verdict": "mixed"]
+        ]
+        let outsideJSON = String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+        XCTAssertThrowsError(try WorkoutSummaryStructuredOutput.markdown(fromJSON: outsideJSON,
+            expectedVerdicts: request.summaryVerdicts))
     }
 
     func testMalformedJSONAndWrongFieldTypesThrowProviderErrors() throws {

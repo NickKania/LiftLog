@@ -11,7 +11,7 @@ final class FoundationModelsRequestTests: XCTestCase {
         let request = try FoundationModelsRequest(input: [["role": "user", "content": "Summarize.", "responseFormat": "workoutSummary",
             "evidence": evidence]], tools: [], instructions: "", contextTokens: 5_000)
         XCTAssertTrue(request.isWorkoutSummary)
-        XCTAssertEqual(request.summaryVerdicts, ["Bench Press": "improved", "Barbell Row": "maintained"])
+        XCTAssertEqual(request.summaryVerdicts, ["Bench Press": ["improved"], "Barbell Row": ["maintained"]])
         let schema = try XCTUnwrap(request.textStage.schema)
         XCTAssertEqual(schema.name, "WorkoutSummaryResponse")
         XCTAssertTrue(try schema.jsonString.contains("exerciseFindings"))
