@@ -1,11 +1,15 @@
 import Foundation
 
-/// Every native stage starts a fresh 4096-token session. Schema and output share
-/// that window with instructions and evidence; 24 KB of text is not a token budget.
+/// Every native stage starts a fresh session using the device's context window,
+/// or 4096 tokens as a fallback. Schema, output, instructions and evidence share it.
 enum FoundationModelsBudget {
     static let contextTokens = 4_096
     static let framingReserveTokens = 128
     static let textResponseTokens = 900
+    /// Guided summary output is structurally bounded (short headline, capped
+    /// findings and suggestions, instructions already cap prose near 700
+    /// tokens), so it reserves slightly less than free-text chat answers.
+    static let summaryResponseTokens = 800
     static let argumentResponseTokens = 900
     static let decisionResponseTokens = 80
 
@@ -85,20 +89,24 @@ struct FoundationModelsGenerationStage {
     let prompt: String
     let schema: FoundationModelsSchema?
     let maximumResponseTokens: Int
+    let contextTokens: Int
     let estimatedInputTokens: Int
     var estimatedTotalTokens: Int { estimatedInputTokens + maximumResponseTokens + FoundationModelsBudget.framingReserveTokens }
 
-    init(prompt: String, instructions: String, schema: FoundationModelsSchema? = nil, maximumResponseTokens: Int) throws {
+    init(prompt: String, instructions: String, schema: FoundationModelsSchema? = nil, maximumResponseTokens: Int,
+         contextTokens: Int = FoundationModelsBudget.contextTokens) throws {
         self.prompt = prompt
         self.schema = schema
         self.maximumResponseTokens = maximumResponseTokens
+        self.contextTokens = contextTokens
         estimatedInputTokens = FoundationModelsBudget.estimatedTokens(in: instructions)
             + FoundationModelsBudget.estimatedTokens(in: prompt)
             + (try schema.map { FoundationModelsBudget.estimatedTokens(in: try $0.jsonString + "\n" + $0.constraintDescriptions) } ?? 0)
     }
 
     func validate() throws {
-        try FoundationModelsBudget.validate(inputTokens: estimatedInputTokens, outputTokens: maximumResponseTokens)
+        try FoundationModelsBudget.validate(inputTokens: estimatedInputTokens, outputTokens: maximumResponseTokens,
+                                            contextTokens: contextTokens)
     }
 }
 

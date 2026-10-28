@@ -89,6 +89,7 @@ final class AssistantChatTitleGeneratorTests: XCTestCase {
 @MainActor
 private final class TitleLocalClient: AppleFoundationModelsProviding {
     var availability: AppleFoundationModelsAvailability = .available
+    var contextTokens = 4_096
     var requestCount = 0
     func models() async throws -> [ChatGPTModel] { AppleFoundationModelsModel.catalog }
     func respond(model: String, input: [[String: Any]], tools: [[String: Any]], instructions: String,

@@ -24,8 +24,12 @@ final class WorkoutSummarySemanticsTests: XCTestCase {
         let completedExercises = try XCTUnwrap(completed["exercises"] as? [[String: Any]])
         XCTAssertEqual(completed["name"] as? String, "Synthetic Workout 2")
         XCTAssertEqual(completedExercises.first?["completedActual"] as? String, "1 sets: 145.0 lb x 8 reps each")
-        XCTAssertEqual(completedExercises.first?["comparisonWithEarlierActual"] as? String,
-                       "Completed actual load 145.0 lb versus 135.0 lb in earlier Synthetic Workout 1; difference +10.0 lb, with identical recorded sets/reps.")
+        XCTAssertEqual(payload["sessionTotals"] as? String, "1 completed sets, 8 reps, volume 1160.0 lb, duration 30 min")
+        XCTAssertEqual(completedExercises.first?["comparisonVerdict"] as? String, "improved")
+        let comparisonFacts = try XCTUnwrap(completedExercises.first?["comparisonFacts"] as? String)
+        XCTAssertTrue(comparisonFacts.contains(
+            "Top set 145.0 lb x 8 versus 135.0 lb x 8 in earlier Synthetic Workout 1; difference +10.0 lb."), comparisonFacts)
+        XCTAssertNil(completedExercises.first?["comparisonWithEarlierActual"])
         XCTAssertNil(completedExercises.first?["recordedPlan"])
         let earlier = try XCTUnwrap(payload["earlierCompletedWorkouts"] as? [[String: Any]])
         XCTAssertEqual(earlier.count, 1)
@@ -33,8 +37,31 @@ final class WorkoutSummarySemanticsTests: XCTestCase {
         let earlierExercises = try XCTUnwrap(earlier.first?["exercises"] as? [[String: Any]])
         XCTAssertEqual(earlierExercises.first?["completedActual"] as? String, "1 sets: 135.0 lb x 8 reps each")
         XCTAssertNil(earlierExercises.first?["recordedPlan"])
+        XCTAssertNil(earlierExercises.first?["comparisonVerdict"], "History rows carry no verdicts; only the completed workout is judged.")
+        XCTAssertNil(earlierExercises.first?["comparisonFacts"])
         XCTAssertNil(payload["targetWorkout"])
         XCTAssertNil(payload["setColumns"])
+    }
+
+    func testExtremeFiniteDurationDoesNotTrapSessionTotals() throws {
+        // Both endpoints are finite (and pass target validation), but the
+        // interval overflows Int minutes; building the request must not trap.
+        let workout = WorkoutSession(name: "Extreme duration",
+            startedAt: Date(timeIntervalSinceReferenceDate: 0),
+            finishedAt: Date(timeIntervalSinceReferenceDate: 1e21), unit: .lb, exercises: [
+                WorkoutExercise(exercise: Exercise(name: "Bench Press", category: "Strength"), sets: [
+                    WorkoutSet(weight: 100, reps: 8, isCompleted: true)
+                ])
+            ])
+        do {
+            let request = try WorkoutSummaryRequest(workout: workout, history: [],
+                prompt: WorkoutSummaryPrompt.defaultPrompt, provider: .appleFoundationModels)
+            let payload = try evidence(request)
+            let totals = try XCTUnwrap(payload["sessionTotals"] as? String)
+            XCTAssertFalse(totals.contains("duration"), totals)
+        } catch {
+            // A thrown encoding/validation error is acceptable; trapping is not.
+        }
     }
 
     func testDenseCompleted108AndPlanned100RemainSeparateWithHealthUnderRealBudget() throws {
@@ -63,12 +90,20 @@ final class WorkoutSummarySemanticsTests: XCTestCase {
         for exercise in exercises {
             XCTAssertEqual(exercise["completedActual"] as? String, "4 sets at 108.0 lb; reps in order: 8, 9, 8, 9")
             XCTAssertEqual(exercise["recordedPlan"] as? String, "4 sets: 100.0 lb x 8 reps each")
+            // Facts are computed against every comparable session and survive
+            // even when the raw earlier sessions are omitted to fit the budget.
+            XCTAssertEqual(exercise["comparisonVerdict"] as? String, "improved")
+            XCTAssertFalse(((exercise["comparisonFacts"] as? String) ?? "").isEmpty)
         }
-        XCTAssertNotNil(payload["health"])
+        let health = try XCTUnwrap(payload["health"] as? [String: Any])
+        let metrics = try XCTUnwrap(health["metrics"] as? [[String: Any]])
+        XCTAssertEqual(metrics.count, 3)
+        XCTAssertTrue(metrics.allSatisfy { $0["samples"] == nil && $0["sourceSampleCount"] as? Int == 600 })
         let coverage = try XCTUnwrap(payload["coverage"] as? [String: Int])
         XCTAssertEqual(coverage["comparableSessionsAvailable"], 8)
         let earlier = try XCTUnwrap(payload["earlierCompletedWorkouts"] as? [[String: Any]])
         XCTAssertEqual(earlier.count, coverage["comparableSessionsIncluded"])
+        XCTAssertEqual(coverage["comparableSessionsOmitted"], 8 - earlier.count)
         XCTAssertTrue(request.instructions.contains("Never substitute recordedPlan for completedActual"))
         XCTAssertTrue(request.instructions.contains("No historical Health is supplied"))
         XCTAssertTrue(request.instructions.contains("activeEnergy is energy expended, never intake"))
@@ -95,6 +130,9 @@ final class WorkoutSummarySemanticsTests: XCTestCase {
         let exercise = try XCTUnwrap((completed["exercises"] as? [[String: Any]])?.first)
         XCTAssertEqual(exercise["completedActual"] as? String, "145.0 lb x 8 reps; 150.0 lb x 7 reps; 0.0 lb x 12 reps")
         XCTAssertEqual(exercise["recordedPlan"] as? String, "135.0 lb x reps unavailable; weight unavailable x 10 reps; 0.0 lb x 15 reps")
+        XCTAssertEqual(exercise["comparisonVerdict"] as? String, "insufficientData")
+        let facts = try XCTUnwrap(exercise["comparisonFacts"] as? String)
+        XCTAssertTrue(facts.contains("Missed planned reps on 2 sets: set 2: 7 of 10; set 3: 12 of 15."), facts)
         XCTAssertTrue(request.instructions.contains("Never substitute recordedPlan for completedActual"))
     }
 }

@@ -62,6 +62,10 @@ swift test
 
 See [testing guidance](docs/TESTING.md) for the Xcode UI test command, simulator checks, and manual acceptance checklist. See [architecture](docs/ARCHITECTURE.md) for the data model and persistence decisions.
 
+## Pull request reviews
+
+[CodeRabbit](https://github.com/apps/coderabbitai) is connected to `NickKania/LiftLog`. The repository's [CodeRabbit configuration](.coderabbit.yaml) enables automatic reviews for pull requests targeting the default branch, `main`. Automatic incremental reviews on subsequent pushes are disabled. Draft pull requests are reviewed once marked ready for review. No additional base branches are enabled.
+
 ## Data and scope
 
 The exercise catalog comes from [free-exercise-db](https://github.com/yuhonas/free-exercise-db), published under the Unlicense. A pinned dataset and its license are included in this repository. See [catalog provenance and generation](docs/EXERCISE_CATALOG.md) for source details and compatibility with saved workouts.

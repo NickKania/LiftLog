@@ -8,6 +8,15 @@ import FoundationModels
 /// completed core context is replayed; Health consent cannot survive a request.
 @MainActor
 final class AppleFoundationModelsProvider: AppleFoundationModelsProviding {
+    var contextTokens: Int {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.4, macOS 26.4, *) {
+            return SystemLanguageModel.default.contextSize
+        }
+        #endif
+        return FoundationModelsBudget.contextTokens
+    }
+
     var availability: AppleFoundationModelsAvailability {
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
@@ -79,7 +88,7 @@ final class AppleFoundationModelsProvider: AppleFoundationModelsProviding {
 private extension AppleFoundationModelsProvider {
     func generate(input: [[String: Any]], tools: [[String: Any]], instructions: String,
                   onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
-        let request = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions)
+        let request = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions, contextTokens: contextTokens)
         let nativeInstructions = request.instructions
         if let decisionStage = request.decisionStage, let decisionIR = decisionStage.schema {
             // Select an action first, then generate only that tool's argument schema.
@@ -158,7 +167,7 @@ private extension AppleFoundationModelsProvider {
             try Task.checkCancellation()
             // A partial guided object may not contain its answer field yet. That
             // expected parsing failure is only ignored while streaming, never at EOF.
-            if let answer = try? snapshot.content.value(String.self, forProperty: "answer") {
+            if !request.isWorkoutSummary, let answer = try? snapshot.content.value(String.self, forProperty: "answer") {
                 let text = request.restoringIdentifiers(in: answer)
                 if text.hasPrefix(previous) { onText(String(text.dropFirst(previous.count))) }
                 previous = text
@@ -170,6 +179,15 @@ private extension AppleFoundationModelsProvider {
         // token cap left a complete object or required completion field.
         let final = try await stream.collect()
         try Task.checkCancellation()
+        if request.isWorkoutSummary {
+            guard final.rawContent.isComplete else {
+                throw AppleFoundationModelsError("The on-device answer did not finish. Ask for a shorter answer or resend the question in smaller parts.")
+            }
+            let completed = request.restoringIdentifiers(in: try WorkoutSummaryStructuredOutput.markdown(
+                fromJSON: final.content.jsonString, expectedVerdicts: request.summaryVerdicts))
+            return ChatGPTInferenceResponse(text: completed,
+                output: [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": completed]]]], calls: [])
+        }
         let answer = try? final.content.value(String.self, forProperty: "answer")
         let completion = try? final.content.value(String.self, forProperty: "completion")
         let completed = request.restoringIdentifiers(in: try FoundationModelsTextCompletion.completedAnswer(answer,

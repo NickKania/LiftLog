@@ -22,6 +22,7 @@ private final class ProviderLocalClient: AppleFoundationModelsProviding {
         let instructions: String
     }
     var availability: AppleFoundationModelsAvailability = .available
+    var contextTokens = 4_096
     var replies: [ChatGPTInferenceResponse] = []
     var requests: [Request] = []
     var modelLoads = 0
@@ -37,7 +38,7 @@ private final class ProviderLocalClient: AppleFoundationModelsProviding {
                  onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
         XCTAssertEqual(model, AppleFoundationModelsModel.slug)
         if validatesNativeBudget {
-            _ = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions)
+            _ = try FoundationModelsRequest(input: input, tools: tools, instructions: instructions, contextTokens: contextTokens)
         }
         requests.append(Request(input: input, tools: tools, instructions: instructions))
         let requestIndex = requests.count - 1
@@ -316,6 +317,29 @@ final class AssistantProviderTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: archive), saved)
         XCTAssertTrue(local.requests.isEmpty)
         XCTAssertTrue(assistant.errorMessage?.contains("context") == true)
+    }
+
+    @MainActor
+    func testLargerDeviceContextWindowAdmitsChatPreflightRejectedAtFallback() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+        let exercise = try XCTUnwrap(store.exercises.first)
+        let template = WorkoutTemplate(name: "Large selected prescription", exercises: (0..<16).map { _ in
+            TemplateExercise(exercise: exercise, sets: (0..<10).map { _ in TemplateSet(weight: 100, targetReps: 8) })
+        })
+        XCTAssertTrue(store.saveTemplate(template))
+        let local = ProviderLocalClient()
+        local.contextTokens = 16_384
+        local.validatesNativeBudget = true
+        let assistant = WorkoutAssistant(store: store, accessToken: { XCTFail("Unexpected cloud access"); return "" },
+            storageURL: directory.appendingPathComponent("chats.json"), appleFoundationModels: local)
+        assistant.selectedProvider = .appleFoundationModels
+        let reference = AssistantWorkoutReference(template: try XCTUnwrap(store.templates.first { $0.id == template.id }))
+        XCTAssertTrue(assistant.send("Summarize this large prescription", references: [reference]),
+                      assistant.errorMessage ?? "no error")
+        await wait { !assistant.isWorking }
+        XCTAssertFalse(local.requests.isEmpty)
     }
 
     @MainActor
