@@ -65,8 +65,12 @@ struct WorkoutSummaryRequest {
         let totals = WorkoutSummaryAnalytics.totals(for: workout)
         var sessionTotals = "\(totals.completedSets) completed sets, \(totals.totalReps) reps, volume \(totals.volume) \(workout.unit.rawValue)"
         if let finishedAt = workout.finishedAt {
-            let minutes = Int(finishedAt.timeIntervalSince(workout.startedAt) / 60)
-            if minutes > 0 { sessionTotals += ", duration \(minutes) min" }
+            // Finite endpoints can still subtract to an infinite or
+            // out-of-Int-range interval; convert only exactly, never trap.
+            let durationMinutes = finishedAt.timeIntervalSince(workout.startedAt) / 60
+            if durationMinutes.isFinite, let minutes = Int(exactly: durationMinutes.rounded(.down)), minutes > 0 {
+                sessionTotals += ", duration \(minutes) min"
+            }
         }
         let scopedHealth: WorkoutHealthSnapshot?
         do { scopedHealth = try health?.scoped(to: workout, through: workout.finishedAt ?? workout.startedAt) }

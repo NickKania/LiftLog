@@ -43,6 +43,27 @@ final class WorkoutSummarySemanticsTests: XCTestCase {
         XCTAssertNil(payload["setColumns"])
     }
 
+    func testExtremeFiniteDurationDoesNotTrapSessionTotals() throws {
+        // Both endpoints are finite (and pass target validation), but the
+        // interval overflows Int minutes; building the request must not trap.
+        let workout = WorkoutSession(name: "Extreme duration",
+            startedAt: Date(timeIntervalSinceReferenceDate: 0),
+            finishedAt: Date(timeIntervalSinceReferenceDate: 1e21), unit: .lb, exercises: [
+                WorkoutExercise(exercise: Exercise(name: "Bench Press", category: "Strength"), sets: [
+                    WorkoutSet(weight: 100, reps: 8, isCompleted: true)
+                ])
+            ])
+        do {
+            let request = try WorkoutSummaryRequest(workout: workout, history: [],
+                prompt: WorkoutSummaryPrompt.defaultPrompt, provider: .appleFoundationModels)
+            let payload = try evidence(request)
+            let totals = try XCTUnwrap(payload["sessionTotals"] as? String)
+            XCTAssertFalse(totals.contains("duration"), totals)
+        } catch {
+            // A thrown encoding/validation error is acceptable; trapping is not.
+        }
+    }
+
     func testDenseCompleted108AndPlanned100RemainSeparateWithHealthUnderRealBudget() throws {
         let movements = (0..<6).map { Exercise(name: "Movement \($0 + 1)", category: "Strength") }
         let sessions = (0..<9).map { index in
