@@ -23,7 +23,7 @@ struct ExercisePickerView: View {
         })
         let hasPossibleMatches = matches.first?.kind == .approximate
         NavigationStack {
-            List {
+            LiftList {
                 if #unavailable(iOS 17.1) {
                     Section { filterButton }
                 }
@@ -209,7 +209,7 @@ private struct ExerciseFilterView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            LiftForm {
                 Section {
                     filterPicker("Equipment", selection: $query.equipment, options: index.equipmentOptions)
                         .accessibilityIdentifier("exerciseEquipmentFilter")

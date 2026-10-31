@@ -56,10 +56,10 @@ struct AssistantReferencePicker: View {
                     }
                 }
                 .padding(12)
-                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 16).padding(.vertical, 10)
 
-                List {
+                LiftList {
                     Section {
                         Text("\(selectedReferences.count) of \(selectionLimit) selected")
                             .font(.subheadline).foregroundStyle(.secondary)
@@ -84,7 +84,7 @@ struct AssistantReferencePicker: View {
                 .listStyle(.insetGrouped)
                 .scrollDismissesKeyboard(.interactively)
             }
-            .background(Color(.systemGroupedBackground))
+            .liftCanvas()
             .navigationTitle("Tag workout data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

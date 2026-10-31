@@ -4,7 +4,7 @@ struct CatalogCreditsView: View {
     private let sources = ExerciseCatalog.attribution.sources
 
     var body: some View {
-        List {
+        LiftList {
             Section {
                 Text("Catalog credits and license notices are included with Lift Log and available offline.")
                     .accessibilityIdentifier("catalogCreditsOfflineNotice")

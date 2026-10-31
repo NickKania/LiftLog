@@ -28,9 +28,9 @@ struct AssistantProposalView: View {
                 Text("Review the changes above. Your workout data changes only when you tap Apply.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
-                    Button("Apply", action: apply).buttonStyle(.borderedProminent)
+                    Button("Apply", action: apply).liftGlassButton(prominent: true)
                         .accessibilityIdentifier("assistantApplyProposalButton")
-                    Button("Discard", action: discard).buttonStyle(.bordered)
+                    Button("Discard", action: discard).liftGlassButton()
                         .accessibilityIdentifier("assistantDiscardProposalButton")
                 }.controlSize(.large).disabled(isWorking)
             case .applied: Label("Applied", systemImage: "checkmark.circle.fill").foregroundStyle(.green)

@@ -68,7 +68,7 @@ struct WorkoutImportView: View {
                                     .frame(maxWidth: .infinity)
                             }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .liftGlassButton(prominent: true)
                         .controlSize(.large)
                         .disabled(busy || (preview == nil ? csv == nil : selectedIDs.isEmpty))
                         .accessibilityIdentifier("reviewOrImportButton")
@@ -76,7 +76,7 @@ struct WorkoutImportView: View {
                             .font(.caption).foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    .padding().background(.bar)
+                    .liftActionDock()
                 }
             }
             .fileImporter(isPresented: $choosingFile, allowedContentTypes: [.commaSeparatedText, .plainText], allowsMultipleSelection: false) { selection in
@@ -113,7 +113,7 @@ struct WorkoutImportView: View {
     }
 
     private var setup: some View {
-        Form {
+        LiftForm {
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("Bring your training history", systemImage: "square.and.arrow.down")
@@ -153,7 +153,7 @@ struct WorkoutImportView: View {
     }
 
     private func review(_ preview: WorkoutImportPreview) -> some View {
-        List {
+        LiftList {
             Section {
                 LabeledContent("File", value: fileName)
                 LabeledContent("Weights", value: sourceUnit.rawValue)
@@ -262,7 +262,7 @@ struct WorkoutImportView: View {
                 Text("\(result.skippedDuplicateCount) existing imports skipped.").font(.subheadline).foregroundStyle(.secondary)
             }
             Button("View History") { dismiss() }
-                .buttonStyle(.borderedProminent).controlSize(.large)
+                .liftGlassButton(prominent: true).controlSize(.large)
                 .accessibilityIdentifier("viewImportedHistoryButton")
         }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -343,21 +343,27 @@ private struct ImportTimeZonePicker: View {
         return zones.filter { search.isEmpty || $0.replacingOccurrences(of: "_", with: " ").localizedCaseInsensitiveContains(search) }
     }
     var body: some View {
-        List(identifiers, id: \.self) { identifier in
-            Button {
-                selection = identifier
-            } label: {
-                HStack {
-                    Text(identifier.replacingOccurrences(of: "_", with: " ")).foregroundStyle(.primary)
-                    Spacer()
-                    if selection == identifier { Image(systemName: "checkmark") }
-                }
+        LiftList {
+            ForEach(identifiers, id: \.self) { identifier in
+                timeZoneRow(identifier)
             }
-            .accessibilityIdentifier("importTimeZone-\(identifier)")
         }
         .searchable(text: $search, prompt: "Search city or region")
         .navigationTitle("Export Time Zone")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func timeZoneRow(_ identifier: String) -> some View {
+        Button {
+            selection = identifier
+        } label: {
+            HStack {
+                Text(identifier.replacingOccurrences(of: "_", with: " ")).foregroundStyle(.primary)
+                Spacer()
+                if selection == identifier { Image(systemName: "checkmark") }
+            }
+        }
+        .accessibilityIdentifier("importTimeZone-\(identifier)")
     }
 }
 
@@ -370,7 +376,7 @@ private struct ImportExerciseMatchView: View {
     let onSelect: (Exercise) -> Void
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 Section {
                     Text(sourceName).font(.headline)
                     Button("Keep Original Name as Custom") {

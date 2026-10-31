@@ -58,14 +58,31 @@ final class LiftLogUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 10))
         app.buttons["resumeWorkoutButton"].tap()
-        XCTAssertTrue(app.textFields["setWeight-3"].firstMatch.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.textFields["setWeight-3"].firstMatch.value as? String, "150")
+        let editor = app.collectionViews["activeWorkoutEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5), "Resume must reopen the workout editor")
+        let restoredThirdWeight = app.textFields["setWeight-3"].firstMatch
+        // Taller touch targets and the persisted rest row can place set 3 below
+        // the lazy list's initial viewport after relaunch. Reach it as a user would.
+        revealSetField(restoredThirdWeight, in: editor, scrollingUp: true)
+        XCTAssertEqual(restoredThirdWeight.value as? String, "150")
         XCTAssertEqual(app.textFields["setReps-3"].firstMatch.value as? String, "5")
         XCTAssertEqual(app.textFields["setWeight-1"].firstMatch.value as? String, "142.5")
         XCTAssertEqual(app.textFields["setReps-1"].firstMatch.value as? String, "6")
+        revealSetField(app.textFields["setWeight-1"].firstMatch, in: editor, scrollingUp: false)
         app.buttons["completeSet-1"].firstMatch.tap()
         XCTAssertTrue(app.textFields["setWeight-1"].firstMatch.isEnabled)
         XCTAssertTrue(app.textFields["setReps-1"].firstMatch.isEnabled)
+    }
+
+    @MainActor
+    private func revealSetField(_ field: XCUIElement, in editor: XCUIElement, scrollingUp: Bool) {
+        for _ in 0..<6 {
+            if field.exists && field.isHittable { return }
+            let start = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: scrollingUp ? 0.72 : 0.28))
+            let end = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: scrollingUp ? 0.42 : 0.58))
+            start.press(forDuration: 0.01, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        XCTAssertTrue(field.exists && field.isHittable, "The restored set field must remain reachable by scrolling")
     }
 
     @MainActor

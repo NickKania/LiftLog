@@ -115,7 +115,7 @@ struct HealthDashboardActivityView: View {
                     Label(health.hasLoaded ? "Refresh Apple Health" : "Load Apple Health", systemImage: "heart.text.clipboard")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .liftGlassButton(prominent: true)
                 .tint(.teal)
                 .disabled(workouts.isEmpty)
                 .accessibilityIdentifier("loadDashboardHealthButton")

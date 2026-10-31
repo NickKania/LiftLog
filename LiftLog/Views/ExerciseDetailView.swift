@@ -18,7 +18,7 @@ struct ExerciseDetailView: View {
     }
 
     var body: some View {
-        List {
+        LiftList {
             Section {
                 Text(exercise.name)
                     .font(.title2.bold())
@@ -28,7 +28,7 @@ struct ExerciseDetailView: View {
                     Label(selectionTitle, systemImage: "plus.circle.fill")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent)
+                .liftGlassButton(prominent: true)
                 .listRowSeparator(.hidden)
                 .accessibilityIdentifier(selectionAccessibilityIdentifier)
                 Button {

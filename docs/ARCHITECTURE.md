@@ -19,6 +19,12 @@ The app is inspired by [Strong’s workout tracking features](https://www.strong
 
 The iOS target compiles the core sources alongside the app sources. The Swift package exposes the same core code as `LiftLogCore` for tests. `WorkoutStore` is a main-actor observable object shared by the SwiftUI screens.
 
+## iPhone presentation
+
+`Views/AppTheme.swift` owns shared presentation tokens and small native-control modifiers. Screens use a system-background canvas with secondary-system-background content cards; glass is reserved for navigation, buttons, and floating control groups. `LiftList` and `LiftForm` preserve native collection editing, selection, search, and accessibility while supplying those surfaces. Primary actions keep the system accent, neutral navigation controls scope their own tint, and completion/error/Health colors retain their meaning.
+
+On iOS 26, buttons use the native glass styles and custom control groups use `glassEffect`. Earlier supported systems use bordered buttons and regular material. Reduce Transparency uses opaque control surfaces and bordered buttons; navigation backgrounds remain visible on older systems and with Reduce Transparency. Review action docks are opaque under their captions and controls, with a fade above the dock. Set entry stacks its labeled fields at accessibility Dynamic Type sizes, and Health controls and history statistics also adapt vertically. These components change presentation only; drafts, validation, consent, persistence, and task ownership remain with their existing views and stores.
+
 ## Templates and sessions
 
 An exercise has an identifier, name, and category. A template contains an ordered list of exercise entries, each with planned sets. A planned set specifies a weight and `targetReps`.

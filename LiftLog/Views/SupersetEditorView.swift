@@ -51,7 +51,7 @@ struct SupersetExerciseHeading: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(name)
+            Text(name).font(.headline).textCase(nil)
             if let group {
                 HStack(spacing: 4) {
                     Image(systemName: "link").accessibilityHidden(true)
@@ -72,7 +72,7 @@ struct SupersetRowBackground: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Color(.secondarySystemGroupedBackground)
+            LiftTheme.surface
             if completed { Color.green.opacity(0.10) }
             if let group {
                 group.color.opacity(0.05)
@@ -106,7 +106,7 @@ struct SupersetEditorView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 Section {
                     ForEach(Array(context.exercises.enumerated()), id: \.element.id) { index, exercise in
                         Button {

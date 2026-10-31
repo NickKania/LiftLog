@@ -24,7 +24,7 @@ struct TemplateEditorView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 Section("Template name") {
                     TextField("e.g. Upper Body", text: $draft.name)
                         .accessibilityIdentifier("templateNameField")
@@ -274,7 +274,7 @@ struct TemplateVersionHistoryView: View {
     private var template: WorkoutTemplate? { store.templates.first { $0.id == templateID } }
 
     var body: some View {
-        List {
+        LiftList {
             if let template {
                 Section {
                     ForEach(template.versions.reversed()) { version in
@@ -317,7 +317,7 @@ private struct TemplateVersionDetailView: View {
     @Binding var showWorkout: Bool
 
     var body: some View {
-        List {
+        LiftList {
             Section {
                 LabeledContent("Template", value: version.name)
                 LabeledContent("Version", value: String(version.number))

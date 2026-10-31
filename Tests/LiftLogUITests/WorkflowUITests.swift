@@ -59,14 +59,14 @@ final class WorkflowUITests: XCTestCase {
         search.typeText("Workflow Sled Push\n")
         XCTAssertTrue(app.buttons["addCustomExerciseButton"].waitForExistence(timeout: 5))
         app.buttons["addCustomExerciseButton"].tap()
-        XCTAssertTrue(app.buttons["addSet-Workflow Sled Push"].waitForExistence(timeout: 5))
+        revealWorkoutControl(app.buttons["addSet-Workflow Sled Push"], in: app)
 
         app.terminate()
         app.launchArguments = ["--ui-testing"]
         app.launch()
         XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 10))
         app.buttons["resumeWorkoutButton"].tap()
-        XCTAssertTrue(app.buttons["addSet-Workflow Sled Push"].waitForExistence(timeout: 5))
+        revealWorkoutControl(app.buttons["addSet-Workflow Sled Push"], in: app)
         XCTAssertTrue(app.buttons["addSet-Bench Press"].exists)
         XCTAssertEqual(app.textFields.matching(identifier: "setWeight-1").count, 2, "Both selected exercises must retain their logged sets")
     }
@@ -193,6 +193,19 @@ final class WorkflowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["historySetPlan-1"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["historySetPlan-1"].label, "Planned: 0 lb × 8")
         XCTAssertTrue(app.staticTexts["135 lb × 7"].exists)
+    }
+
+    @MainActor
+    private func revealWorkoutControl(_ control: XCUIElement, in app: XCUIApplication) {
+        let editor = app.collectionViews["activeWorkoutEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        for _ in 0..<6 {
+            if control.exists && control.isHittable { return }
+            let start = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.72))
+            let end = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.42))
+            start.press(forDuration: 0.01, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        XCTAssertTrue(control.exists && control.isHittable, "The added exercise must remain reachable by scrolling")
     }
 
     @MainActor

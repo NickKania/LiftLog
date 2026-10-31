@@ -24,7 +24,7 @@ struct WorkoutHistoryEditorView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 Section("Workout") {
                     TextField("Name", text: $draft.name, axis: .vertical)
                         .accessibilityLabel("Workout name")
@@ -108,11 +108,11 @@ struct WorkoutHistoryEditorView: View {
                                 Text(dynamicTypeSize.isAccessibilitySize ? "Save" : (original == nil ? "Save Past Workout" : "Save Correction"))
                                     .frame(maxWidth: .infinity, minHeight: 44)
                             }
-                            .buttonStyle(.borderedProminent)
+                            .liftGlassButton(prominent: true)
                             .accessibilityLabel(original == nil ? "Save Past Workout" : "Save Correction")
                             .accessibilityIdentifier("saveHistoryWorkoutButton")
                         }
-                        .padding().background(.regularMaterial)
+                        .liftActionDock()
                     }
                     .workoutErrorAlert()
             }
