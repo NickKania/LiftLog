@@ -58,3 +58,5 @@ Watch offline recovery is covered by `WatchWorkoutReconcilerTests`: restored pro
 The Watch outbox tests also cover saved-but-unqueued request recovery, exits before the transfer checkpoint, matching outstanding transfers without duplicate submission, FIFO operation identity, cached receipt retirement and decoding journals created before transfer checkpoints.
 
 Recovered Watch requests without transfer checkpoints wait for a matching fresh, read-only phone recovery response before replay. The restarted-phone regression applies zero, one or two rest extensions before relaunch and verifies that only the unapplied suffix is sent, rest grows by exactly 60 seconds, and the final receipt clears the pending ledger.
+
+Enriched Markdown rendering is shared by assistant replies and workout summaries. `AssistantMarkdownRenderingTests` covers generated-content image/link privacy and partial Markdown; the native formatting/copy and summary wide-table tests cover the rendered screens. See [Testing](TESTING.md#enriched-markdown-assistant-and-summaries) for fixture and visual checks.

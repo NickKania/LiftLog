@@ -5,6 +5,9 @@ options:
     iOS: "17.0"
     watchOS: "10.0"
 packages:
+  EnrichedMarkdown:
+    url: https://github.com/software-mansion-labs/enriched-markdown-ios.git
+    exactVersion: 0.4.0
   swift-markdown:
     url: https://github.com/swiftlang/swift-markdown.git
     minorVersion: 0.8.0
@@ -50,6 +53,8 @@ targets:
       - sdk: libsqlite3.tbd
       - sdk: HealthKit.framework
       - sdk: WatchConnectivity.framework
+      - package: EnrichedMarkdown
+        product: EnrichedMarkdown
       - package: swift-markdown
         product: Markdown
     entitlements:
@@ -133,6 +138,8 @@ targets:
       - path: Tests/LiftLogAppTests
     dependencies:
       - target: LiftLog
+      - package: EnrichedMarkdown
+        product: EnrichedMarkdown
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

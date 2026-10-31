@@ -154,7 +154,12 @@ final class AssistantInteractionUITests: XCTestCase {
         copy.tap()
         let code = app.staticTexts["volume = weight × completed reps"]
         reveal(code, in: app)
-        XCTAssertTrue(app.buttons["Copy code"].exists)
+        // Enriched Markdown exposes code copying through the native context
+        // menu and a VoiceOver action rather than a separate accessible button.
+        code.press(forDuration: 1)
+        let copyCode = app.buttons["Copy"].firstMatch
+        XCTAssertTrue(copyCode.waitForExistence(timeout: 5))
+        copyCode.tap()
         XCTAssertTrue(app.links["Training reference"].exists || app.staticTexts["Training reference"].exists)
         keepScreenshot(of: app, named: "Markdown quote, code block and link")
     }

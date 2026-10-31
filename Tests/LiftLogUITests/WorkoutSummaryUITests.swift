@@ -5,6 +5,25 @@ final class WorkoutSummaryUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testSummaryRendersWideMarkdownTableAndNextSessionList() {
+        let app = launchFixture(reset: true)
+        finishFixtureWorkout(in: app)
+        let generate = app.buttons["workoutSummaryGenerateButton"]
+        reveal(generate, in: app)
+        generate.tap()
+        let heading = app.staticTexts["Workout insights"]
+        reveal(heading, in: app)
+        XCTAssertTrue(heading.exists)
+        let table = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Actual performance")).firstMatch
+        XCTAssertTrue(table.waitForExistence(timeout: 5))
+        let nextSession = app.staticTexts["Next session"]
+        reveal(nextSession, in: app)
+        XCTAssertTrue(nextSession.exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "**")).firstMatch.exists)
+        keepScreenshot(of: app, named: "Enriched workout summary table and list")
+    }
+
+    @MainActor
     func testSummaryExplainsBlockedProviderSwitchForUnreadableArchive() {
         let app = launchFixture(reset: true, onDevice: true,
                                 additionalArguments: ["--foundation-models-corrupt-archive-ui-fixture"])

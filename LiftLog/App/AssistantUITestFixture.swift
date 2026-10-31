@@ -172,10 +172,10 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
               - 135 lb × 8 completed reps
             - **Upper body:** 1,160 lb × reps
 
-            | Workout | Volume |
-            | --- | ---: |
-            | Morning workout | 1,080 |
-            | Upper body | 1,160 |
+            | Workout | Volume | Comparison |
+            | --- | ---: | --- |
+            | Morning workout | 1,080 | Keep the load steady and aim for one more completed rep. |
+            | Upper body | 1,160 | Compare completed sets before increasing the load. |
 
             > Only completed sets count toward your recorded volume.
 
