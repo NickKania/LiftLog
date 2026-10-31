@@ -64,7 +64,7 @@ final class ExerciseSchemaMergeTests: XCTestCase {
             XCTAssertEqual(saved.templates, loaded.templates, layout)
             XCTAssertEqual(saved.favoriteExerciseIDs, loaded.favoriteExerciseIDs, layout)
             XCTAssertEqual(saved.exerciseInstructionOverrides, loaded.exerciseInstructionOverrides, layout)
-            XCTAssertEqual(try SQLiteConnection(url: url).rows("PRAGMA user_version").first?.integer("user_version"), 9)
+            XCTAssertEqual(try SQLiteConnection(url: url).rows("PRAGMA user_version").first?.integer("user_version"), 10)
         }
     }
 

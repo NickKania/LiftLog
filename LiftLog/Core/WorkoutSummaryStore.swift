@@ -1,11 +1,8 @@
 import Foundation
 import Observation
 
-/// Coordinates one ephemeral AI summary for a completed workout.
-///
-/// The generated response and any Health snapshot live only in this store while the
-/// summary screen is presented. Nothing is archived, replayed into a later request,
-/// or written through `WorkoutStore`.
+/// Generates coaching for a completed workout and saves workout-only responses atomically.
+/// Health evidence and Health-assisted responses remain transient and are never replayed.
 @Observable @MainActor
 final class WorkoutSummaryStore {
     private(set) var text = ""
@@ -13,6 +10,7 @@ final class WorkoutSummaryStore {
     private(set) var errorMessage: String?
     private(set) var healthNotice: String?
     private(set) var workoutID: UUID?
+    private(set) var responseIncludesHealth = false
 
     @ObservationIgnored private let store: WorkoutStore
     @ObservationIgnored private let healthDataProvider: (any WorkoutHealthDataProviding)?
@@ -217,12 +215,18 @@ final class WorkoutSummaryStore {
         guard !response.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WorkoutSummaryGenerationError.emptyResponse(scope.provider)
         }
+        if health == nil {
+            guard store.saveWorkoutSummary(response.text, for: workout) else {
+                throw WorkoutSummaryGenerationError.saveFailed(store.errorMessage ?? "Try generating insights again.")
+            }
+        }
         errorMessage = nil
+        responseIncludesHealth = health != nil
         // Only publish canonical completed output. Streaming deltas stay local to the
         // inference client so a failed or stale request cannot replace a prior answer.
         text = response.text
         responseScope = scope
-        responseWorkout = workout
+        responseWorkout = store.history.first { $0.id == workout.id }
     }
 
     private func validateSnapshot(workout: WorkoutSession, revision: UInt64, scope: RequestScope,
@@ -274,16 +278,20 @@ final class WorkoutSummaryStore {
         text = ""
         responseScope = nil
         responseWorkout = nil
+        responseIncludesHealth = false
     }
 }
 
 private enum WorkoutSummaryGenerationError: LocalizedError {
     case stale
+    case saveFailed(String)
     case unavailable(String)
     case emptyResponse(AssistantProvider)
 
     var errorDescription: String? {
         switch self {
+        case .saveFailed(let reason):
+            return "Couldn’t save workout insights. \(reason)"
         case .stale:
             return "This workout changed while the summary was being generated. Try again to summarize the latest saved workout."
         case .unavailable(let explanation):

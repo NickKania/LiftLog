@@ -448,6 +448,11 @@ final class WorkoutStore {
                 }
                 var corrected = try WorkoutHistoryEditing.validated(draft, replacing: expected)
                 guard corrected != expected else { return true }
+                // A name-only edit preserves coaching through either history editing path.
+                // Notes and performed-work changes can alter its evidence and invalidate it.
+                var renamedOriginal = expected
+                renamedOriginal.name = corrected.name
+                if corrected != renamedOriginal { corrected.summary = nil }
                 let existingIDs = Set(expected.exercises.map(\.id))
                 for index in corrected.exercises.indices where !existingIDs.contains(corrected.exercises[index].id) {
                     corrected.exercises[index].exercise = Self.register(corrected.exercises[index].exercise, in: &next)
@@ -567,6 +572,19 @@ final class WorkoutStore {
         if let normalized { UserDefaults.standard.set(normalized, forKey: defaultAssistantModelKey) }
         else { UserDefaults.standard.removeObject(forKey: defaultAssistantModelKey) }
         return true
+    }
+
+    /// Saves only a completed, workout-only response against the exact request snapshot.
+    /// Callers must keep any response generated with Health evidence transient.
+    @discardableResult
+    func saveWorkoutSummary(_ text: String, for expected: WorkoutSession) -> Bool {
+        guard let index = history.firstIndex(where: { $0.id == expected.id }),
+              history[index] == expected, expected.finishedAt != nil else {
+            return fail(StoreError.invalid("This workout changed or was deleted. Reopen it before saving insights."))
+        }
+        var next = snapshot
+        next.history[index].summary = text
+        return commit(next)
     }
 
     /// Sets the user-level summary instructions. Blank input restores the immutable default.
@@ -816,6 +834,13 @@ final class WorkoutStore {
     nonisolated private static func validate(_ workout: WorkoutSession) throws {
         try validateName(workout.name)
         try validateNotes(workout.notes)
+        if let summary = workout.summary {
+            guard workout.finishedAt != nil,
+                  !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  summary.utf8.count <= 131_072 else {
+                throw StoreError.invalid("Workout insights must be nonempty, belong to a completed workout, and fit within 128 KB.")
+            }
+        }
         try validateRest(workout.restSeconds)
         if let timer = workout.restTimer {
             guard workout.finishedAt == nil, timer.endsAt.timeIntervalSinceReferenceDate.isFinite,

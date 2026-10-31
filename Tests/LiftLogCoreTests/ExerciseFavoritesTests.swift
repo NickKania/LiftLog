@@ -171,7 +171,7 @@ final class ExerciseFavoritesTests: XCTestCase {
             next.favoriteExerciseIDs = [UUID()]
             try database.save(next)
             XCTAssertEqual(try database.load().favoriteExerciseIDs, next.favoriteExerciseIDs)
-            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 9)
+            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 10)
             XCTAssertEqual(try Data(contentsOf: backup), bytes)
         }
     }

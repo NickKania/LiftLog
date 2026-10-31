@@ -214,7 +214,7 @@ final class TemplateVersionTests: XCTestCase {
         XCTAssertNil(store.history[0].exercises[0].sets[0].targetReps)
         let reloaded = WorkoutStore(fileURL: url)
         XCTAssertEqual(reloaded.templates, store.templates)
-        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 9)
+        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 10)
         let revisionBeforeRestore = store.revision
         try store.restoreDatabase(from: backup)
         XCTAssertEqual(store.revision, revisionBeforeRestore + 1)
