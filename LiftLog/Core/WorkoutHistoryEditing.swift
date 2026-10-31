@@ -24,6 +24,8 @@ enum WorkoutHistoryEditing {
               (0...604_800).contains(finish.timeIntervalSince(draft.startedAt)) else {
             throw ValidationError("The finish must be on or after the start, with a duration of at most seven days.")
         }
+        // A draft cannot supply generated coaching. Corrections invalidate it on save.
+        result.summary = original?.summary
         result.name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         result.notes = normalizedNotes(draft.notes)
         for index in result.exercises.indices {

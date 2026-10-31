@@ -86,7 +86,7 @@ final class WorkoutAgentTools {
             let limit = try integer(args, "limit", default: 20, range: 1...100)
             let offset = try integer(args, "offset", default: 0, range: 0...Int.max)
             let sessions = Array(store.history.sorted { $0.startedAt > $1.startedAt }.dropFirst(offset).prefix(limit))
-            return try result(HistoryPage(workouts: sessions, total: store.history.count, offset: offset))
+            return try result(HistoryPage(workouts: sessions.map(\.inferenceSnapshot), total: store.history.count, offset: offset))
         case "get_exercise_catalog":
             try keys(args, allowed: ["query", "limit", "offset"])
             let query = try optionalString(args, "query") ?? ""

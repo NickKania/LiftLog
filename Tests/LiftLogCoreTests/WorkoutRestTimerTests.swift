@@ -194,7 +194,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         let store = WorkoutStore(fileURL: url)
         XCTAssertNil(store.errorMessage)
         XCTAssertTrue(store.setUnit(.kg))
-        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 9)
+        XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 10)
     }
 
     @MainActor
@@ -435,6 +435,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         try database.save(snapshot)
         let db = try SQLiteConnection(url: url)
         try db.execute("ALTER TABLE exercise_entries DROP COLUMN rest_seconds")
+        try db.execute("ALTER TABLE records DROP COLUMN summary")
         try db.execute("PRAGMA user_version = 8")
         try db.execute("CREATE TRIGGER reject_rest BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END")
         let bytes = try Data(contentsOf: url)
@@ -447,7 +448,7 @@ final class WorkoutRestTimerTests: XCTestCase {
         XCTAssertFalse(try db.rows("PRAGMA table_info(exercise_entries)").contains { try $0.text("name") == "rest_seconds" })
         try db.execute("DROP TRIGGER reject_rest")
         try database.save(snapshot)
-        XCTAssertEqual(try db.rows("PRAGMA user_version").first?.integer("user_version"), 9)
+        XCTAssertEqual(try db.rows("PRAGMA user_version").first?.integer("user_version"), 10)
         XCTAssertEqual(try database.load().templates, snapshot.templates)
         XCTAssertEqual(try database.load().activeWorkout, snapshot.activeWorkout)
     }

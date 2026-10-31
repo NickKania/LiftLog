@@ -383,7 +383,7 @@ final class WorkoutAssistant {
                 snapshots.append(reference.kind == .health ? AssistantWorkoutReference(healthWorkout: workout) : AssistantWorkoutReference(workout: workout))
                 records.append(ReferenceRecord(kind: reference.kind, id: workout.id,
                                                status: workout.finishedAt == nil ? "active" : "completed",
-                                               unit: workout.unit, template: nil, workout: reference.kind == .health ? nil : workout))
+                                               unit: workout.unit, template: nil, workout: reference.kind == .health ? nil : workout.inferenceSnapshot))
             }
         }
         let encoder = JSONEncoder()

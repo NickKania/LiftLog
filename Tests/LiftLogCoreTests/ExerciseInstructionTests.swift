@@ -218,7 +218,7 @@ final class ExerciseInstructionTests: XCTestCase {
             next.exerciseInstructionOverrides = [.init(exerciseID: UUID(), steps: ["An apostrophe's cue", "Second\nline"])]
             try database.save(next)
             XCTAssertEqual(try database.load().exerciseInstructionOverrides, next.exerciseInstructionOverrides)
-            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 9)
+            XCTAssertEqual(try SQLiteConnection(url: url, readOnly: true).rows("PRAGMA user_version").first?.integer("user_version"), 10)
             XCTAssertEqual(try Data(contentsOf: backup), bytes)
         }
     }

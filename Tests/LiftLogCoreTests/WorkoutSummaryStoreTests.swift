@@ -127,7 +127,7 @@ final class WorkoutSummaryStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testGeneratesEphemeralSummaryWithoutToolsAndHonorsCustomPrompt() async throws {
+    func testSavesSummaryWithoutToolsAndHonorsCustomPrompt() async throws {
         let store = WorkoutStore(fileURL: try file())
         let workout = try completedWorkout(in: store)
         XCTAssertTrue(store.setWorkoutSummaryPrompt("Focus on volume and progression."))
@@ -149,7 +149,9 @@ final class WorkoutSummaryStoreTests: XCTestCase {
         XCTAssertTrue(inputJSON.contains("targetWorkout"))
         XCTAssertTrue(inputJSON.contains("Focus on volume and progression."))
         XCTAssertTrue((body["instructions"] as? String)?.contains("Never invent a workout") == true)
-        XCTAssertEqual(store.history.first, workout)
+        var saved = workout
+        saved.summary = "Summary ready"
+        XCTAssertEqual(store.history.first, saved)
     }
 
     @MainActor
@@ -378,5 +380,132 @@ final class WorkoutSummaryStoreTests: XCTestCase {
         XCTAssertNil(summary.workoutID)
         XCTAssertNil(summary.errorMessage)
         XCTAssertFalse(summary.isWorking)
+    }
+
+    @MainActor
+    func testSavedInsightsSurviveDismissalRelaunchBackupAndRestore() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let workout = try completedWorkout(in: store)
+        let transport = SummaryTransport()
+        let summary = WorkoutSummaryStore(store: store, accessToken: { "token" }, transport: transport)
+        await summary.generate(workoutID: workout.id, model: "summary-model", includeHealth: false)
+        summary.cancel()
+        XCTAssertEqual(summary.text, "")
+        XCTAssertEqual(WorkoutStore(fileURL: url).history.first?.summary, "Summary ready")
+        let backup = url.deletingLastPathComponent().appendingPathComponent("backup.sqlite")
+        try WorkoutDatabase(url: url).backup(to: backup)
+        XCTAssertTrue(store.deleteWorkout(id: workout.id))
+        try store.restoreDatabase(from: backup)
+        XCTAssertEqual(store.history.first?.summary, "Summary ready")
+        XCTAssertEqual(WorkoutStore(fileURL: url).history, store.history)
+        let output = try WorkoutAgentTools(store: store).execute(name: "get_history", arguments: "{}")
+        XCTAssertFalse(output.outputJSONString.contains("Summary ready"))
+    }
+
+    @MainActor
+    func testHealthReplyNeverReplacesSavedInsightsOrEntersBackup() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let workout = try completedWorkout(in: store)
+        let transport = SummaryTransport()
+        let summary = WorkoutSummaryStore(store: store, accessToken: { "token" }, transport: transport,
+                                          healthDataProvider: SummaryHealthProvider())
+        await summary.generate(workoutID: workout.id, model: "summary-model", includeHealth: false)
+        transport.responseText = "Private heart rate 145"
+        await summary.generate(workoutID: workout.id, model: "summary-model", includeHealth: true)
+        XCTAssertEqual(summary.text, "Private heart rate 145")
+        XCTAssertTrue(summary.responseIncludesHealth)
+        XCTAssertEqual(store.history.first?.summary, "Summary ready")
+        let backup = url.deletingLastPathComponent().appendingPathComponent("backup.sqlite")
+        try WorkoutDatabase(url: url).backup(to: backup)
+        XCTAssertFalse(String(decoding: try Data(contentsOf: backup), as: UTF8.self).contains("Private heart rate"))
+        XCTAssertEqual(try WorkoutDatabase(url: backup).load().history.first?.summary, "Summary ready")
+    }
+
+    @MainActor
+    func testFailedSummaryWriteRetainsPreviousInsightsAndCanRetry() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let workout = try completedWorkout(in: store)
+        let transport = SummaryTransport()
+        let summary = WorkoutSummaryStore(store: store, accessToken: { "token" }, transport: transport)
+        await summary.generate(workoutID: workout.id, model: "summary-model", includeHealth: false)
+        let revision = store.revision
+        let db = try SQLiteConnection(url: url)
+        try db.execute("CREATE TRIGGER reject_summary BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'synthetic save failure'); END")
+        transport.responseText = "Replacement insights"
+        await summary.generate(workoutID: workout.id, model: "summary-model", includeHealth: false)
+        XCTAssertTrue(summary.errorMessage?.contains("Couldn’t save") == true)
+        XCTAssertEqual(summary.text, "Summary ready")
+        XCTAssertEqual(store.revision, revision)
+        XCTAssertEqual(WorkoutStore(fileURL: url).history.first?.summary, "Summary ready")
+        try db.execute("DROP TRIGGER reject_summary")
+        await summary.generate(workoutID: workout.id, model: "summary-model", includeHealth: false)
+        XCTAssertNil(summary.errorMessage)
+        XCTAssertEqual(WorkoutStore(fileURL: url).history.first?.summary, "Replacement insights")
+    }
+
+    @MainActor
+    func testCorrectionClearsOutdatedInsightsAndUndoRecoversThem() async throws {
+        let store = WorkoutStore(fileURL: try file())
+        let workout = try completedWorkout(in: store)
+        XCTAssertTrue(store.saveWorkoutSummary("Saved coaching", for: workout))
+        XCTAssertTrue(store.renameWorkout(id: workout.id, name: "Renamed workout"))
+        XCTAssertEqual(store.history.first?.summary, "Saved coaching")
+        let original = try XCTUnwrap(store.history.first)
+        var draft = original
+        draft.exercises[0].sets[0].reps += 1
+        XCTAssertTrue(store.saveHistoryWorkout(draft, replacing: original))
+        let corrected = try XCTUnwrap(store.history.first)
+        XCTAssertNil(corrected.summary)
+        XCTAssertTrue(store.undoHistoryCorrection(replacing: corrected))
+        XCTAssertEqual(store.history.first, original)
+        XCTAssertFalse(store.saveWorkoutSummary("Late response", for: workout))
+        XCTAssertEqual(store.history.first, original)
+    }
+
+    @MainActor
+    func testHistoryEditorNameOnlyChangeRetainsInsightsButNotesChangeInvalidatesThem() throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let workout = try completedWorkout(in: store)
+        XCTAssertTrue(store.saveWorkoutSummary("Saved coaching", for: workout))
+        let original = try XCTUnwrap(store.history.first)
+        var renamed = original
+        renamed.name = "Renamed in history editor"
+        XCTAssertTrue(store.saveHistoryWorkout(renamed, replacing: original))
+        XCTAssertEqual(store.history.first, renamed)
+        XCTAssertEqual(WorkoutStore(fileURL: url).history.first?.summary, "Saved coaching")
+
+        var annotated = renamed
+        annotated.notes = "Felt shoulder discomfort during the final set."
+        XCTAssertTrue(store.saveHistoryWorkout(annotated, replacing: renamed))
+        XCTAssertNil(store.history.first?.summary, "Notes can change the evidence for coaching")
+        XCTAssertNil(WorkoutStore(fileURL: url).history.first?.summary)
+    }
+
+    @MainActor
+    func testSchemaNineMigrationIsReadOnlyUntilSuccessfulSaveAndRollsBackFailure() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let workout = try completedWorkout(in: store)
+        let db = try SQLiteConnection(url: url)
+        try db.execute("ALTER TABLE records DROP COLUMN summary")
+        try db.execute("PRAGMA user_version = 9")
+        try db.execute("CREATE TRIGGER reject_summary BEFORE INSERT ON records BEGIN SELECT RAISE(ABORT, 'synthetic migration failure'); END")
+        let bytes = try Data(contentsOf: url)
+        XCTAssertNil(try WorkoutDatabase(url: url).load().history.first?.summary)
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+        XCTAssertFalse(store.saveWorkoutSummary("Migrated coaching", for: workout))
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+        XCTAssertEqual(try db.rows("PRAGMA user_version").first?.integer("user_version"), 9)
+        XCTAssertFalse(try db.rows("PRAGMA table_info(records)").contains { try $0.text("name") == "summary" })
+        try db.execute("DROP TRIGGER reject_summary")
+        XCTAssertTrue(store.saveWorkoutSummary("Migrated coaching", for: workout))
+        XCTAssertEqual(try db.rows("PRAGMA user_version").first?.integer("user_version"), 10)
+        XCTAssertEqual(WorkoutStore(fileURL: url).history.first?.summary, "Migrated coaching")
+        let legacy = try JSONEncoder().encode(workout)
+        XCTAssertNil(try JSONDecoder().decode(WorkoutSession.self, from: legacy).summary)
     }
 }
