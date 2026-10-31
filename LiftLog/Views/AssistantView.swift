@@ -66,8 +66,7 @@ struct AssistantView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if canUseProvider { composerBar }
         }
-        .background(Color(.systemBackground))
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .liftCanvas()
         .navigationTitle(assistant.selectedChat?.title ?? "Assistant")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
