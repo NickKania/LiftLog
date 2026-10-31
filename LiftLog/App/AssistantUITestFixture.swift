@@ -56,12 +56,25 @@ enum AssistantUITestFixture {
             transport: AssistantFixtureTransport(exerciseID: exerciseID), storageURL: archiveURL,
             archiveAccountIdentity: { "local-ui-fixture-account" },
             healthDataProvider: AssistantFixtureHealthDataProvider.shared,
-            appleFoundationModels: AssistantFixtureFoundationModelsProvider(exerciseID: exerciseID))
+            appleFoundationModels: AssistantFixtureFoundationModelsProvider(exerciseID: exerciseID),
+            beginRequestActivity: beginRequestActivity)
         if ProcessInfo.processInfo.arguments.contains("--foundation-models-ui-fixture"),
            ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
             assistant.selectedProvider = .appleFoundationModels
         }
         return assistant
+    }
+
+    private static func beginRequestActivity(onExpiration: @escaping @MainActor () -> Void) -> @MainActor () -> Void {
+        let end = AssistantRequestActivity.begin(onExpiration: onExpiration)
+        guard ProcessInfo.processInfo.arguments.contains("--assistant-expiring-ui-fixture") else { return end }
+        let expiration = Task {
+            do { try await Task.sleep(for: .seconds(2)) }
+            catch { return }
+            onExpiration()
+            end()
+        }
+        return { expiration.cancel(); end() }
     }
 }
 
