@@ -17,7 +17,7 @@
 		10AA62C4512B66492B3E8126 /* SupersetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE2856E33924CF9DC6CFAFC /* SupersetUITests.swift */; };
 		10AE9973E4D82E6A644ED04A /* WatchPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0DE945DFBDCCD89904BF08 /* WatchPresentation.swift */; };
 		11927CC2D22F0A0166F981AA /* WorkoutDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = E38153F45CD8D927538626F6 /* WorkoutDatabase.swift */; };
-		11B7B1BD50EC3CB8A8D7E8F5 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = E2BC20ED6350BF812FC2ECDC /* Markdown */; };
+		11B7B1BD50EC3CB8A8D7E8F5 /* EnrichedMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = B495C47995147BA964E02139 /* EnrichedMarkdown */; };
 		141A8FA4F70C64BD03FA09CB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6024B29CF57ADD9CD63AD4 /* RootView.swift */; };
 		1493B867301B7716CE07847E /* ExerciseInstructionsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ABF45C34387FDB1BEDE1F4E /* ExerciseInstructionsUITests.swift */; };
 		1579571770E1F2A26245F368 /* WorkoutActivitySnapshot+Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488188DD53033A29BD48233B /* WorkoutActivitySnapshot+Workout.swift */; };
@@ -122,11 +122,14 @@
 		B98BBD6065E967C8740DD2DB /* LiftLogWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6436AAF1EEAB4F58E7FF24C /* LiftLogWatchApp.swift */; };
 		BB1870CC6D3328F0EAEB8040 /* CatalogCreditsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04355E803FC961A8EA4F9E6 /* CatalogCreditsUITests.swift */; };
 		BB6DF0CDC32D39D1BB115DDD /* AssistantMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4A48CAF2EFA07272354B11 /* AssistantMarkdownView.swift */; };
+		BCC472A6E732AD6DC09DDEBE /* EnrichedMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = B3CA3075DC683619D52D446C /* EnrichedMarkdown */; };
 		BCDF02A31B8FDE7801B1E100 /* WorkoutLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D87CB05D94DFA88810A1EBA /* WorkoutLiveActivity.swift */; };
 		BE90855E52EC1A28320EB5D7 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB22582056A882055A61E97F /* WatchConnectivity.framework */; };
 		C1E2E4A7B2D4DD33FBDEEE74 /* HealthDashboardActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5DDF4434AF7E28D2C4F96E /* HealthDashboardActivityView.swift */; };
 		C1ED4A928558DC2F42D52BA2 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B30B05DC1F38F2CB4A53F40 /* ActiveWorkoutView.swift */; };
 		C2A539A0BAE9802FC578AD25 /* WorkoutHistoryEditingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0C0CBE71C74279021A7C1C /* WorkoutHistoryEditingUITests.swift */; };
+		C51F30D6F0BAF4E990D5E363 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = E2BC20ED6350BF812FC2ECDC /* Markdown */; };
+		C671795BDFCB87A7A793D968 /* AssistantMarkdownSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1545546478F78B26A307B38 /* AssistantMarkdownSource.swift */; };
 		C7A206A8337E26980D460F7D /* WorkoutSummaryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC5C4309BA560DDB29789D1 /* WorkoutSummaryUITests.swift */; };
 		D1789EC26C1635BDD3253826 /* CloudBackupRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99B10DC17826BC695F35EF2 /* CloudBackupRepository.swift */; };
 		D3F3683E1F0309510451B8F5 /* WorkoutAgentTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC762D87C8B46CA3E8270A5 /* WorkoutAgentTools.swift */; };
@@ -149,6 +152,7 @@
 		F0B8B12CBE37FC3AD3F751DD /* WorkoutSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BD2029C6CB10061F8C29E8 /* WorkoutSummaryView.swift */; };
 		F271EA415E13FBC050D42274 /* exercise-attribution.json in Resources */ = {isa = PBXBuildFile; fileRef = 8C870DC0BF45DDE163378275 /* exercise-attribution.json */; };
 		F353AC6E21DD68C94CE1F0C1 /* ChatGPTAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AAACCA17D53A1207E7EEE7 /* ChatGPTAccountStore.swift */; };
+		F466CB1BFD5F051FAA8C6AD0 /* AssistantMarkdownRenderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D763DBB95A79AE63D78C2FF /* AssistantMarkdownRenderingTests.swift */; };
 		F5B4817BB6A1253EC19DA0DD /* AssistantMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8204EA2703895D60C6BA4ECF /* AssistantMarkdown.swift */; };
 		F720F208B9ECA648116D57BF /* ExerciseSearchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800A0763E0DD0F0A48205877 /* ExerciseSearchUITests.swift */; };
 		FA8B68F63AEA37256744987E /* AssistantArtifactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A5D5F97CFF092C0E48B691 /* AssistantArtifactViews.swift */; };
@@ -231,6 +235,7 @@
 		1BEB97B8E8E17D301396B385 /* LiftLogWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftLogWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C0C0CBE71C74279021A7C1C /* WorkoutHistoryEditingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryEditingUITests.swift; sourceTree = "<group>"; };
 		1D6B588021ED601011CF2A81 /* AssistantChartPlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantChartPlot.swift; sourceTree = "<group>"; };
+		1D763DBB95A79AE63D78C2FF /* AssistantMarkdownRenderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMarkdownRenderingTests.swift; sourceTree = "<group>"; };
 		1E0385CFB1E98648496A4522 /* rest-complete.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "rest-complete.wav"; sourceTree = "<group>"; };
 		1E2F307A49667F63857F965E /* WorkoutSummaryUITestFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSummaryUITestFixture.swift; sourceTree = "<group>"; };
 		1E561A8450BF68971D08EAFB /* WorkoutAssistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAssistant.swift; sourceTree = "<group>"; };
@@ -354,6 +359,7 @@
 		E839BD88B2A7DF08B1920B27 /* ChatGPTAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatGPTAuthClient.swift; sourceTree = "<group>"; };
 		EB22582056A882055A61E97F /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 		F04355E803FC961A8EA4F9E6 /* CatalogCreditsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogCreditsUITests.swift; sourceTree = "<group>"; };
+		F1545546478F78B26A307B38 /* AssistantMarkdownSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMarkdownSource.swift; sourceTree = "<group>"; };
 		F2AAC3270DB541F6A6CB9C2B /* AssistantUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantUITests.swift; sourceTree = "<group>"; };
 		F4646781B45830729E09D09A /* ExerciseInstructionOverride.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseInstructionOverride.swift; sourceTree = "<group>"; };
 		F4D4561FFD1D474C3BDF76E9 /* CloudBackupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupSettingsView.swift; sourceTree = "<group>"; };
@@ -373,7 +379,16 @@
 				820295420FA5357329F6A73C /* libsqlite3.tbd in Frameworks */,
 				262F241EDB5D01DB74312059 /* HealthKit.framework in Frameworks */,
 				D477D1AE9FA1BF389CC513B0 /* WatchConnectivity.framework in Frameworks */,
-				11B7B1BD50EC3CB8A8D7E8F5 /* Markdown in Frameworks */,
+				11B7B1BD50EC3CB8A8D7E8F5 /* EnrichedMarkdown in Frameworks */,
+				C51F30D6F0BAF4E990D5E363 /* Markdown in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0864DD7743E31865FC31D6F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BCC472A6E732AD6DC09DDEBE /* EnrichedMarkdown in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -545,6 +560,7 @@
 				AFD9DD0170E58AAF6D2C4EB5 /* AssistantChatArchive.swift */,
 				FD906A28B68D2B0CC58BB4E1 /* AssistantChatTitleGenerator.swift */,
 				8204EA2703895D60C6BA4ECF /* AssistantMarkdown.swift */,
+				F1545546478F78B26A307B38 /* AssistantMarkdownSource.swift */,
 				A32A7930E0F5A6DA8C067ADE /* AssistantProvider.swift */,
 				66ABF912D17E831E7947F539 /* AssistantWorkoutReference.swift */,
 				0707C737AF1238FD6D50D21F /* ChatGPTAuth.swift */,
@@ -638,6 +654,7 @@
 		AF18845BC5106402868C2638 /* LiftLogAppTests */ = {
 			isa = PBXGroup;
 			children = (
+				1D763DBB95A79AE63D78C2FF /* AssistantMarkdownRenderingTests.swift */,
 				8C1E56DE25A8B1B36AB5DC9F /* RestTimerAudioTests.swift */,
 			);
 			name = LiftLogAppTests;
@@ -685,6 +702,7 @@
 			);
 			name = LiftLog;
 			packageProductDependencies = (
+				B495C47995147BA964E02139 /* EnrichedMarkdown */,
 				E2BC20ED6350BF812FC2ECDC /* Markdown */,
 			);
 			productName = LiftLog;
@@ -750,6 +768,7 @@
 			buildConfigurationList = E2DECA55C0120539A25CB8A2 /* Build configuration list for PBXNativeTarget "LiftLogAppTests" */;
 			buildPhases = (
 				3B97ABA42797EAEF93DC7C40 /* Sources */,
+				B0864DD7743E31865FC31D6F /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -758,6 +777,7 @@
 			);
 			name = LiftLogAppTests;
 			packageProductDependencies = (
+				B3CA3075DC683619D52D446C /* EnrichedMarkdown */,
 			);
 			productName = LiftLogAppTests;
 			productReference = 454C42191664FCC73CA62358 /* LiftLogAppTests.xctest */;
@@ -803,6 +823,7 @@
 			mainGroup = A339F7F08EDC92F60394996C;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				824331B950CC4B6570997BB4 /* XCRemoteSwiftPackageReference "enriched-markdown-ios" */,
 				8D6C47E10FD59A1AAA8DFBDA /* XCRemoteSwiftPackageReference "swift-markdown" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -858,6 +879,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F466CB1BFD5F051FAA8C6AD0 /* AssistantMarkdownRenderingTests.swift in Sources */,
 				97AE7F2C36254A1B7FADD0B6 /* RestTimerAudioTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -897,6 +919,7 @@
 				4FBBDC882578941F16210235 /* AssistantChatListView.swift in Sources */,
 				E7DD8429C6AA37D5C6CBB8AC /* AssistantChatTitleGenerator.swift in Sources */,
 				F5B4817BB6A1253EC19DA0DD /* AssistantMarkdown.swift in Sources */,
+				C671795BDFCB87A7A793D968 /* AssistantMarkdownSource.swift in Sources */,
 				BB6DF0CDC32D39D1BB115DDD /* AssistantMarkdownView.swift in Sources */,
 				4EAB4D681E542D1758EBF1DA /* AssistantMessageView.swift in Sources */,
 				9B79D7F7248355C82D1C91DD /* AssistantProvider.swift in Sources */,
@@ -1433,6 +1456,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		824331B950CC4B6570997BB4 /* XCRemoteSwiftPackageReference "enriched-markdown-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/software-mansion-labs/enriched-markdown-ios.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.4.0;
+			};
+		};
 		8D6C47E10FD59A1AAA8DFBDA /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/swiftlang/swift-markdown.git";
@@ -1444,6 +1475,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B3CA3075DC683619D52D446C /* EnrichedMarkdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 824331B950CC4B6570997BB4 /* XCRemoteSwiftPackageReference "enriched-markdown-ios" */;
+			productName = EnrichedMarkdown;
+		};
+		B495C47995147BA964E02139 /* EnrichedMarkdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 824331B950CC4B6570997BB4 /* XCRemoteSwiftPackageReference "enriched-markdown-ios" */;
+			productName = EnrichedMarkdown;
+		};
 		E2BC20ED6350BF812FC2ECDC /* Markdown */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8D6C47E10FD59A1AAA8DFBDA /* XCRemoteSwiftPackageReference "swift-markdown" */;

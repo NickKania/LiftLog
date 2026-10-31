@@ -400,3 +400,40 @@ PR #23 transfer-recovery follow-up (2026-10-21): `testTransferRecoveryRetainsFIF
 
 
 PR #23 replay-safety follow-up (2026-10-21): restored requests lacking submission checkpoints now wait for a fresh, matching read-only recovery response from the phone before any replay. `testLegacyOutboxWaitsForFreshPhoneReceiptAfterRestartBeforeReplayingExtensions` uses the real workout store and a decoded journal without checkpoints, restarts the phone after zero/one/two +30s extensions, rejects unrelated probe identities, queues only the unapplied suffix, and verifies exactly 60 seconds added with the final watermark clearing all pending requests. Payload tests cover property-list probe transport, malformed/unsupported probes and decoding snapshots without probe metadata. All 499 core tests and final generic iOS/watchOS Simulator builds pass. Running-app recovery captures were refreshed on the final build; phone rest UI tests were not repeated for this transport-only change. Physical-device background delivery and full phone/Watch connectivity recovery remain unverified.
+
+
+## Enriched Markdown assistant and summaries
+
+`AssistantMarkdownView` uses the official `enriched-markdown-ios` Swift package,
+pinned to exactly 0.4.0 in `project.yml` and Xcode's `Package.resolved`, for both
+assistant replies and every workout-summary response state. Only the base
+`EnrichedMarkdown` product is linked; no third-party source is copied or patched.
+
+`AssistantMarkdownSourceTests` checks app-owned resource filtering and preservation
+of ordinary/partial source, rich blocks, and escaped punctuation. The five native
+`AssistantMarkdownRenderingTests` apply that same adapter and the view's shared
+production parsing options. They check images, explicit-link filtering, bare URLs,
+partial/completed syntax, and reference/nested images against the dependency's
+parser. Bare URLs remain text; disabling permissive autolinks prevents MD4C from
+creating FTP links that swift-markdown does not recognize as links.
+
+Run `AssistantInteractionUITests/testMarkdownRendersNativeBlocksAndCopyActions`
+and `WorkoutSummaryUITests/testSummaryRendersWideMarkdownTableAndNextSessionList`
+serially on an isolated simulator. Both synthetic response fixtures include a
+wide three-column table. Code copying uses the native context menu and a VoiceOver
+custom action. Review light/dark appearance, horizontal table scrolling,
+accessibility text, and a small iPhone. Paragraph/table line heights scale with
+Dynamic Type, and quote backgrounds use system colors for dark-mode contrast.
+
+Verification (2026-10-30): package resolution, XcodeGen generation, the generic iOS
+Simulator build, and all 544 core tests pass. Five app rendering tests pass after
+the Muse Wonder Full review fix for bare-URL linkification, satisfying its stated
+conditional go-ahead. The formatting/copy and wide-summary-table UI tests passed
+serially on an isolated iPhone 17, iOS 26.5; the copy menu caused two simulator
+animation-idle delays before the scenario completed successfully. The saved-facts
+and explicit-summary-generation UI scenario also passed in the initial renderer
+verification. Synthetic running-app captures were inspected on an iPhone 13 mini,
+iOS 26.5, in light/dark appearance and accessibility-large text, including code,
+quotes, and horizontal overflow. Review images stay ignored under
+`artifacts/screenshots/enriched-markdown/`. iOS 17 runtime, manual VoiceOver
+navigation, and physical-device integrations remain unverified.
