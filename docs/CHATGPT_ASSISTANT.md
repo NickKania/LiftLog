@@ -25,6 +25,12 @@ OpenAI's [current preview limitations](https://developers.openai.com/siwc/token-
 3. Select an available model and ask a question, such as "Graph my training volume" or "Create a three-exercise upper-body workout."
 4. Inspect a proposed workout change and choose Apply or Discard. Creating an active workout will not replace an existing active session.
 
+## Assistant presentation
+
+The Assistant uses a plain conversation canvas with neutral user bubbles and unboxed, selectable Markdown replies. Provider/model menus and the floating question composer use native Liquid Glass on iOS 26 and later, native material on iOS 17–18, and opaque surfaces with Reduce Transparency. The toolbar keeps Chats, New chat, and Assistant settings available. Floating controls use a neutral tint; prominent actions such as sign-in and Apply retain the native accent color. Storage failures appear in a separate, padded notice below the provider menu. ChatGPT’s plan badge and usage link appear on a new chat; usage management remains available in Assistant settings during a conversation. At accessibility text sizes, provider/model controls move into the scrolling content so the composer and response controls remain reachable.
+
+Tap **+** in the composer to select workout, template, or per-message Health tags. Typing a standalone `@` opens the same picker. Privacy disclosures remain visible below the composer, and an in-progress response has a separate status pill and Stop control.
+
 ## Shared assistant workflows
 
 ### Completed workout summaries
@@ -43,7 +49,7 @@ The assistant can inspect templates, the current session, exercise definitions, 
 
 ### Tagging templates and workouts
 
-Tap **@** beside the question field, or type a standalone `@`, to choose specific templates or workout instances. Search by name, template exercises, or the displayed workout date, select up to ten items, and tap **Done**. Workout dates and active/completed labels distinguish sessions with the same name; template rows show exercise summaries. Selected tags appear above the question; remove a tag before sending with its remove button. Cancel closes the picker without changing your draft selection.
+Tap **+** beside the question field, or type a standalone `@`, to choose specific templates or workout instances. Search by name, template exercises, or the displayed workout date, select up to ten items, and tap **Done**. Workout dates and active/completed labels distinguish sessions with the same name; template rows show exercise summaries. Selected tags appear above the question; remove a tag before sending with its remove button. Cancel closes the picker without changing your draft selection.
 
 Send a question with the tags, for example, “Compare these workouts” or “Adjust this template based on this session.” Tags remain visible with the sent question. They identify exact records, independently of their names, and include those records’ exercise and set details in the selected provider’s request. Apple Intelligence processes them on-device; ChatGPT shares them with OpenAI. The app resolves the current record when you send, so a renamed template or a workout that has just finished still refers to the same item. If a selected record was deleted or the selected data exceeds the request limit, sending shows an error and preserves your draft.
 
@@ -51,7 +57,7 @@ Tagging a completed workout does not make history editable. Proposed changes sti
 
 ### Tagging Apple Health
 
-Use **@ → Apple Health** to select the health data for a specific active or completed workout. Health tags are separate from ordinary workout tags, even when both refer to the same session. Opening the picker, starting a workout, connecting ChatGPT, and selecting a normal workout never request Health permission or read Health data. Remove a Health tag before sending to exclude it.
+Use **+ → Apple Health** to select the health data for a specific active or completed workout. Health tags are separate from ordinary workout tags, even when both refer to the same session. Opening the picker, starting a workout, connecting ChatGPT, and selecting a normal workout never request Health permission or read Health data. Remove a Health tag before sending to exclude it.
 
 Sending a Health-tagged question requests read-only Apple Health permission when needed, then reads available heart rate (bpm), active energy (kcal), and steps within that session. Completed sessions use their recorded start/end; active sessions stop at the send-time snapshot. The selected readings are processed on-device with Apple Intelligence or shared with OpenAI with ChatGPT for that message. Ask, for example, “Graph my heart rate during this workout.” Chart points come from HealthKit statistics: average heart rate or summed energy/steps per time interval, with at most 600 intervals per metric. The time axis preserves elapsed spacing. Missing intervals are omitted. Sessions longer than 48 hours are rejected; samples crossing the session boundaries are excluded, so edge totals can be incomplete.
 

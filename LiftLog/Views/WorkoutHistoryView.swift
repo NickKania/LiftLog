@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WorkoutHistoryView: View {
     @Environment(WorkoutStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var importing = false
     @State private var addingWorkout = false
     @State private var deletingWorkout: WorkoutSession?
@@ -19,7 +20,7 @@ struct WorkoutHistoryView: View {
             if store.history.isEmpty {
                 ContentUnavailableView("Build your history", systemImage: "clock.arrow.circlepath", description: Text("Completed workouts will appear here. Start a workout, add a past workout, or import your history."))
             } else {
-                List {
+                LiftList {
                     Section {
                         if workouts.isEmpty {
                             ContentUnavailableView {
@@ -47,12 +48,14 @@ struct WorkoutHistoryView: View {
                 .scrollDismissesKeyboard(.interactively)
             }
         }
+        .liftCanvas()
         .navigationTitle("History")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query.searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Workout or exercise")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Add Past Workout", systemImage: "plus") { addingWorkout = true }
+                    .tint(Color(.label))
                     .accessibilityIdentifier("addPastWorkoutButton")
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -79,6 +82,7 @@ struct WorkoutHistoryView: View {
                     Label("Filter", systemImage: query.hasFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                 }
                 .accessibilityLabel("Filter history")
+                .tint(Color(.label))
                 .accessibilityIdentifier("historyFilterMenu")
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -90,10 +94,12 @@ struct WorkoutHistoryView: View {
                     Label("Sort", systemImage: "arrow.up.arrow.down")
                 }
                 .accessibilityLabel("Sort history, \(query.sort.label)")
+                .tint(Color(.label))
                 .accessibilityIdentifier("historySortMenu")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Import Workouts", systemImage: "square.and.arrow.down") { importing = true }
+                    .tint(Color(.label))
                     .accessibilityIdentifier("importWorkoutsButton")
             }
         }
@@ -159,7 +165,10 @@ struct WorkoutHistoryView: View {
                 }
                 Text(workout.startedAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.subheadline).foregroundStyle(.secondary)
-                HStack(spacing: 12) {
+                let statsLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+                    : AnyLayout(HStackLayout(spacing: 12))
+                statsLayout {
                     Label("\(workout.exercises.count) exercises", systemImage: "dumbbell")
                     Label("\(workout.exercises.reduce(0) { $0 + $1.sets.count }) sets", systemImage: "checkmark.circle")
                     Label(duration(for: workout), systemImage: "clock")
@@ -168,7 +177,10 @@ struct WorkoutHistoryView: View {
                 .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 18, leading: 16, bottom: 18, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(RoundedRectangle(cornerRadius: LiftTheme.cardRadius)
+            .fill(LiftTheme.surface).padding(.vertical, 5))
         .accessibilityIdentifier("historyWorkout-\(workout.name)")
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("Delete", systemImage: "trash", role: .destructive) {
@@ -206,7 +218,7 @@ struct WorkoutRecordView: View {
     var onSummary: (() -> Void)? = nil
 
     var body: some View {
-        List {
+        LiftList {
             Section {
                 LabeledContent("Workout", value: workout.name)
                 LabeledContent("Date", value: workout.startedAt.formatted(date: .abbreviated, time: .shortened))

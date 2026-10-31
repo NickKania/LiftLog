@@ -67,7 +67,7 @@ struct SettingsView: View {
     @Environment(ChatGPTAccountStore.self) private var accounts
 
     var body: some View {
-        Form {
+        LiftForm {
             Section {
                 Picker("Unit", selection: Binding(get: { store.unit }, set: { store.setUnit($0) })) {
                     Text("Pounds (lb)").tag(WeightUnit.lb)
@@ -120,7 +120,7 @@ struct SettingsView: View {
             }
             Section("ChatGPT") {
                 NavigationLink("ChatGPT Account") {
-                    Form { ChatGPTAccountSettingsView() }
+                    LiftForm { ChatGPTAccountSettingsView() }
                         .navigationTitle("ChatGPT Account")
                         .navigationBarTitleDisplayMode(.inline)
                 }
@@ -151,7 +151,10 @@ struct WorkoutHomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Ready for your next session?")
+                        .font(.title2.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("Choose a routine or build your workout as you go.")
                         .foregroundStyle(.secondary)
                 }
@@ -167,10 +170,12 @@ struct WorkoutHomeView: View {
                             Spacer()
                             Image(systemName: "arrow.right.circle.fill").font(.title)
                         }
-                        .foregroundStyle(.white)
-                        .padding(20)
-                        .background(.blue, in: RoundedRectangle(cornerRadius: 20))
+                        .foregroundStyle(.primary)
+                        .padding(10)
                     }
+                    .liftGlassButton()
+                    .tint(Color(.label))
+                    .controlSize(.large)
                     .accessibilityIdentifier("resumeWorkoutButton")
                 } else {
                     Button {
@@ -180,14 +185,19 @@ struct WorkoutHomeView: View {
                         Label("Start an Empty Workout", systemImage: "plus")
                             .font(.headline).frame(maxWidth: .infinity).padding(8)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .liftGlassButton(prominent: true)
                     .controlSize(.large)
                     .accessibilityIdentifier("startEmptyWorkoutButton")
                 }
                 HStack {
                     Text("My Templates").font(.title2.bold())
                     Spacer()
-                    Button { creatingTemplate = true } label: { Image(systemName: "plus.circle.fill").font(.title2) }
+                    Button { creatingTemplate = true } label: {
+                        Image(systemName: "plus").font(.system(size: 20, weight: .medium))
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                        .liftGlassButton()
+                        .tint(Color(.label))
                         .accessibilityLabel("Create template")
                         .accessibilityIdentifier("createTemplateButton")
                 }
@@ -198,10 +208,12 @@ struct WorkoutHomeView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 5) {
-                                Text(template.name).font(.headline)
+                                Text(template.name).font(.title3.weight(.semibold))
                                 if let version = template.currentVersion {
                                     Text("Version \(version.number) · Default")
-                                        .font(.caption.bold()).foregroundStyle(.blue)
+                                        .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                                        .padding(.horizontal, 8).padding(.vertical, 4)
+                                        .background(LiftTheme.insetSurface, in: Capsule())
                                         .accessibilityIdentifier("currentTemplateVersion-\(template.id)")
                                 }
                                 Text("\(template.exercises.count) exercises · \(template.exercises.reduce(0) { $0 + $1.sets.count }) sets")
@@ -212,7 +224,11 @@ struct WorkoutHomeView: View {
                                 Button("Plan Next Workout", systemImage: "arrow.up.right") { planningTemplate = template }
                                 Button("Edit Template", systemImage: "pencil") { editingTemplate = template }
                                 Button("Delete Template", systemImage: "trash", role: .destructive) { deletingTemplate = template }
-                            } label: { Image(systemName: "ellipsis").padding(8) }
+                            } label: {
+                                Image(systemName: "ellipsis").foregroundStyle(.primary)
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
+                            .tint(Color(.label))
                             .accessibilityLabel("Options for \(template.name)")
                         }
                         Text(template.exercises.map { $0.exercise.name }.joined(separator: " · "))
@@ -235,19 +251,22 @@ struct WorkoutHomeView: View {
                         } label: {
                             Label("Start Workout", systemImage: "play.fill").frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
+                        .liftGlassButton()
+                        .tint(Color(.label))
+                        .controlSize(.large)
                         .disabled(store.activeWorkout != nil)
                         .accessibilityIdentifier("startTemplate-\(template.id)")
                     }
-                    .padding(18)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+                    .padding(20)
+                    .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: LiftTheme.cardRadius))
                 }
             }
             .padding(20)
         }
-        .background(Color(.systemGroupedBackground))
+        .liftCanvas()
         .workoutErrorAlert(enabled: !creatingTemplate && editingTemplate == nil && planningTemplate == nil && !showWorkout)
         .navigationTitle("Workout")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $creatingTemplate) { TemplateEditorView(template: nil, unit: store.unit) }
         .sheet(item: $editingTemplate) { TemplateEditorView(template: $0, unit: store.unit) }
         .sheet(item: $planningTemplate) { TemplateEditorView(template: $0, planningNextWorkout: true, unit: store.unit) }

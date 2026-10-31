@@ -143,6 +143,7 @@
 		E0C7B10DF163A9EEEB6C4B2C /* ExerciseReplacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFCEA6A58B0F176D22A78A3 /* ExerciseReplacement.swift */; };
 		E15325647C728FD466CD87B5 /* FoundationModelsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4AEC65CB45D414214A026E9 /* FoundationModelsUITests.swift */; };
 		E6407EB5C14ED0288508156A /* AssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDE1474847815AFF2FDA9AA2 /* AssistantView.swift */; };
+		E728DECBAA8696C368A308B5 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB26BC73EDD2A1391F645870 /* AppTheme.swift */; };
 		E7DD8429C6AA37D5C6CBB8AC /* AssistantChatTitleGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD906A28B68D2B0CC58BB4E1 /* AssistantChatTitleGenerator.swift */; };
 		E7F56CA2972C505FFB859519 /* WorkoutHealthData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A445267E1C7285566F6C64 /* WorkoutHealthData.swift */; };
 		E88736128D22F5C7AE96BE7A /* WatchWorkoutPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49BED87BD9F3F9FD23840AFF /* WatchWorkoutPayload.swift */; };
@@ -369,6 +370,7 @@
 		F4D4561FFD1D474C3BDF76E9 /* CloudBackupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupSettingsView.swift; sourceTree = "<group>"; };
 		F7AAACCA17D53A1207E7EEE7 /* ChatGPTAccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatGPTAccountStore.swift; sourceTree = "<group>"; };
 		F99B10DC17826BC695F35EF2 /* CloudBackupRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupRepository.swift; sourceTree = "<group>"; };
+		FB26BC73EDD2A1391F645870 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		FB582A17C56C3F411480AB3E /* WatchWorkoutState+Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchWorkoutState+Store.swift"; sourceTree = "<group>"; };
 		FD906A28B68D2B0CC58BB4E1 /* AssistantChatTitleGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantChatTitleGenerator.swift; sourceTree = "<group>"; };
 		FDE1474847815AFF2FDA9AA2 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
@@ -468,6 +470,7 @@
 			isa = PBXGroup;
 			children = (
 				5B30B05DC1F38F2CB4A53F40 /* ActiveWorkoutView.swift */,
+				FB26BC73EDD2A1391F645870 /* AppTheme.swift */,
 				57ACBC8BB30E583566B04D48 /* AssistantAccountViews.swift */,
 				56A5D5F97CFF092C0E48B691 /* AssistantArtifactViews.swift */,
 				1D6B588021ED601011CF2A81 /* AssistantChartPlot.swift */,
@@ -915,6 +918,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C1ED4A928558DC2F42D52BA2 /* ActiveWorkoutView.swift in Sources */,
+				E728DECBAA8696C368A308B5 /* AppTheme.swift in Sources */,
 				B3606353B0AE7796227E9DDB /* AppleFoundationModelsProvider.swift in Sources */,
 				D7A56F07018EA3CDA3F866E6 /* AppleHealthDataProvider.swift in Sources */,
 				8BA98E59CC016C0B75D73695 /* AssistantAccountViews.swift in Sources */,

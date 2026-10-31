@@ -20,7 +20,7 @@ struct ExerciseInstructionsEditor: View {
 
     var body: some View {
         ScrollViewReader { scrollProxy in
-            List {
+            LiftList {
                 Section {
                     Text(exercise.name)
                         .font(.headline)

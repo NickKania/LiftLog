@@ -30,6 +30,7 @@ struct ActiveWorkoutView: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Close", systemImage: "chevron.down") { hideKeyboard(); dismiss() }
                     .labelStyle(.iconOnly)
+                    .tint(Color(.label))
                     .accessibilityLabel("Minimize workout")
                     .accessibilityIdentifier("minimizeWorkoutButton")
             }
@@ -95,7 +96,7 @@ struct ActiveWorkoutView: View {
     }
 
     private func workoutContent(_ workout: WorkoutSession) -> some View {
-        List {
+        LiftList {
             Section {
                 if let version = workout.templateVersionNumber {
                     Label("Template version \(version)", systemImage: "square.stack")
@@ -259,7 +260,7 @@ struct ActiveWorkoutView: View {
                                 Color.orange.frame(width: geometry.size.width * fraction)
                             }
                         }
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
                     .overlay {
                         // Keep the centered time legible on both the orange fill and the empty track.
@@ -286,6 +287,8 @@ struct ActiveWorkoutView: View {
                     Spacer()
                     Button(seconds > 0 ? "Skip" : "Dismiss") { store.skipRest() }
                         .font(.subheadline)
+                        .liftGlassButton()
+                        .frame(minHeight: 44)
                         .accessibilityIdentifier("skipRestButton")
                 }
 
@@ -361,7 +364,7 @@ private struct WorkoutExerciseOrderView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 Section {
                     ForEach(exercises) { exercise in
                         let number = (workout.exercises.firstIndex { $0.id == exercise.id } ?? 0) + 1

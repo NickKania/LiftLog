@@ -4,12 +4,26 @@ import SwiftUI
 struct AssistantProviderPicker: View {
     @Environment(WorkoutAssistant.self) private var assistant
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    var compact = false
     static let switchingDisclosure = "Switching providers clears unsent questions and tags from every chat. Saved messages stay separate for each provider."
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            providerMenu
-            AssistantProviderStorageNotice()
+            if compact {
+                providerMenu
+                    .tint(Color(.label))
+                    .padding(.horizontal, 14)
+                    .liftGlassSurface(cornerRadius: 24)
+                if assistant.storageErrorMessage != nil {
+                    AssistantProviderStorageNotice()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
+                }
+            } else {
+                providerMenu
+                AssistantProviderStorageNotice()
+            }
         }
     }
 
@@ -28,7 +42,13 @@ struct AssistantProviderPicker: View {
             }
         } label: {
             HStack(alignment: .center, spacing: 8) {
-                if dynamicTypeSize.isAccessibilitySize {
+                if compact && !dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: assistant.selectedProvider == .chatGPT ? "sparkles" : "iphone")
+                        .accessibilityHidden(true)
+                    Text(assistant.selectedProvider.displayName)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Provider").font(.caption).foregroundStyle(.secondary)
                         Text(assistant.selectedProvider.displayName)
@@ -42,7 +62,7 @@ struct AssistantProviderPicker: View {
                         .multilineTextAlignment(.trailing)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Image(systemName: "chevron.up.chevron.down")
+                Image(systemName: compact ? "chevron.down" : "chevron.up.chevron.down")
                     .font(.caption).accessibilityHidden(true)
             }
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -167,7 +187,7 @@ struct ChatGPTSignInButton: View {
                         .font(.headline)
                 }.frame(maxWidth: .infinity).padding(.vertical, 6)
             }
-            .buttonStyle(.borderedProminent).controlSize(.large)
+            .liftGlassButton(prominent: true).controlSize(.large)
             .disabled(accounts.isSigningIn)
             .accessibilityIdentifier("continueWithChatGPTButton")
             if accounts.isSigningIn {

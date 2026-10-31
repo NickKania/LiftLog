@@ -19,7 +19,7 @@ struct WorkoutSummarySettingsView: View {
     }
 
     var body: some View {
-        Form {
+        LiftForm {
             Section {
                 TextEditor(text: $draftPrompt)
                     .frame(height: min(promptEditorHeight, 360))

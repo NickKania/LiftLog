@@ -12,7 +12,7 @@ struct AssistantChatListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 if assistant.chats.isEmpty {
                     ContentUnavailableView("No saved chats", systemImage: "bubble.left.and.bubble.right",
                                            description: Text("Your conversations appear here for later reference."))

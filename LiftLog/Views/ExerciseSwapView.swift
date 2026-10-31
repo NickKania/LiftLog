@@ -31,7 +31,7 @@ struct ExerciseSwapView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 Section {
                     LabeledContent("Replacing", value: originalExercise.name)
                 }
@@ -123,7 +123,7 @@ private struct ExerciseSwapReviewView: View {
     let onReplace: () -> Void
 
     var body: some View {
-        List {
+        LiftList {
             Section("Replacement") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(originalExercise.name)
@@ -157,7 +157,7 @@ private struct ExerciseSwapReviewView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent)
+                .liftGlassButton(prominent: true)
                 .listRowBackground(Color.clear)
                 .accessibilityIdentifier("exerciseSwapConfirmButton")
             }

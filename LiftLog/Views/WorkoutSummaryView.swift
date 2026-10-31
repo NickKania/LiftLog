@@ -71,7 +71,7 @@ struct WorkoutSummaryView: View {
                     ContentUnavailableView("Workout unavailable", systemImage: "questionmark.folder",
                                           description: Text("This workout is no longer in your saved history."))
                 }
-                AssistantProviderPicker()
+                AssistantProviderPicker(compact: true)
 
                 if workout != nil, hasCurrentSummary && summary.isWorking {
                     workingState
@@ -88,7 +88,7 @@ struct WorkoutSummaryView: View {
             }
             .padding(20)
         }
-        .background(Color(.systemGroupedBackground))
+        .liftCanvas()
         .navigationTitle("Workout Summary")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -251,14 +251,14 @@ struct WorkoutSummaryView: View {
                     Label(currentError == nil ? "Generate insights" : "Try again", systemImage: currentError == nil ? "sparkles" : "arrow.clockwise")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .liftGlassButton(prominent: true)
                 .controlSize(.large)
                 .disabled(!canGenerate)
                 .accessibilityIdentifier(currentError == nil ? "workoutSummaryGenerateButton" : "workoutSummaryRetryButton")
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: LiftTheme.cardRadius))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("workoutSummaryRequestCard")
     }
@@ -281,7 +281,7 @@ struct WorkoutSummaryView: View {
                         modelReloadTask?.cancel()
                         modelReloadTask = Task { await reloadModels() }
                     }
-                    .buttonStyle(.bordered)
+                    .liftGlassButton()
                     .accessibilityIdentifier("workoutSummaryReloadModelsButton")
                 }
             } else if assistant.selectedProvider == .appleFoundationModels {
@@ -323,12 +323,12 @@ struct WorkoutSummaryView: View {
                     .accessibilityIdentifier("workoutSummaryText")
             }
             Button("Stop") { summary.cancel() }
-                .buttonStyle(.bordered)
+                .liftGlassButton()
                 .accessibilityIdentifier("workoutSummaryStopButton")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: LiftTheme.cardRadius))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("workoutSummaryWorkingCard")
     }
@@ -347,7 +347,7 @@ struct WorkoutSummaryView: View {
                 .accessibilityIdentifier("workoutSummaryText")
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: LiftTheme.cardRadius))
     }
 
     private func errorState(_ error: String, previousText: String?) -> some View {
@@ -365,7 +365,7 @@ struct WorkoutSummaryView: View {
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: LiftTheme.cardRadius))
     }
 
     private func prepareModelsAndAutomaticRequest() async {

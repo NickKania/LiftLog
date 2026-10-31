@@ -30,12 +30,15 @@ struct HealthDashboardView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     sectionPicker
 
-                    HStack(alignment: .center) {
+                    let rangeLayout = dynamicTypeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                        : AnyLayout(HStackLayout(alignment: .center))
+                    rangeLayout {
                         Text("YOUR TRAINING")
                             .font(.caption.weight(.semibold))
                             .tracking(1.2)
                             .foregroundStyle(.secondary)
-                        Spacer()
+                        if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                         Menu {
                             Picker("Date range", selection: $range) {
                                 ForEach(HealthDashboardRange.allCases) { Text($0.label).tag($0) }
@@ -47,10 +50,11 @@ struct HealthDashboardView: View {
                                 Image(systemName: "chevron.down").font(.caption2.weight(.bold))
                             }
                             .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background(.blue.opacity(0.08), in: Capsule())
+                            .padding(.horizontal, 6)
+                            .frame(minHeight: 44)
                         }
+                        .liftGlassButton()
+                        .tint(Color(.label))
                         .accessibilityLabel("Date range, \(range.label)")
                         .accessibilityIdentifier("healthDateRangePicker")
                     }
@@ -76,8 +80,9 @@ struct HealthDashboardView: View {
             .padding(20)
             .padding(.bottom, 12)
         }
-        .background(Color(.systemGroupedBackground))
+        .liftCanvas()
         .navigationTitle("Health")
+        .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("healthDashboard")
     }
 
@@ -92,12 +97,12 @@ struct HealthDashboardView: View {
             )
             if !store.history.isEmpty && range != .all {
                 Button("Show All Workouts") { range = .all }
-                    .buttonStyle(.bordered)
+                    .liftGlassButton()
             }
         }
         .padding(.vertical, 28)
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+        .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: LiftTheme.cardRadius))
     }
 
     private var sectionPicker: some View {
@@ -108,8 +113,14 @@ struct HealthDashboardView: View {
         return Group {
             if dynamicTypeSize.isAccessibilitySize {
                 picker.pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .tint(Color(.label))
+                    .liftGlassSurface()
             } else {
                 picker.pickerStyle(.segmented)
+                    .padding(6)
+                    .liftGlassSurface()
             }
         }
     }
@@ -134,7 +145,7 @@ struct HealthDashboardCard<Content: View>: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
                     if let systemImage {
-                        Image(systemName: systemImage).foregroundStyle(.teal).accessibilityHidden(true)
+                        Image(systemName: systemImage).foregroundStyle(.secondary).accessibilityHidden(true)
                     }
                     Text(title).font(.headline).accessibilityAddTraits(.isHeader)
                 }
@@ -147,7 +158,7 @@ struct HealthDashboardCard<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+        .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: LiftTheme.cardRadius))
     }
 }
 
@@ -172,7 +183,7 @@ struct HealthDashboardMetric: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(tint.opacity(0.065), in: RoundedRectangle(cornerRadius: 14))
+        .background(LiftTheme.insetSurface, in: RoundedRectangle(cornerRadius: 18))
         .accessibilityElement(children: .combine)
     }
 }
@@ -183,7 +194,7 @@ struct HealthDashboardInsight: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: systemImage).foregroundStyle(.teal).accessibilityHidden(true)
+            Image(systemName: systemImage).foregroundStyle(.secondary).accessibilityHidden(true)
             Text(text).font(.subheadline).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

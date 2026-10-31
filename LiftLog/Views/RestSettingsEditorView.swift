@@ -21,7 +21,7 @@ struct RestSettingsEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            LiftForm {
                 Section {
                     Text(title).font(.headline)
                     if let workoutRestSeconds {

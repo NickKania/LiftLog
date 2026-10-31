@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Text stays local while a number is incomplete, so typing a decimal never resets the field.
 struct SetInputRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let number: Int
     let unit: WeightUnit
     let weight: Double
@@ -27,12 +28,23 @@ struct SetInputRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 12) {
-                Text("\(number)").font(.subheadline.bold()).foregroundStyle(.secondary).frame(width: 26)
+            let inputLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 12))
+            inputLayout {
+                Text(dynamicTypeSize.isAccessibilitySize ? "Set \(number)" : "\(number)")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 26, alignment: .leading)
                 VStack(alignment: .leading, spacing: 3) {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Text("Weight (\(unit.rawValue))").font(.caption).foregroundStyle(.secondary)
+                    }
                     TextField("0", text: $weightText)
                         .keyboardType(.decimalPad)
                         .disabled(completed == true)
+                        .padding(.horizontal, 10).padding(.vertical, 12)
+                        .frame(minHeight: 44)
+                        .background(LiftTheme.insetSurface, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityLabel("Weight for set \(number), \(unit.rawValue)")
                         .accessibilityIdentifier("setWeight-\(number)")
                     if let targetWeight {
@@ -43,9 +55,15 @@ struct SetInputRow: View {
                 }
                 .frame(maxWidth: .infinity)
                 VStack(alignment: .leading, spacing: 3) {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Text(repsTitle).font(.caption).foregroundStyle(.secondary)
+                    }
                     TextField(repsTitle, text: $repsText)
                         .keyboardType(.numberPad)
                         .disabled(completed == true)
+                        .padding(.horizontal, 10).padding(.vertical, 12)
+                        .frame(minHeight: 44)
+                        .background(LiftTheme.insetSurface, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityLabel("\(repsTitle) for set \(number)")
                         .accessibilityIdentifier("setReps-\(number)")
                     if let targetReps {
@@ -70,7 +88,8 @@ struct SetInputRow: View {
                     .accessibilityIdentifier("completeSet-\(number)")
                 }
             }
-            .textFieldStyle(.roundedBorder)
+            .textFieldStyle(.plain)
+            .monospacedDigit()
             .padding(.vertical, 3)
             if initialized && !valid {
                 Text("Enter a weight of 0 or more and at least 1 rep.")
@@ -109,10 +128,23 @@ struct SetInputRow: View {
 }
 
 struct SetColumnHeader: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let unit: WeightUnit
     var completion = false
     var repsTitle = "REPS"
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                Text("Sets · \(unit.rawValue)")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                columns
+            }
+        }
+        .font(.caption2.bold()).foregroundStyle(.secondary)
+    }
+
+    private var columns: some View {
         HStack(spacing: 12) {
             Text("SET").frame(width: 26)
             Text(unit.rawValue.uppercased()).frame(maxWidth: .infinity, alignment: .leading)
