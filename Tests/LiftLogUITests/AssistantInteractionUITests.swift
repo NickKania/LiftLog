@@ -154,7 +154,12 @@ final class AssistantInteractionUITests: XCTestCase {
         copy.tap()
         let code = app.staticTexts["volume = weight × completed reps"]
         reveal(code, in: app)
-        XCTAssertTrue(app.buttons["Copy code"].exists)
+        // Enriched Markdown exposes code copying through the native context
+        // menu and a VoiceOver action rather than a separate accessible button.
+        code.press(forDuration: 1)
+        let copyCode = app.buttons["Copy"].firstMatch
+        XCTAssertTrue(copyCode.waitForExistence(timeout: 5))
+        copyCode.tap()
         XCTAssertTrue(app.links["Training reference"].exists || app.staticTexts["Training reference"].exists)
         keepScreenshot(of: app, named: "Markdown quote, code block and link")
     }
@@ -193,6 +198,63 @@ final class AssistantInteractionUITests: XCTestCase {
     }
 
     @MainActor
+    func testResponseSurvivesRepeatedForegroundTabSwitches() throws {
+        let app = launchFixture(concurrent: true)
+        send("Show formatting", in: app)
+        XCTAssertTrue(app.buttons["assistantCancelButton"].waitForExistence(timeout: 2))
+        for tab in ["Workout", "History", "Settings"] {
+            app.tabBars.buttons[tab].tap()
+            app.tabBars.buttons["Assistant"].tap()
+            XCTAssertTrue(app.buttons["assistantModelPicker"].exists)
+            XCTAssertTrue(app.textFields["assistantComposer"].exists)
+        }
+        XCTAssertTrue(app.staticTexts["Your training, in perspective"].waitForExistence(timeout: 25))
+        XCTAssertFalse(app.buttons["assistantCancelButton"].exists)
+        XCTAssertFalse(app.staticTexts["Assistant unavailable"].exists)
+        keepScreenshot(of: app, named: "Completed response after foreground tab switches")
+    }
+
+    @MainActor
+    func testResponseSurvivesTabSwitchAndBackgrounding() throws {
+        let app = launchFixture(delayed: true)
+        send("Chart my training volume", in: app)
+        let progress = app.descendants(matching: .any)["assistantWorkingIndicator"].firstMatch
+        XCTAssertTrue(progress.waitForExistence(timeout: 2))
+        app.tabBars.buttons["Workout"].tap()
+        XCTAssertTrue(app.navigationBars["Workout"].waitForExistence(timeout: 2))
+        app.tabBars.buttons["Assistant"].tap()
+        XCTAssertTrue(app.buttons["assistantModelPicker"].exists)
+
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        let answer = app.staticTexts["Here is the result from your recorded workout data. Review any proposed changes before applying them."]
+        XCTAssertTrue(answer.waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["assistantCancelButton"].exists)
+        XCTAssertFalse(app.staticTexts["Assistant unavailable"].exists)
+        XCTAssertTrue(app.buttons["assistantModelPicker"].exists)
+        XCTAssertTrue(app.buttons["assistantSendButton"].exists)
+        keepScreenshot(of: app, named: "Assistant response after tab switch and foregrounding")
+    }
+
+    @MainActor
+    func testExpiredBackgroundTimeKeepsChatConnectedAndAllowsAnotherMessage() throws {
+        let app = launchFixture(delayed: true, expiring: true)
+        send("Chart my training volume", in: app)
+        let notice = app.descendants(matching: .any)["assistantRequestErrorNotice"].firstMatch
+        XCTAssertTrue(notice.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Response interrupted."].exists)
+        XCTAssertTrue(app.buttons["assistantModelPicker"].exists)
+        XCTAssertTrue(app.buttons["assistantSendButton"].exists)
+        XCTAssertFalse(app.buttons["assistantCancelButton"].exists)
+        XCTAssertFalse(app.buttons["assistantApplyProposalButton"].exists)
+        keepScreenshot(of: app, named: "Assistant remains signed in after background allowance expires")
+        send("Another question", in: app)
+        XCTAssertTrue(app.descendants(matching: .any)["assistantWorkingIndicator"].firstMatch.waitForExistence(timeout: 2))
+        XCTAssertFalse(notice.exists)
+        app.buttons["assistantCancelButton"].tap()
+    }
+
+    @MainActor
     func testPendingResponseCanBeCancelled() throws {
         let app = launchFixture(delayed: true)
         send("Chart my training volume", in: app)
@@ -204,10 +266,12 @@ final class AssistantInteractionUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchFixture(delayed: Bool = false, dense: Bool = false, largeText: Bool = false) -> XCUIApplication {
+    private func launchFixture(delayed: Bool = false, dense: Bool = false, largeText: Bool = false, expiring: Bool = false, concurrent: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--assistant-ui-fixture"]
         if delayed { app.launchArguments.append("--assistant-delayed-ui-fixture") }
+        if concurrent { app.launchArguments.append("--assistant-concurrent-ui-fixture") }
+        if expiring { app.launchArguments.append("--assistant-expiring-ui-fixture") }
         if dense { app.launchArguments.append("--assistant-dense-chart-ui-fixture") }
         if largeText {
             app.launchArguments += ["--assistant-dark-ui-fixture", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]

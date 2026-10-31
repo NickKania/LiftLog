@@ -97,6 +97,168 @@ final class AssistantChatPersistenceTests: XCTestCase {
     }
 
     @MainActor
+    func testResponseOwnsActivityAcrossReconciliationAndToolRounds() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+        let transport = ChatPersistenceTransport()
+        transport.holdStreams = true
+        var started = 0
+        var ended = 0
+        var expirations: [@MainActor () -> Void] = []
+        let assistant = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: transport,
+            accountIdentity: { "same-account" }, beginRequestActivity: { expiration in
+                started += 1
+                expirations.append(expiration)
+                return { ended += 1 }
+            })
+        await assistant.refreshModels()
+        XCTAssertTrue(assistant.send("Read my templates"))
+        await waitUntil { transport.held.count == 1 }
+        XCTAssertEqual(started, 1, "A response must acquire background execution time before it can be suspended")
+        assistant.reconcileAccount() // The Assistant tab does this each time it appears.
+        assistant.saveChats() // The app does this on background entry.
+        assistant.refreshProviderAvailability() // The app does this on foreground entry.
+        XCTAssertTrue(assistant.isWorking)
+        XCTAssertEqual(ended, 0)
+        transport.release(0, output: [try chatCall("get_templates", id: "read", arguments: [:])])
+        await waitUntil { transport.held.count == 2 }
+        XCTAssertEqual(started, 1, "Tool rounds must share the response's activity")
+        XCTAssertEqual(ended, 0)
+        transport.release(1, output: chatAnswer("Still connected"))
+        await waitUntil { !assistant.isWorking }
+        XCTAssertEqual(ended, 1)
+        XCTAssertEqual(assistant.messages.last?.text, "Still connected")
+        XCTAssertNil(assistant.errorMessage)
+        XCTAssertTrue(assistant.send("Next response"))
+        await waitUntil { transport.held.count == 3 }
+        expirations[0]()
+        XCTAssertTrue(assistant.isWorking, "Expiration of a completed response must not cancel its successor")
+        transport.release(2, output: chatAnswer("Next reply"))
+        await waitUntil { !assistant.isWorking }
+        XCTAssertEqual(ended, 2)
+    }
+
+    @MainActor
+    func testBackgroundExpirationPreservesPartialTextAndOnlyInterruptsItsOwnResponse() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+        let transport = ChatPersistenceTransport()
+        transport.holdStreams = true
+        var expirations: [@MainActor () -> Void] = []
+        var ended = 0
+        let archive = directory.appendingPathComponent("chats.json")
+        let assistant = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: transport,
+            storageURL: archive, beginRequestActivity: { expiration in
+                expirations.append(expiration)
+                return { ended += 1 }
+            })
+        await assistant.refreshModels()
+        let first = try XCTUnwrap(assistant.selectedChat)
+        XCTAssertTrue(assistant.send("First question"))
+        await waitUntil { transport.held.count == 1 }
+        chatEvent(["type": "response.output_text.delta", "delta": "Partial reply"]).forEach { transport.held[0].yield($0) }
+        await waitUntil { first.messages.last?.text == "Partial reply" }
+        let secondID = assistant.createChat()
+        XCTAssertTrue(assistant.send("Second question"))
+        await waitUntil { transport.held.count == 2 }
+
+        expirations[0]()
+        await waitUntil { ended == 1 }
+        XCTAssertFalse(first.isWorking)
+        XCTAssertEqual(first.messages.last?.text, "Partial reply")
+        XCTAssertEqual(first.messages.last?.isPartial, true)
+        XCTAssertTrue(first.errorMessage?.contains("background time expired") == true)
+        XCTAssertTrue(assistant.isWorking, "Another chat's response must stay active")
+        XCTAssertNil(assistant.errorMessage)
+
+        assistant.selectChat(first.id)
+        XCTAssertTrue(assistant.send("Continue"))
+        await waitUntil { transport.held.count == 3 }
+        expirations[0]()
+        XCTAssertTrue(assistant.isWorking, "A late expiration cannot stop a replacement response")
+        transport.release(0, output: [try chatCall("propose_create_template", id: "late", arguments: [:])])
+        transport.release(2, output: chatAnswer("Continued reply"))
+        await waitUntil { !assistant.isWorking }
+        XCTAssertTrue(first.messages.compactMap(\.proposal).isEmpty)
+        XCTAssertNil(first.errorMessage)
+        assistant.selectChat(secondID)
+        transport.release(1, output: chatAnswer("Other reply"))
+        await waitUntil { !assistant.isWorking }
+        XCTAssertEqual(ended, 3)
+        XCTAssertEqual(assistant.messages.last?.text, "Other reply")
+
+        let restored = WorkoutAssistant(store: store, accessToken: { "mock" }, storageURL: archive)
+        restored.selectChat(first.id)
+        XCTAssertTrue(restored.messages.contains { $0.text == "Partial reply" && $0.isPartial })
+    }
+
+    @MainActor
+    func testBackgroundExpirationRejectsAnExistingPendingProposalDuringContinuation() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+        let originalTemplates = store.templates
+        let transport = ChatPersistenceTransport()
+        transport.holdStreams = true
+        var expire: (@MainActor () -> Void)?
+        var ended = false
+        let archive = directory.appendingPathComponent("chats.json")
+        let assistant = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: transport,
+            storageURL: archive, beginRequestActivity: { expiration in
+                expire = expiration
+                return { ended = true }
+            })
+        await assistant.refreshModels()
+        XCTAssertTrue(assistant.send("Propose a routine"))
+        await waitUntil { transport.held.count == 1 }
+        transport.release(0, output: [try chatCall("propose_create_template", id: "pending-plan", arguments: [
+            "name": "Unapplied routine", "unit": "lb", "exercises": [
+                ["exercise_id": store.exercises[0].id.uuidString, "sets": [["weight": 95, "reps": 8]]]
+            ]
+        ])])
+        await waitUntil { transport.held.count == 2 }
+        let proposal = try XCTUnwrap(assistant.messages.compactMap(\.proposal).first)
+        XCTAssertEqual(proposal.status, .pending, "Round one must create a real, reviewable proposal before expiration")
+        XCTAssertTrue(assistant.isWorking)
+
+        try XCTUnwrap(expire)()
+        await waitUntil { ended }
+        XCTAssertFalse(assistant.isWorking)
+        XCTAssertEqual(assistant.messages.compactMap(\.proposal).first?.status, .rejected)
+        XCTAssertThrowsError(try assistant.applyProposal(proposal.id))
+        XCTAssertEqual(store.templates, originalTemplates, "Expiration cannot apply a proposed change")
+        let restored = WorkoutAssistant(store: store, accessToken: { "mock" }, storageURL: archive)
+        XCTAssertEqual(restored.messages.compactMap(\.proposal).first?.status, .rejected)
+    }
+
+    @MainActor
+    func testActivityEndsOnStopFailureAndAccountChange() async throws {
+        for action in ["stop", "failure", "account", "delete"] {
+            let directory = try directory()
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let store = WorkoutStore(fileURL: directory.appendingPathComponent("workouts.sqlite"))
+            let transport = ChatPersistenceTransport()
+            transport.holdStreams = true
+            var ended = 0
+            let assistant = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: transport,
+                beginRequestActivity: { _ in { ended += 1 } })
+            await assistant.refreshModels()
+            XCTAssertTrue(assistant.send("Question"))
+            await waitUntil { transport.held.count == 1 }
+            switch action {
+            case "stop": assistant.cancel()
+            case "account": assistant.accountWillChange()
+            case "delete": XCTAssertTrue(assistant.deleteChat(try XCTUnwrap(assistant.selectedChatID)))
+            default: transport.held[0].finish(throwing: URLError(.networkConnectionLost))
+            }
+            await waitUntil { ended == 1 }
+            XCTAssertFalse(assistant.isWorking)
+        }
+    }
+
+    @MainActor
     func testRelaunchRestoresOriginalRichTranscriptAndFullInferenceContext() async throws {
         let directory = try directory()
         defer { try? FileManager.default.removeItem(at: directory) }

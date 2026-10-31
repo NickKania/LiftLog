@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Presents local workout facts immediately and keeps the optional AI request behind
-/// one explicit action. The response is owned by `WorkoutSummaryStore` and is never
-/// written into workout history.
+/// one explicit action. Saved workout-only insights are readable offline from history.
 struct WorkoutSummaryView: View {
     let workoutID: UUID
     let automaticallyGenerate: Bool
@@ -51,7 +50,8 @@ struct WorkoutSummaryView: View {
     }
 
     private var currentText: String {
-        hasCurrentSummary ? summary.text : ""
+        if hasCurrentSummary, !summary.text.isEmpty { return summary.text }
+        return workout?.summary ?? ""
     }
 
     private var currentError: String? {
@@ -130,7 +130,13 @@ struct WorkoutSummaryView: View {
             didAutoGenerate = true
             chooseModelIfNeeded()
         }
-        .onChange(of: workout) { _, _ in
+        .onChange(of: workout) { old, new in
+            // Saving generated insights changes the record without changing its evidence.
+            var previousEvidence = old
+            var currentEvidence = new
+            previousEvidence?.summary = nil
+            currentEvidence?.summary = nil
+            guard previousEvidence != currentEvidence else { return }
             generationTask?.cancel()
             automaticTask?.cancel()
             summary.cancel()
@@ -203,6 +209,9 @@ struct WorkoutSummaryView: View {
         VStack(alignment: .leading, spacing: 16) {
             Label("Optional coaching insights", systemImage: "sparkles")
                 .font(.headline)
+            Text("Workout-only insights are saved with this workout and available from History offline. Insights that include Apple Health stay temporary.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(requestDisclosure)
                 .font(.subheadline).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -326,9 +335,15 @@ struct WorkoutSummaryView: View {
 
     private var summaryResult: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Your insights", systemImage: "checkmark.circle.fill")
+            Label(hasCurrentSummary && summary.responseIncludesHealth ? "Your insights" : "Saved insights",
+                  systemImage: "checkmark.circle.fill")
                 .font(.headline).foregroundStyle(.green)
-            AssistantMarkdownView(text: summary.text)
+            if hasCurrentSummary && summary.responseIncludesHealth {
+                Text("Includes Apple Health. These insights are temporary and won’t be saved.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            AssistantMarkdownView(text: currentText)
                 .accessibilityIdentifier("workoutSummaryText")
         }
         .padding(16)
@@ -377,7 +392,7 @@ struct WorkoutSummaryView: View {
 
     private func startAutomaticIfEligible() async {
         guard isScreenActive, !Task.isCancelled, automaticallyGenerate, store.automaticWorkoutSummaries,
-              canUseProvider, !didAutoGenerate, !summary.isWorking else { return }
+              canUseProvider, !didAutoGenerate, !summary.isWorking, workout?.summary == nil else { return }
         chooseModelIfNeeded()
         guard hasModel else { return }
         // Mark only when a real model is available and the request is about to start;

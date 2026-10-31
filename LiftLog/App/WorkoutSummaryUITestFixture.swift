@@ -197,7 +197,21 @@ private enum WorkoutSummaryFixtureResponse {
         }()
         return hasHealth
             ? "## Workout insights\n\nYour workout is recorded locally. **Heart rate and active energy were included for this request only.**\n\nKeep the load steady and aim for one more clean rep next time if your form remains strong."
-            : "## Workout insights\n\nYour workout is recorded locally with **2 completed sets**. Compared with your earlier sessions, the load is trending up.\n\nTry adding one rep next session before increasing weight."
+            : """
+            ## Workout insights
+
+            Your workout is recorded locally with **2 completed sets**. Compared with your earlier sessions, the load is trending up.
+
+            | Exercise | Actual performance | Earlier-session comparison |
+            | --- | --- | --- |
+            | Bench press | 135 lb: **8/8** | **+5 lb** versus your previous session, with the same completed reps. |
+            | Earlier bench press | 130 lb: **8/7** | A synthetic earlier session for comparison. |
+
+            ### Next session
+
+            1. **Keep the load steady.** Try adding one rep next session before increasing weight.
+            2. Keep your technique controlled and record any changes in effort.
+            """
     }
 }
 #endif

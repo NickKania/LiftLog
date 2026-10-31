@@ -5,6 +5,25 @@ final class WorkoutSummaryUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testSummaryRendersWideMarkdownTableAndNextSessionList() {
+        let app = launchFixture(reset: true)
+        finishFixtureWorkout(in: app)
+        let generate = app.buttons["workoutSummaryGenerateButton"]
+        reveal(generate, in: app)
+        generate.tap()
+        let heading = app.staticTexts["Workout insights"]
+        reveal(heading, in: app)
+        XCTAssertTrue(heading.exists)
+        let table = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Actual performance")).firstMatch
+        XCTAssertTrue(table.waitForExistence(timeout: 5))
+        let nextSession = app.staticTexts["Next session"]
+        reveal(nextSession, in: app)
+        XCTAssertTrue(nextSession.exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "**")).firstMatch.exists)
+        keepScreenshot(of: app, named: "Enriched workout summary table and list")
+    }
+
+    @MainActor
     func testSummaryExplainsBlockedProviderSwitchForUnreadableArchive() {
         let app = launchFixture(reset: true, onDevice: true,
                                 additionalArguments: ["--foundation-models-corrupt-archive-ui-fixture"])
@@ -51,11 +70,12 @@ final class WorkoutSummaryUITests: XCTestCase {
         reveal(disclosure, in: app)
         XCTAssertTrue(disclosure.label.contains("Connect an eligible ChatGPT account"))
         XCTAssertFalse(generate.exists, "Switching to ChatGPT must still require its account")
-        XCTAssertFalse(insights.exists, "Switching providers clears the prior transient summary")
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Heart rate and active energy")).firstMatch.exists)
+        XCTAssertTrue(insights.exists, "Saved workout-only insights remain readable across providers")
         chooseSummaryProvider("Apple Intelligence", in: app)
         reveal(app.switches["workoutSummaryIncludeHealthToggle"], in: app)
         XCTAssertEqual(toggleControl("workoutSummaryIncludeHealthToggle", in: app).value as? String, "0")
-        XCTAssertFalse(insights.exists, "Switching back must require a new explicit request")
+        XCTAssertTrue(insights.exists, "Saved insights remain available without regenerating")
         app.buttons["closeWorkoutSummaryButton"].tap()
     }
 
@@ -309,6 +329,37 @@ final class WorkoutSummaryUITests: XCTestCase {
         XCTAssertTrue(generate.waitForExistence(timeout: 5))
         XCTAssertFalse(stop.exists)
         XCTAssertFalse(app.staticTexts["Workout insights"].exists)
+    }
+
+    @MainActor
+    func testSavedSummaryReopensFromHistoryAfterRelaunchWithoutProviderAccess() {
+        let app = launchFixture(reset: true)
+        finishFixtureWorkout(in: app)
+        let generate = app.buttons["workoutSummaryGenerateButton"]
+        reveal(generate, in: app)
+        generate.tap()
+        let insights = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Workout insights")).firstMatch
+        XCTAssertTrue(insights.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Saved insights"].exists)
+        app.buttons["closeWorkoutSummaryButton"].tap()
+        app.tabBars.buttons["History"].tap()
+        app.buttons["historyWorkout-Summary Fixture Workout"].tap()
+        app.buttons["workoutSummaryHistoryButton"].tap()
+        XCTAssertTrue(insights.waitForExistence(timeout: 5))
+        keepScreenshot(of: app, named: "Saved workout insights reopened from History")
+        app.terminate()
+
+        // The unavailable on-device provider needs no account or inference request to read saved text.
+        app.launchArguments = ["--ui-testing", "--assistant-ui-fixture", "--workout-summary-ui-fixture",
+                               "--foundation-models-ui-fixture", "--foundation-models-unavailable-ui-fixture"]
+        app.launch()
+        app.tabBars.buttons["History"].tap()
+        app.buttons["historyWorkout-Summary Fixture Workout"].tap()
+        app.buttons["workoutSummaryHistoryButton"].tap()
+        XCTAssertTrue(insights.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Saved insights"].exists)
+        XCTAssertFalse(app.buttons["workoutSummaryStopButton"].exists)
+        keepScreenshot(of: app, named: "Saved workout insights after relaunch without provider access")
     }
 
     @MainActor

@@ -85,7 +85,8 @@ struct WorkoutDatabase {
                         unit: recordedUnit, importSourceKey: try row.optional("import_source_key", read: row.text), exercises: exercises,
                         restSeconds: schemaVersion >= 3 ? try row.integer("rest_seconds") : 120,
                         restTimer: schemaVersion >= 3 ? try row.optional("rest_timer") { try JSONDecoder().decode(WorkoutRestTimer.self, from: Data(row.text($0).utf8)) } : nil,
-                        notes: schemaVersion >= 8 ? try row.optional("notes", read: row.text) : nil
+                        notes: schemaVersion >= 8 ? try row.optional("notes", read: row.text) : nil,
+                        summary: schemaVersion >= 10 ? try row.optional("summary", read: row.text) : nil
                     )
                     if try row.text("kind") == "active" { snapshot.activeWorkout = session }
                     else { snapshot.history.append(session) }
@@ -141,6 +142,7 @@ struct WorkoutDatabase {
                 }
                 if schemaVersion <= 7 { try migrateVersionEight(db) }
                 if schemaVersion <= 8 { try migrateVersionNine(db) }
+                if schemaVersion <= 9 { try migrateVersionTen(db) }
                 try db.execute("DELETE FROM history_recovery")
                 try db.execute("DELETE FROM records")
                 try db.execute("DELETE FROM personal_exercises")
@@ -215,7 +217,7 @@ struct WorkoutDatabase {
     private func checkFormat(_ db: SQLiteConnection) throws -> Int {
         let version = try db.rows("PRAGMA user_version").first?.integer("user_version")
         guard try db.rows("PRAGMA application_id").first?.integer("application_id") == Self.applicationID,
-              let version, (1...9).contains(version) else {
+              let version, (1...10).contains(version) else {
             throw DatabaseError(message: "This file is not a supported Lift Log database.")
         }
         return version
@@ -283,6 +285,11 @@ struct WorkoutDatabase {
         try db.execute("PRAGMA user_version = 9")
     }
 
+    private func migrateVersionTen(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE records ADD COLUMN summary TEXT")
+        try db.execute("PRAGMA user_version = 10")
+    }
+
     private func createSchema(_ db: SQLiteConnection) throws {
         let statements = [
             "PRAGMA application_id = \(Self.applicationID)",
@@ -335,12 +342,12 @@ struct WorkoutDatabase {
     private func saveSession(_ db: SQLiteConnection, session: WorkoutSession, kind: String, position: Int) throws {
         let key = "session:\(session.id.uuidString)"
         try db.execute("""
-            INSERT INTO records (record_key, id, kind, position, name, template_id, started_at, finished_at, unit, import_source_key, template_version_id, template_version_number, rest_seconds, rest_timer, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO records (record_key, id, kind, position, name, template_id, started_at, finished_at, unit, import_source_key, template_version_id, template_version_number, rest_seconds, rest_timer, notes, summary)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [.text(key), .text(session.id.uuidString), .text(kind), .integer(Int64(position)), .text(session.name),
                   .optional(session.templateID?.uuidString), .date(session.startedAt), .date(session.finishedAt),
                   .text(session.unit.rawValue), .optional(session.importSourceKey), .optional(session.templateVersionID?.uuidString), .optional(session.templateVersionNumber), .integer(Int64(session.restSeconds)),
-                  .optional(try session.restTimer.map { String(decoding: try JSONEncoder().encode($0), as: UTF8.self) }), .optional(session.notes)])
+                  .optional(try session.restTimer.map { String(decoding: try JSONEncoder().encode($0), as: UTF8.self) }), .optional(session.notes), .optional(session.summary)])
         for (position, entry) in session.exercises.enumerated() {
             try saveEntry(db, key: key, id: entry.id, exercise: entry.exercise, position: position, supersetID: entry.supersetID, templateExerciseID: entry.templateExerciseID, notes: entry.notes, restSeconds: entry.restSeconds)
             for (position, set) in entry.sets.enumerated() {

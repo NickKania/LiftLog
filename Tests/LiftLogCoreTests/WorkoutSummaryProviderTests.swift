@@ -186,7 +186,9 @@ final class WorkoutSummaryProviderTests: XCTestCase {
         XCTAssertEqual(localRequest.input.first?["responseFormat"] as? String, "workoutSummary")
         XCTAssertNil(cloudInput.first?["responseFormat"])
         XCTAssertTrue((localRequest.input.first?["content"] as? String)?.contains(store.workoutSummaryPrompt) == true)
-        XCTAssertEqual(store.history.first, workout)
+        var saved = workout
+        saved.summary = "Summary ready"
+        XCTAssertEqual(store.history.first, saved)
     }
 
     @MainActor

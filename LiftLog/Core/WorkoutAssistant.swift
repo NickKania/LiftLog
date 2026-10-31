@@ -73,6 +73,7 @@ final class WorkoutAssistant {
     @ObservationIgnored private let maximumRounds: Int?
     @ObservationIgnored private let maximumToolCalls: Int
     @ObservationIgnored private let storageURL: URL?
+    @ObservationIgnored private let beginRequestActivity: @MainActor (@escaping @MainActor () -> Void) -> @MainActor () -> Void
     @ObservationIgnored private var archive = AssistantChatArchive()
     @ObservationIgnored private var loadFailure: String?
     @ObservationIgnored private var persistenceTask: Task<Void, Never>?
@@ -85,7 +86,8 @@ final class WorkoutAssistant {
          storageURL: URL? = nil,
          archiveAccountIdentity: (() -> String?)? = nil,
          healthDataProvider: (any WorkoutHealthDataProviding)? = nil,
-         appleFoundationModels: any AppleFoundationModelsProviding = UnavailableAppleFoundationModelsProvider()) {
+         appleFoundationModels: any AppleFoundationModelsProviding = UnavailableAppleFoundationModelsProvider(),
+         beginRequestActivity: @escaping @MainActor (@escaping @MainActor () -> Void) -> @MainActor () -> Void = { _ in {} }) {
         self.store = store
         self.healthDataProvider = healthDataProvider
         self.client = ChatGPTInferenceClient(accessToken: accessToken, transport: transport, accountIdentity: accountIdentity)
@@ -98,6 +100,7 @@ final class WorkoutAssistant {
         self.maximumRounds = maximumRounds.map { max(1, $0) }
         self.maximumToolCalls = max(1, maximumToolCalls)
         self.storageURL = storageURL
+        self.beginRequestActivity = beginRequestActivity
         if let storageURL, FileManager.default.fileExists(atPath: storageURL.path) {
             do { archive = try AssistantChatArchive.load(from: storageURL) }
             catch {
@@ -328,6 +331,7 @@ final class WorkoutAssistant {
         let isHealthTurn = context.references.contains { $0.kind == .health }
         if chat.messages.isEmpty, !chat.hasCustomTitle { chat.title = isHealthTurn ? "Health conversation" : String(text.prefix(80)) }
         chat.messages.append(WorkoutAssistantMessage(role: .user, text: text, references: context.references, healthDataIsEphemeral: isHealthTurn))
+        chat.generation = UUID()
         let currentGeneration = chat.generation
         let model = selectedModel
         guard persist() else {
@@ -336,7 +340,18 @@ final class WorkoutAssistant {
             chat.errorMessage = storageErrorMessage
             return false
         }
-        chat.task = Task { await run(text: context.content, healthReferences: context.references.filter { $0.kind == .health }, healthThrough: healthThrough, model: model, chat: chat, generation: currentGeneration) }
+        // The response, rather than its displayed tab, owns its execution allowance.
+        // Never replay an interrupted request: it may have already produced tools.
+        let endActivity: @MainActor () -> Void = provider == .chatGPT ? beginRequestActivity { [weak self, weak chat] in
+            guard let self, let chat, chat.generation == currentGeneration, chat.isWorking else { return }
+            self.cancel(chat, emptyReply: "Response interrupted.")
+            chat.errorMessage = "iOS paused this response after its background time expired. Any partial reply was kept; return to Assistant and send another message to continue."
+            self.persist()
+        } : {}
+        chat.task = Task {
+            defer { endActivity() }
+            await run(text: context.content, healthReferences: context.references.filter { $0.kind == .health }, healthThrough: healthThrough, model: model, chat: chat, generation: currentGeneration)
+        }
         return true
     }
 
@@ -383,7 +398,7 @@ final class WorkoutAssistant {
                 snapshots.append(reference.kind == .health ? AssistantWorkoutReference(healthWorkout: workout) : AssistantWorkoutReference(workout: workout))
                 records.append(ReferenceRecord(kind: reference.kind, id: workout.id,
                                                status: workout.finishedAt == nil ? "active" : "completed",
-                                               unit: workout.unit, template: nil, workout: reference.kind == .health ? nil : workout))
+                                               unit: workout.unit, template: nil, workout: reference.kind == .health ? nil : workout.inferenceSnapshot))
             }
         }
         let encoder = JSONEncoder()
@@ -478,7 +493,7 @@ final class WorkoutAssistant {
 
     func cancel() { cancel(currentChat); persist() }
 
-    private func cancel(_ chat: WorkoutAssistantChat) {
+    private func cancel(_ chat: WorkoutAssistantChat, emptyReply: String = "Response cancelled.") {
         chat.task?.cancel()
         chat.task = nil
         chat.generation = UUID()
@@ -489,7 +504,7 @@ final class WorkoutAssistant {
         invalidateActiveProposals(chat)
         chat.isWorking = false
         for index in chat.messages.indices where chat.messages[index].isPartial {
-            if chat.messages[index].text.isEmpty { chat.messages[index].text = "Response cancelled." }
+            if chat.messages[index].text.isEmpty { chat.messages[index].text = emptyReply }
         }
     }
 
