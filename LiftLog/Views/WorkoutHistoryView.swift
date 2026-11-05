@@ -301,6 +301,7 @@ struct WorkoutDetailView: View {
     @State private var editing = false
     @State private var showingSummary = false
     @State private var undoing: WorkoutSession?
+    @State private var creatingTemplate = false
 
     private var current: WorkoutSession? { store.history.first { $0.id == workout.id } }
 
@@ -309,6 +310,11 @@ struct WorkoutDetailView: View {
             if let current {
                 WorkoutRecordView(workout: current, onSummary: { showingSummary = true })
                     .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Save as Template", systemImage: "square.stack.badge.plus") { creatingTemplate = true }
+                                .labelStyle(.iconOnly)
+                                .accessibilityIdentifier("historySaveAsTemplateButton")
+                        }
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Edit") { editing = true }
                                 .accessibilityIdentifier("editHistoryWorkoutButton")
@@ -320,6 +326,9 @@ struct WorkoutDetailView: View {
                                     .accessibilityIdentifier("undoHistoryCorrectionButton")
                             }
                         }
+                    }
+                    .sheet(isPresented: $creatingTemplate) {
+                        HistoryTemplateView(workout: current)
                     }
                     .sheet(isPresented: $editing) { WorkoutHistoryEditorView(workout: current, unit: current.unit) }
                     .sheet(isPresented: $showingSummary) {
@@ -341,6 +350,69 @@ struct WorkoutDetailView: View {
         } message: {
             Text("Restore the complete record from before the last saved correction, including its date, sets, and notes. This undo cannot be reversed.")
         }
-        .workoutErrorAlert(enabled: !editing && undoing == nil)
+        .workoutErrorAlert(enabled: !editing && !creatingTemplate && undoing == nil)
+    }
+}
+
+
+// Captures the source and target at selection time; the editor owns all later draft edits.
+private struct HistoryTemplateView: View {
+    @Environment(WorkoutStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let workout: WorkoutSession
+    @State private var selection: TemplateSelection?
+
+    var body: some View {
+        if let selection {
+            TemplateEditorView(template: selection.original, unit: selection.unit,
+                initialDraft: selection.draft, sourceWorkout: workout)
+        } else {
+            NavigationStack {
+                LiftList {
+                    Section {
+                        Button("Create New Template", systemImage: "plus") { select(nil) }
+                            .accessibilityIdentifier("historyCreateNewTemplateButton")
+                    } footer: {
+                        Text("Use this workout’s completed weights, reps, exercise order, supersets, and rest times as a starting plan.")
+                    }
+                    Section {
+                        ForEach(store.templates) { template in
+                            Button { select(template) } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(template.name)
+                                    Text("Version \(template.currentVersion?.number ?? 1)")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .accessibilityIdentifier("historyTemplateTarget-\(template.id)")
+                        }
+                        if store.templates.isEmpty {
+                            Text("No existing templates. Create a new template above.")
+                                .foregroundStyle(.secondary)
+                        }
+                    } header: {
+                        Text("Create a version of…")
+                    } footer: {
+                        Text("Choose a template to review a new default version. Earlier versions and completed workouts stay saved. Identical plans do not add a version.")
+                    }
+                }
+                .navigationTitle("Save as Template")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                }
+            }
+        }
+    }
+
+    private func select(_ template: WorkoutTemplate?) {
+        selection = TemplateSelection(original: template,
+            draft: .draft(from: workout, replacing: template, unit: store.unit), unit: store.unit)
+    }
+
+    private struct TemplateSelection {
+        let original: WorkoutTemplate?
+        let draft: WorkoutTemplate
+        let unit: WeightUnit
     }
 }

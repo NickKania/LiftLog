@@ -128,3 +128,31 @@ struct TemplateSet: Codable, Equatable, Identifiable {
         try values.encode(targetReps, forKey: .targetReps)
     }
 }
+
+extension WorkoutTemplate {
+    /// Builds an independent prescription from performed work, never the original targets.
+    static func draft(from workout: WorkoutSession, replacing template: WorkoutTemplate? = nil, unit: WeightUnit) -> WorkoutTemplate {
+        var draft = template ?? WorkoutTemplate(name: workout.name)
+        let factor = workout.unit == unit ? 1 : (unit == .kg ? 0.45359237 : 1 / 0.45359237)
+        var usedIDs: Set<UUID> = []
+        draft.exercises = workout.exercises.compactMap { entry in
+            let completed = entry.sets.filter(\.isCompleted)
+            guard !completed.isEmpty else { return nil }
+            // Only explicit source links can identify repeated movements safely.
+            let previous = template?.exercises.first {
+                workout.templateID == template?.id && $0.id == entry.templateExerciseID &&
+                $0.exercise.id == entry.exercise.id && !usedIDs.contains($0.id)
+            }
+            let id = previous?.id ?? UUID()
+            usedIDs.insert(id)
+            return TemplateExercise(id: id, exercise: entry.exercise,
+                sets: completed.enumerated().map { index, set in
+                    TemplateSet(id: previous.flatMap { index < $0.sets.count ? $0.sets[index].id : nil } ?? UUID(),
+                                weight: set.weight * factor, targetReps: set.reps)
+                }, supersetID: entry.supersetID, restSeconds: entry.restSeconds)
+        }
+        SupersetGrouping.normalize(&draft.exercises)
+        draft.restSeconds = workout.restSeconds
+        return draft
+    }
+}

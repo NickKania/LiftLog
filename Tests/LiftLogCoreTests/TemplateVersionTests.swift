@@ -15,6 +15,99 @@ final class TemplateVersionTests: XCTestCase {
     }
 
     @MainActor
+    func testHistoryOrderOnlyRevisionPreservesNonuniformSetsAndEarlierVersion() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        var initial = template()
+        initial.exercises[0].sets[1].weight = 125
+        initial.exercises[0].sets[1].targetReps = 10
+        initial.exercises.append(TemplateExercise(exercise: ExerciseCatalog.all[1], sets: [TemplateSet(weight: 90, targetReps: 5)]))
+        XCTAssertTrue(store.saveTemplate(initial))
+        let original = try XCTUnwrap(store.templates.first { $0.id == initial.id })
+        XCTAssertTrue(store.startWorkout(template: original))
+        var workout = try XCTUnwrap(store.activeWorkout)
+        workout.exercises.reverse()
+        for index in workout.exercises.indices {
+            for setIndex in workout.exercises[index].sets.indices {
+                workout.exercises[index].sets[setIndex].isCompleted = true
+            }
+        }
+        XCTAssertTrue(store.updateActiveWorkout(workout))
+        XCTAssertTrue(store.finishWorkout())
+        let history = try XCTUnwrap(store.history.first)
+        let revision = WorkoutTemplate.draft(from: history, replacing: original, unit: store.unit)
+        XCTAssertEqual(revision.exercises, Array(original.exercises.reversed()))
+        XCTAssertFalse(WorkoutStore.samePrescription(revision.exercises, original.exercises))
+        XCTAssertTrue(store.saveTemplate(revision))
+        let saved = try XCTUnwrap(store.templates.first { $0.id == original.id })
+        XCTAssertEqual(saved.versions.count, 2)
+        XCTAssertEqual(saved.versions.first, original.currentVersion)
+        XCTAssertEqual(saved.exercises[1].sets.map(\.weight), [135, 125])
+        XCTAssertEqual(saved.exercises[1].sets.map(\.targetReps), [8, 10])
+        XCTAssertTrue(store.saveTemplate(.draft(from: history, replacing: saved, unit: store.unit)))
+        let reloaded = WorkoutStore(fileURL: url)
+        XCTAssertEqual(reloaded.templates.first { $0.id == original.id }?.versions.count, 2)
+        XCTAssertEqual(reloaded.history, [history])
+    }
+
+    @MainActor
+    func testHistoryDraftCopiesActualCompletedWorkAndSavesIndependentVersions() async throws {
+        let url = try file()
+        let store = WorkoutStore(fileURL: url)
+        let initial = template()
+        XCTAssertTrue(store.saveTemplate(initial))
+        let original = try XCTUnwrap(store.templates.first { $0.id == initial.id })
+        XCTAssertTrue(store.startWorkout(template: original))
+        var active = try XCTUnwrap(store.activeWorkout)
+        active.exercises[0].sets[0].weight = 150
+        active.exercises[0].sets[0].reps = 6
+        active.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.finishWorkout())
+        let history = try XCTUnwrap(store.history.first)
+        let newDraft = WorkoutTemplate.draft(from: history, unit: .kg)
+        XCTAssertNotEqual(newDraft.id, original.id)
+        XCTAssertNotEqual(newDraft.exercises[0].id, history.exercises[0].id)
+        XCTAssertTrue(newDraft.versions.isEmpty)
+        XCTAssertEqual(newDraft.exercises[0].sets.count, 1)
+        XCTAssertEqual(newDraft.exercises[0].sets[0].weight, 150 * 0.45359237, accuracy: 0.00001)
+        XCTAssertEqual(newDraft.exercises[0].sets[0].targetReps, 6)
+        let revision = WorkoutTemplate.draft(from: history, replacing: original, unit: store.unit)
+        XCTAssertEqual(revision.exercises[0].id, original.exercises[0].id)
+        XCTAssertEqual(revision.exercises[0].sets[0].id, original.exercises[0].sets[0].id)
+        XCTAssertTrue(store.saveTemplate(revision, expectedUnit: store.unit))
+        XCTAssertEqual(store.templates.first { $0.id == original.id }?.versions.count, 2)
+        XCTAssertEqual(store.templates.first { $0.id == original.id }?.versions.first, original.versions.first)
+        let independent = WorkoutTemplate.draft(from: history, unit: store.unit)
+        XCTAssertTrue(store.saveTemplate(independent, expectedUnit: store.unit))
+        XCTAssertEqual(store.history, [history])
+        let reloaded = WorkoutStore(fileURL: url)
+        XCTAssertEqual(reloaded.history, [history])
+        XCTAssertEqual(reloaded.templates.first { $0.id == independent.id }?.currentVersion?.number, 1)
+        // A captured revision cannot replace a newer default, or resurrect a deleted target.
+        XCTAssertFalse(store.saveTemplate(revision, expectedUnit: store.unit))
+        XCTAssertTrue(store.deleteTemplate(id: original.id))
+        XCTAssertFalse(store.saveTemplate(revision, expectedUnit: store.unit))
+    }
+
+    func testHistoryDraftPreservesRestGroupsAndRepeatedMovementsWithoutCopyingNotes() {
+        let group = UUID()
+        let movement = ExerciseCatalog.all[0]
+        let workout = WorkoutSession(finishedAt: Date(), unit: .lb, exercises: [
+            WorkoutExercise(exercise: movement, sets: [WorkoutSet(weight: 10, reps: 8, isCompleted: true)], supersetID: group, notes: "Private note", restSeconds: 0),
+            WorkoutExercise(exercise: movement, sets: [WorkoutSet(weight: 20, reps: 5, isCompleted: true)], supersetID: group, restSeconds: 30),
+            WorkoutExercise(exercise: movement, sets: [WorkoutSet(isCompleted: false)], supersetID: UUID())
+        ], restSeconds: 90, notes: "Workout note", summary: "Coaching")
+        let draft = WorkoutTemplate.draft(from: workout, unit: .lb)
+        XCTAssertEqual(draft.exercises.count, 2)
+        XCTAssertNotEqual(draft.exercises[0].id, draft.exercises[1].id)
+        XCTAssertEqual(draft.exercises.map(\.supersetID), [group, group])
+        XCTAssertEqual(draft.exercises.map(\.restSeconds), [0, 30])
+        XCTAssertEqual(draft.restSeconds, 90)
+        XCTAssertEqual(draft.exercises.map { $0.sets[0].weight }, [10, 20])
+    }
+
+    @MainActor
     func testRevisionsAreImmutablePersistedAndOnlyRealChangesCreateOne() async throws {
         let url = try file()
         let store = WorkoutStore(fileURL: url)
