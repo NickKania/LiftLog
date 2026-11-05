@@ -64,7 +64,7 @@ See [testing guidance](docs/TESTING.md) for the Xcode UI test command, simulator
 
 ## Pull request reviews
 
-[CodeRabbit](https://github.com/apps/coderabbitai) is connected to `NickKania/LiftLog`. The repository's [CodeRabbit configuration](.coderabbit.yaml) enables automatic reviews for pull requests targeting the default branch, `main`. Automatic incremental reviews on subsequent pushes are disabled. Draft pull requests are reviewed once marked ready for review. No additional base branches are enabled.
+[CodeRabbit](https://github.com/apps/coderabbitai) is connected to `NickKania/LiftLog`. The repository's [CodeRabbit configuration](.coderabbit.yaml) enables automatic reviews for pull requests targeting the default branch, `main`, and incremental reviews on subsequent pushes. Draft pull requests are reviewed once marked ready for review. No additional base branches are enabled.
 
 ## Data and scope
 

@@ -1,96 +1,74 @@
-# Agent guidance
+# Project instructions
 
-These instructions apply to the entire repository. Read the relevant existing code and documentation before changing behavior, and preserve unrelated work already present in the checkout.
+These defaults consolidate recurring user instructions from this project's T3 Code history. The current task's explicit instructions take precedence. Apply them to the checkout you are working in; history may describe features that have not reached that checkout.
 
-## Project context
+## Implementation and review
 
-Lift Log is a local-first SwiftUI iPhone app targeting iOS 17 and later. Templates, workout logging, and history must remain usable offline and without an account.
+- For substantial implementation, use GPT-6.1 Sol subagents where useful, with clearly separated ownership. Medium is the historical default; use a different effort when the user requests it. Small, straightforward changes can be done directly.
+- After substantive code changes, request an independent **Muse Wonder Full** review before the final handoff. Use the available Muse provider/model through T3 Code delegation; discover the current identifier rather than assuming one.
+- Give the reviewer the intended behavior, final diff, validation results, and known limitations. Ask about correctness, regressions, missed edge cases, persistence, privacy, and UI behavior where relevant.
+- Address actionable findings, rerun affected checks, and request a fresh Muse review of the updated result. Continue until Muse gives the go-ahead. Material changes after approval need another review.
+- When the task authorizes commit/push/PR creation, obtain the review go-ahead before those actions. If Muse is unavailable, report the blocker and do not silently substitute another reviewer or claim approval.
+- Reproduce reported bugs before treating a suspected code path as the cause. Distinguish observed failures from unverified review hypotheses, and validate each proposed fix against evidence.
 
-- `LiftLog/Core`: Foundation-based models, validation, analytics, persistence, and assistant logic. These sources also compile as the `LiftLogCore` Swift package; keep SwiftUI, UIKit, and platform-only services out of this layer.
-- `LiftLog/App`: app lifecycle, dependency composition, and iOS integrations such as HealthKit, Keychain, notifications, and ActivityKit.
-- `LiftLog/Views`: SwiftUI screens and reusable UI components.
-- `LiftLog/Shared` and `LiftLogWidgets`: shared Live Activity payloads and widget presentation.
-- `Tests/LiftLogCoreTests` and `Tests/LiftLogUITests`: core regression tests and native UI tests.
-- `project.yml`: source of truth for the XcodeGen project. Change it rather than hand-editing generated project settings, then regenerate and include the corresponding project changes.
+## UI changes and screenshots
 
-Consult [architecture](docs/ARCHITECTURE.md), [testing](docs/TESTING.md), and [workflow coverage](docs/WORKFLOWS.md). Read the storage, import, catalog, or assistant documentation when touching those features. Update relevant documentation when behavior or architecture changes.
+- Provide screenshots in the completion reply for every UI change, captured from the running app and inspected for layout and correctness. Include before/after images when changing an existing screen; capture the baseline before editing when practical.
+- Summarize each changed feature alongside its screenshots. Exercise the actual interaction and relevant loading, empty, error, and populated states, rather than relying on a static mockup.
+- Add or update meaningful UI tests for new user-facing functionality. Check small screens, light/dark appearance, large Dynamic Type, keyboard access, and accessibility as relevant to the change.
+- **Do not commit screenshots or change-review images to source control.** They are review/validation artifacts. Store new captures outside the repository, such as a task-specific temporary directory, and attach them to the reply. Do not remove intentional product assets under this rule.
+- If screenshots cannot be captured, explain the concrete limitation and what remains unverified. Do not present mockups or fixture-only tests as proof of production behavior.
+- Prefer native SwiftUI controls and platform styling. Follow the existing visual system; recurring design feedback favors compact vertical spacing, useful horizontal space, and more room for workout/chat content. Apply Liquid Glass where supported, with deployment-target-compatible fallbacks.
+- Use the T3 Code device tools for simulator/device interaction and screenshots when available, following their current instructions. Give concurrent UI test runners separate simulators.
 
-## Swift and architecture
+## PR follow-through
 
-- Follow existing naming and formatting. Use clear Swift API names, explicit access control at module boundaries, and small types/functions with one coherent responsibility.
-- Prefer structs and enums for value models and explicit state. Use stable domain IDs for collections and navigation; do not use array positions or newly generated UUIDs as view identity.
-- Keep business rules and validation in the core/store rather than duplicating them in views. Reuse existing services and components before introducing abstractions or dependencies.
-- Handle expected failures with throwing APIs or explicit results and actionable user feedback. Avoid force unwraps, `try!`, and silently discarded errors in production paths. Document deliberate best-effort cleanup.
-- Preserve deployment compatibility. Guard newer APIs with availability checks and a working fallback; do not raise the deployment target or change Swift language mode as an incidental fix.
-- Prefer dependency injection for external services, clocks, identifiers, and storage when deterministic testing requires it. Avoid new global mutable state and unnecessary singleton services.
+- Read and individually assess all PR review comments, including CodeRabbit and Greptile. Fix valid findings and explain evidence for any disputed finding; do not mechanically apply suggestions.
+- When asked to address comments and push, complete the fixes, relevant validation, and push rather than stopping at a plan.
+- When explicitly asked to monitor until a 5/5 score or no further comments, continue the review/fix cycle to that requested condition using T3 Code's PR watch mechanism. Report a blocker if that condition cannot be reached.
+- Resolve base-branch conflicts while preserving both sides' intent and verify the project builds before pushing.
+- Historical requests to merge, push, delete branches, or deploy apply to their tasks; this file alone does not authorize those actions for every future task.
 
-## Concurrency and lifecycle
+## Swift/iOS practices
 
-- Keep observable UI state and its mutations on `@MainActor`, following the existing `@Observable` stores. Give SwiftUI state a clear owner and use environment injection for shared stores.
-- Use structured concurrency and `async`/`await`. Keep expensive parsing, network requests, file coordination, and substantial database work off the main actor where practical; preserve existing transactional ordering when refactoring.
-- Tie asynchronous work to its owning screen or service, propagate cancellation, and reject stale results after navigation, selection changes, account changes, or deletion.
-- Respect actor isolation and `Sendable` boundaries. Do not silence concurrency diagnostics with `@unchecked Sendable` or detached tasks without a documented safety argument.
-- Avoid work with side effects inside SwiftUI `body`. Use lifecycle hooks and explicit user actions, and prevent repeated rendering from starting duplicate requests or writes.
-- Derive timers from persisted dates/deadlines rather than assuming foreground ticks are reliable. Check background/foreground transitions and relaunch recovery for lifecycle-sensitive changes.
+- Keep workout rules, validation, serialization, and persistence in the Foundation-based `LiftLog/Core` package. SwiftUI views own presentation, navigation, and temporary form state; app/platform adapters own HealthKit, authentication, audio, and Live Activities.
+- Group related models and services by domain in focused files. Avoid growing a catch-all models file or embedding business rules in view bodies.
+- Keep UI-observable mutations on the main actor. Move expensive I/O, Health queries, parsing, and aggregation off the UI thread; use structured concurrency and explicit cancellation/lifetime ownership.
+- Preserve in-progress assistant work across tab changes. Treat app backgrounding and platform execution limits explicitly; surface interrupted work honestly.
+- Validate input at mutation boundaries. Preserve stable identities, original units, historical snapshots, and transactional rollback on failed saves. Test migrations and relaunch persistence when storage changes.
+- Prefer supported package-manager dependencies over copying an entire upstream codebase. Preserve licenses and attribution. Use publicly available open-source exercise data; the user's selected source is `free-exercise-db`.
+- `project.yml` is the XcodeGen source of truth. Regenerate `LiftLog.xcodeproj` after configuration changes and keep required generated project changes consistent with it.
+- Preserve deployment-target compatibility, signing/capabilities, extension identifiers, and required Info.plist purpose strings. Local builds do not establish Xcode Cloud/TestFlight success.
 
-## SwiftUI and iOS UX
+## Product invariants
 
-- Use native navigation, controls, sheets, alerts, and system materials where appropriate. Keep views focused and extract components when they express reusable behavior or make a complex screen easier to understand.
-- Support Dynamic Type, light/dark appearance, safe areas, keyboard presentation, and smaller supported iPhone screens. Avoid rigid text heights and layouts that clip at accessibility sizes.
-- Provide meaningful VoiceOver labels, values, and hints for custom controls. Hide decorative elements from accessibility, preserve logical reading order, and provide comfortable touch targets (generally at least 44 × 44 points).
-- Do not convey meaning through color alone. Use sufficient contrast and labels or symbols alongside colors; respect Reduce Motion for custom animations.
-- Keep transient drafts separate from committed records. Cancel must discard drafts; destructive actions must clearly identify their effect and use the existing confirmation patterns.
-- Show appropriate loading, empty, unavailable, and error states. Keep logging responsive during optional assistant, Health, or backup operations.
-- Use locale-aware formatting and the existing weight-unit conversion and input-validation helpers. Use calendar-aware date calculations instead of fixed-second assumptions for calendar days.
-- Use stable accessibility identifiers for UI automation. Test user-visible outcomes rather than relying on incidental view hierarchy details.
+- Keep workout logging local-first and usable without an account or network connection. Optional iCloud Drive backups must not make local saves depend on cloud availability.
+- Planned target reps/weights and performed reps/weights are distinct. Propagate workout edits only to remaining sets; never silently rewrite completed sets. Renaming a template must not create a new version.
+- Health data is read-only and explicitly opt-in. Ordinary assistant workout tags must not implicitly include Health data. Preserve the documented per-request consent, scope, and persistence exclusions.
+- Assistant mutations require user review/apply semantics, stale-data protection, and atomic validation. Keep credentials in protected storage and out of logs and fixtures.
+- When adding another AI provider, aim for parity in user workflows while making actual platform limitations visible. Test generated claims against recorded facts; successful generation alone does not establish correctness.
 
-## Persistence, security, and privacy
+## Validation and handoff
 
-- Preserve stable identities, immutable template versions, independent workout snapshots, recorded units, and completed history. Do not rewrite historical records as a side effect of editing a template or display preference.
-- Validate before saving, commit related changes atomically, and publish in-memory state only after successful persistence. Keep migrations backward-compatible and transactional; never replace unreadable user data with an empty store.
-- Use bound SQLite parameters. Test schema upgrades, failed writes, restore behavior, and legacy decoding when changing storage. Follow [storage guidance](docs/STORAGE.md).
-- Store credentials in the existing Keychain integration. Never commit tokens, local signing settings, provisioning material, personal databases, Health readings, or exported conversations. Redact sensitive values from logs and review artifacts.
-- Preserve explicit Health consent and the existing read-only integration. Missing readings remain unavailable, not fabricated zeros. Health data must not leak into persisted chats, automatic titles, later requests, or backups; follow [assistant privacy boundaries](docs/CHATGPT_ASSISTANT.md).
-- Keep optional network/cloud features independent of local saves. Handle cancellation, offline operation, permission denial, and partial failures without losing user data.
+- Consult `docs/TESTING.md`, `docs/ARCHITECTURE.md`, and the relevant feature documentation. Verify older statements against the current source instead of copying stale test counts or feature inventories.
+- Run `swift test` for core changes. For app/UI/platform changes, also build the iOS target and run the affected UI flows. Typical build commands:
 
-## Verification
+  ```sh
+  xcodegen generate
+  xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+  ```
 
-Run checks appropriate to the change and report their actual results. Documentation-only changes need a diff review, not an app build.
+- Run `python3 scripts/generate_exercise_catalog.py --check` when changing the bundled catalog or its generator. Run UI suites serially on an available isolated simulator, using the commands in `docs/TESTING.md`.
+- Use isolated test storage and synthetic credentials/Health data. Do not reset a user's installation to make a test pass.
+- Update relevant documentation with behavior changes. When executing an implementation plan, mark what is implemented and what remains.
+- The final reply should state the outcome, checks and results, Muse review status, and material limitations; include screenshots for UI work. Separate mocked/simulator evidence from live-service and physical-device verification.
 
-For core behavior changes, add or update focused regression tests and run:
+## History provenance
 
-```sh
-swift test
-```
+Derived from user messages across the project's T3 Code history, including these representative instructions:
 
-For app, widget, or project changes, build the iOS target:
-
-```sh
-# Run when project.yml or project structure changes:
-xcodegen generate
-xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-```
-
-For changed UI flows, run the relevant native UI tests and exercise the screen interactively. Choose an installed simulator from `xcrun simctl list devices available`; do not assume a specific device name or OS is installed. Run UI tests serially on an isolated simulator because their fixture data is shared:
-
-```sh
-xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -destination 'platform=iOS Simulator,id=<SIMULATOR_UDID>' -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO -only-testing:LiftLogUITests/<RelevantTestClass> test
-```
-
-Use existing DEBUG-only synthetic fixtures and test launch arguments described in `docs/TESTING.md`. Do not reset personal app data or use live credentials for automated tests. Run `python3 scripts/generate_exercise_catalog.py --check` when changing catalog data or generation. Identify physical-device checks still needed for signing, real HealthKit data/permissions, iCloud, or Live Activities; simulator results do not establish those behaviors.
-
-## Required screenshots for UI changes
-
-**Every change affecting visible UI must include screenshots in the completion reply for user review.** This includes layout, styling, text, navigation, charts, sheets, and widget/Live Activity presentation.
-
-Screenshots and other images captured to review or validate changes are review artifacts only; never commit them to source control.
-
-1. Build and run the changed app or extension on an iOS simulator or device. Navigate to the affected screen with synthetic, representative data and capture the final implementation. Mockups and SwiftUI previews do not substitute for running-app evidence.
-2. Capture each materially changed screen and relevant states (for example an expanded editor, validation error, empty state, or presented sheet). For appearance/layout changes, include light and dark mode; for text/layout changes, include an accessibility Dynamic Type size. Check a smaller supported iPhone size when space constraints matter.
-3. Inspect the screenshots before finishing. Fix clipped text, overlaps, obscured controls, incorrect safe areas, poor contrast, and unintended changes, then recapture after the final edit.
-4. Save PNG artifacts in an accessible location such as the ignored `artifacts/screenshots/<feature>/` directory or an external artifact directory. Use descriptive filenames indicating the screen and configuration. Keep personal data, credentials, and unrelated screens out of captures.
-5. Embed or attach the screenshots in the final reply so the user can review them directly. In T3 Code, Markdown images with absolute file paths are supported: `![Screen — dark mode, large text](/absolute/path/to/screenshot.png)`. Label the state and report the device/OS used, checks run, and any remaining verification gaps. A screenshot buried only in an `.xcresult` bundle is insufficient; export and attach it.
-
-Prefer the available T3 device tools to open the simulator/device for the user and capture screenshots. A terminal fallback for an already selected simulator is `xcrun simctl io <SIMULATOR_UDID> screenshot <OUTPUT_PATH>.png`; use an explicit UDID to avoid capturing the wrong device.
-
-If building, running, or capturing is blocked, state the exact blocker and which screenshots are missing. Do not claim UI verification is complete or substitute fabricated images. No screenshot is required for changes that do not affect UI.
+- Muse review/fix loop: <t3-thread://v2/8d1be5df-e97b-4b2b-8b93-ed4be5c3afcb/18eb207a-e75a-424c-beb3-f9dc64ee9fee>
+- UI tests and before/after reports: <t3-thread://v2/8d1be5df-e97b-4b2b-8b93-ed4be5c3afcb/7857cd67-5cf5-4460-b095-200029856cc6>
+- Swift/iOS guidance and UI screenshots: <t3-thread://v2/8d1be5df-e97b-4b2b-8b93-ed4be5c3afcb/638afe95-8f3f-452d-bbd7-49f288c66f8f>
+- Do not commit review screenshots: <t3-thread://v2/8d1be5df-e97b-4b2b-8b93-ed4be5c3afcb/010c4e6a-a217-48f0-952e-b914e3875b10>
+- Reproduce suspected bugs before fixing: <t3-thread://v2/8d1be5df-e97b-4b2b-8b93-ed4be5c3afcb/d2522b5c-f1b5-41b7-9a45-daff19d6800f>

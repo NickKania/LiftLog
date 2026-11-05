@@ -37,6 +37,8 @@ Edit Steps opens a local draft prefilled with the effective instructions. Users 
 
 Personal steps apply wherever that exercise is inspected, independently of a template draft. They survive relaunch and SQLite backup/restore without rewriting the bundled catalog, immutable template versions, or recorded workout snapshots. Older snapshots have no overrides. The UI identifies default versus personal steps and preserves source attribution for the bundled content.
 
+The maintainer separately reports unknown image origins and reuse rights in [image-license issue #2](https://github.com/yuhonas/free-exercise-db/issues/2). Do not treat the repository's Unlicense declaration as verified permission for those photographs. Future catalog enrichment must follow the text/media provenance policy and source recommendations in [Open exercise-data sources](EXERCISE_DATA_SOURCES.md). The [implementation plan](IMPLEMENTATION_PLAN.md) keeps the current identities and starts with offline text and metadata; imagery is a separate, optional milestone.
+
 ## Generation
 
 Run from the repository root:

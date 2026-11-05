@@ -6,7 +6,7 @@ inheritance: true
 reviews:
   auto_review:
     enabled: true
-    auto_incremental_review: false
+    auto_incremental_review: true
     drafts: false
     # The default branch (main) is reviewed automatically. No additional branches.
     base_branches: []
