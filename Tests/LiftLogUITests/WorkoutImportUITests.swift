@@ -4,6 +4,71 @@ final class WorkoutImportUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testRenameHistoryValidationCancellationAndPersistence() {
+        let app = launchFixture(reset: true)
+        openImport(in: app)
+        app.buttons["reviewOrImportButton"].tap()
+        XCTAssertTrue(app.navigationBars["Review Import"].waitForExistence(timeout: 5))
+        app.buttons["reviewOrImportButton"].tap()
+        app.alerts.buttons["confirmWorkoutImportButton"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["importSuccessCount"].waitForExistence(timeout: 5))
+        app.buttons["viewImportedHistoryButton"].tap()
+
+        let upper = app.buttons["historyWorkout-Sample Upper"]
+        let lower = app.buttons["historyWorkout-Sample Lower"]
+        XCTAssertTrue(upper.waitForExistence(timeout: 5))
+        upper.swipeLeft()
+        app.buttons["Rename"].tap()
+        if app.buttons["Continue"].exists { app.buttons["Continue"].tap() }
+        let field = app.alerts.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertEqual(field.value as? String, "Sample Upper")
+        replaceName(in: field, with: "Canceled Name")
+        app.alerts.buttons["Cancel"].tap()
+        XCTAssertTrue(upper.exists)
+        XCTAssertFalse(app.buttons["historyWorkout-Canceled Name"].exists)
+
+        upper.swipeLeft()
+        app.buttons["Rename"].tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        let save = app.alerts.buttons["saveHistoryWorkoutNameButton"].firstMatch
+        replaceName(in: field, with: "")
+        XCTAssertFalse(save.isEnabled)
+        field.typeText("   ")
+        XCTAssertFalse(save.isEnabled)
+        replaceName(in: field, with: "Morning Upper")
+        XCTAssertTrue(save.isEnabled)
+        save.tap()
+
+        let renamed = app.buttons["historyWorkout-Morning Upper"]
+        XCTAssertTrue(renamed.waitForExistence(timeout: 5))
+        XCTAssertFalse(upper.exists)
+        XCTAssertTrue(lower.exists)
+        renamed.tap()
+        XCTAssertTrue(app.navigationBars["Morning Upper"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["50 lb × 10"].exists)
+        app.terminate()
+        app.launchArguments = ["--ui-testing", "--import-ui-fixture"]
+        app.launch()
+        app.tabBars.buttons["History"].tap()
+        XCTAssertTrue(renamed.waitForExistence(timeout: 5))
+        XCTAssertTrue(lower.exists)
+
+        openImport(in: app)
+        app.buttons["reviewOrImportButton"].tap()
+        XCTAssertTrue(app.navigationBars["Review Import"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["reviewOrImportButton"].label, "Import 0 Workouts")
+        XCTAssertFalse(app.buttons["reviewOrImportButton"].isEnabled)
+    }
+
+    @MainActor
+    private func replaceName(in field: XCUIElement, with name: String) {
+        field.tap()
+        let count = (field.value as? String)?.count ?? 0
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: count) + name)
+    }
+
+    @MainActor
     func testDeleteHistoryConfirmationPersistenceAndEmptyState() {
         let app = launchFixture(reset: true)
         openImport(in: app)

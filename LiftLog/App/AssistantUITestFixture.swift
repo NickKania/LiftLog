@@ -6,11 +6,15 @@ import Foundation
 enum AssistantUITestFixture {
     static var isEnabled: Bool {
         let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("--ui-testing") && arguments.contains("--assistant-ui-fixture")
+        return arguments.contains("--ui-testing")
+            && (arguments.contains("--assistant-ui-fixture") || arguments.contains("--foundation-models-ui-fixture"))
     }
 
     static func makeAccounts() -> ChatGPTAccountStore {
         precondition(isEnabled, "Assistant fixtures require an explicit UI test launch.")
+        if ProcessInfo.processInfo.arguments.contains("--foundation-models-ui-fixture") {
+            return ChatGPTAccountStore(storage: AssistantFixtureCredentialStorage(snapshot: ChatGPTAuthSnapshot()))
+        }
         let tokenJSON = """
         {"id_token":"fixture-identity","access_token":"fixture-access","token_type":"Bearer","expires_in":3600,"scope":"resource.invoke chatgpt.tokens.use.direct"}
         """
@@ -44,10 +48,56 @@ enum AssistantUITestFixture {
         if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
             try? FileManager.default.removeItem(at: archiveURL)
         }
-        return WorkoutAssistant(store: store, accessToken: { "local-ui-fixture-token" },
+        if ProcessInfo.processInfo.arguments.contains("--foundation-models-corrupt-archive-ui-fixture") {
+            do { try Data("Synthetic unreadable chat archive".utf8).write(to: archiveURL, options: .atomic) }
+            catch { preconditionFailure("Could not create the synthetic unreadable archive: \(error.localizedDescription)") }
+        }
+        let assistant = WorkoutAssistant(store: store, accessToken: { "local-ui-fixture-token" },
             transport: AssistantFixtureTransport(exerciseID: exerciseID), storageURL: archiveURL,
             archiveAccountIdentity: { "local-ui-fixture-account" },
-            healthDataProvider: AssistantFixtureHealthDataProvider.shared)
+            healthDataProvider: AssistantFixtureHealthDataProvider.shared,
+            appleFoundationModels: AssistantFixtureFoundationModelsProvider(exerciseID: exerciseID),
+            beginRequestActivity: beginRequestActivity)
+        if ProcessInfo.processInfo.arguments.contains("--foundation-models-ui-fixture"),
+           ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
+            assistant.selectedProvider = .appleFoundationModels
+        }
+        return assistant
+    }
+
+    private static func beginRequestActivity(onExpiration: @escaping @MainActor () -> Void) -> @MainActor () -> Void {
+        let end = AssistantRequestActivity.begin(onExpiration: onExpiration)
+        guard ProcessInfo.processInfo.arguments.contains("--assistant-expiring-ui-fixture") else { return end }
+        let expiration = Task {
+            do { try await Task.sleep(for: .seconds(2)) }
+            catch { return }
+            onExpiration()
+            end()
+        }
+        return { expiration.cancel(); end() }
+    }
+}
+
+@MainActor
+private final class AssistantFixtureFoundationModelsProvider: AppleFoundationModelsProviding {
+    private let client: ChatGPTInferenceClient
+    var availability: AppleFoundationModelsAvailability {
+        ProcessInfo.processInfo.arguments.contains("--foundation-models-unavailable-ui-fixture") ? .modelNotReady : .available
+    }
+
+    init(exerciseID: UUID) {
+        client = ChatGPTInferenceClient(accessToken: { "synthetic-local-provider" },
+            transport: AssistantFixtureTransport(exerciseID: exerciseID))
+    }
+
+    func models() async throws -> [ChatGPTModel] { AppleFoundationModelsModel.catalog }
+    func respond(model: String, input: [[String: Any]], tools: [[String: Any]], instructions: String,
+                 onText: (String) -> Void) async throws -> ChatGPTInferenceResponse {
+        guard availability.isAvailable else { throw AppleFoundationModelsError(availability.explanation) }
+        // Reuse only the in-memory synthetic transport, never URLSession or account tokens.
+        let isTitle = tools.isEmpty && instructions.contains("title")
+        return try await client.respond(model: isTitle ? "gpt-6-luna" : "fixture-model", input: input,
+            tools: tools, instructions: instructions, onText: onText)
     }
 }
 
@@ -135,10 +185,10 @@ private struct AssistantFixtureTransport: ChatGPTInferenceTransport {
               - 135 lb × 8 completed reps
             - **Upper body:** 1,160 lb × reps
 
-            | Workout | Volume |
-            | --- | ---: |
-            | Morning workout | 1,080 |
-            | Upper body | 1,160 |
+            | Workout | Volume | Comparison |
+            | --- | ---: | --- |
+            | Morning workout | 1,080 | Keep the load steady and aim for one more completed rep. |
+            | Upper body | 1,160 | Compare completed sets before increasing the load. |
 
             > Only completed sets count toward your recorded volume.
 

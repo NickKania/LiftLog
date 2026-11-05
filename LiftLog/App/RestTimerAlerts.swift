@@ -1,5 +1,5 @@
-import AudioToolbox
 import Observation
+import OSLog
 import UserNotifications
 
 /// Owned by the app, so hiding the workout does not stop its alert.
@@ -13,9 +13,12 @@ final class RestTimerAlerts: NSObject, UNUserNotificationCenterDelegate {
     @ObservationIgnored private var isActive = true
     @ObservationIgnored private var notificationsAllowed = false
     @ObservationIgnored private var checkingDelivery = false
+    @ObservationIgnored private let playSound: () throws -> Void
+    private static let logger = Logger(subsystem: "com.liftlog.app", category: "RestTimerAlerts")
     private static func notificationID(_ id: UUID) -> String { "workout-rest.\(id.uuidString)" }
 
-    override init() {
+    init(playSound: (() throws -> Void)? = nil) {
+        self.playSound = playSound ?? RestTimerSoundPlayer().play
         super.init()
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
@@ -56,7 +59,7 @@ final class RestTimerAlerts: NSObject, UNUserNotificationCenterDelegate {
             let content = UNMutableNotificationContent()
             content.title = "Rest complete"
             content.body = "Time to start your next set."
-            content.sound = .default
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(RestTimerSoundPlayer.resourceName))
             content.userInfo = ["timerID": rest.id.uuidString]
             let request = UNNotificationRequest(identifier: Self.notificationID(rest.id), content: content,
                 trigger: UNTimeIntervalNotificationTrigger(timeInterval: max(1, rest.endsAt.timeIntervalSinceNow), repeats: false))
@@ -89,8 +92,12 @@ final class RestTimerAlerts: NSObject, UNUserNotificationCenterDelegate {
 
     private func playTone(for id: UUID) {
         guard timer?.id == id, alertedID != id else { return }
-        alertedID = id
-        AudioServicesPlayAlertSound(1005)
+        do {
+            try playSound()
+            alertedID = id
+        } catch {
+            Self.logger.error("Rest chime could not play: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,

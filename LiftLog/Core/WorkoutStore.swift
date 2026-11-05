@@ -6,15 +6,22 @@ import Observation
 final class WorkoutStore {
     private(set) var templates: [WorkoutTemplate] = []
     private(set) var history: [WorkoutSession] = []
+    private(set) var historyRecovery: [WorkoutSession] = []
     private(set) var activeWorkout: WorkoutSession?
     private(set) var unit: WeightUnit = .lb
     private(set) var personalExercises: [Exercise] = []
+    private(set) var favoriteExerciseIDs: [UUID] = []
+    private(set) var exerciseInstructionOverrides: [ExerciseInstructionOverride] = []
     private(set) var defaultAssistantModel: String?
+    private(set) var workoutSummaryPrompt: String
+    private(set) var automaticWorkoutSummaries: Bool
     var exercises: [Exercise] { ExerciseCatalog.all + personalExercises }
     var errorMessage: String?
 
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private var defaultAssistantModelKey = ""
+    @ObservationIgnored private var workoutSummaryPromptKey = ""
+    @ObservationIgnored private var automaticWorkoutSummariesKey = ""
     @ObservationIgnored private var loadFailure: String?
     /// Advances only after a successful atomic save; review drafts bind to this revision.
     @ObservationIgnored private(set) var revision: UInt64 = 0
@@ -26,7 +33,29 @@ final class WorkoutStore {
     init(fileURL: URL? = nil, legacyFileURL: URL? = nil, cloudBackup: CloudBackupManager? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL
         self.defaultAssistantModelKey = "defaultAssistantModel.\(self.fileURL.standardizedFileURL.path)"
+        // iOS may relocate the application container during an update. Production
+        // preferences use a stable scope; explicitly injected stores stay isolated.
+        let summaryPreferenceScope = fileURL == nil ? "default" : self.fileURL.standardizedFileURL.path
+        self.workoutSummaryPromptKey = "workoutSummaryPrompt.\(summaryPreferenceScope)"
+        self.automaticWorkoutSummariesKey = "automaticWorkoutSummaries.\(summaryPreferenceScope)"
+        self.workoutSummaryPrompt = UserDefaults.standard.string(forKey: workoutSummaryPromptKey)
+            ?? WorkoutSummaryPrompt.defaultPrompt
+        self.automaticWorkoutSummaries = UserDefaults.standard.bool(forKey: automaticWorkoutSummariesKey)
         self.defaultAssistantModel = UserDefaults.standard.string(forKey: defaultAssistantModelKey)
+        #if DEBUG
+        let uiTestingFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LiftLogUITests.sqlite").standardizedFileURL
+        if self.fileURL.standardizedFileURL == uiTestingFileURL,
+           ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+           ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
+            UserDefaults.standard.removeObject(forKey: defaultAssistantModelKey)
+            UserDefaults.standard.removeObject(forKey: workoutSummaryPromptKey)
+            UserDefaults.standard.removeObject(forKey: automaticWorkoutSummariesKey)
+            self.defaultAssistantModel = nil
+            self.workoutSummaryPrompt = WorkoutSummaryPrompt.defaultPrompt
+            self.automaticWorkoutSummaries = false
+        }
+        #endif
         self.cloudBackup = cloudBackup ?? CloudBackupManager(databaseURL: self.fileURL, available: fileURL == nil)
         let legacyURL = legacyFileURL ?? self.fileURL.deletingPathExtension().appendingPathExtension("json")
         do {
@@ -41,7 +70,7 @@ final class WorkoutStore {
                 let saved = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: legacyURL))
                 guard (1...2).contains(saved.version) else { throw StoreError.invalid("This workout file uses an unsupported version.") }
                 try Self.validate(saved)
-                let migrated = Self.backfillingVersions(Self.backfillingCatalog(saved))
+                let migrated = Self.backfillingExerciseReferences(Self.backfillingVersions(Self.backfillingCatalog(saved)))
                 // Publish a complete database only after migration succeeds. Keep the original JSON.
                 let staging = self.fileURL.deletingLastPathComponent().appendingPathComponent("migration-\(UUID().uuidString).sqlite")
                 defer { try? FileManager.default.removeItem(at: staging) }
@@ -62,6 +91,62 @@ final class WorkoutStore {
     }
 
     @discardableResult
+    func setExerciseFavorite(_ exerciseID: UUID, isFavorite: Bool) -> Bool {
+        guard !isFavorite || exercises.contains(where: { $0.id == exerciseID }) else {
+            return fail(StoreError.invalid("This exercise is no longer available. Choose an exercise from the catalog to favorite it."))
+        }
+        guard favoriteExerciseIDs.contains(exerciseID) != isFavorite else { return true }
+        var next = snapshot
+        if isFavorite { next.favoriteExerciseIDs.append(exerciseID) }
+        else { next.favoriteExerciseIDs.removeAll { $0 == exerciseID } }
+        return commit(next)
+    }
+
+    func exerciseInstructions(for exerciseID: UUID) -> [String] {
+        exerciseInstructionOverrides.first { $0.exerciseID == exerciseID }?.steps
+            ?? ExerciseCatalog.detail(for: exerciseID)?.instructions ?? []
+    }
+
+    func hasCustomExerciseInstructions(_ exerciseID: UUID) -> Bool {
+        exerciseInstructionOverrides.contains { $0.exerciseID == exerciseID }
+    }
+
+    /// Saving the bundled steps restores the default instead of pinning a redundant override.
+    @discardableResult
+    func setExerciseInstructions(_ steps: [String], for exerciseID: UUID) -> Bool {
+        do {
+            let trimmed = steps.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            try Self.validateInstructionSteps(trimmed)
+            guard exercises.contains(where: { $0.id == exerciseID }) else {
+                throw StoreError.invalid("This exercise is no longer available. Choose an exercise from the catalog to edit its steps.")
+            }
+            let defaults = ExerciseCatalog.detail(for: exerciseID)?.instructions.map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            } ?? []
+            if trimmed == defaults { return resetExerciseInstructions(for: exerciseID) }
+            if exerciseInstructionOverrides.first(where: { $0.exerciseID == exerciseID })?.steps == trimmed { return true }
+            var next = snapshot
+            if let index = next.exerciseInstructionOverrides.firstIndex(where: { $0.exerciseID == exerciseID }) {
+                next.exerciseInstructionOverrides[index].steps = trimmed
+            } else {
+                next.exerciseInstructionOverrides.append(ExerciseInstructionOverride(exerciseID: exerciseID, steps: trimmed))
+            }
+            return commit(next)
+        } catch {
+            return fail(error)
+        }
+    }
+
+    /// Orphaned catalog identities retain their text until explicitly reset.
+    @discardableResult
+    func resetExerciseInstructions(for exerciseID: UUID) -> Bool {
+        guard hasCustomExerciseInstructions(exerciseID) else { return true }
+        var next = snapshot
+        next.exerciseInstructionOverrides.removeAll { $0.exerciseID == exerciseID }
+        return commit(next)
+    }
+
+    @discardableResult
     func saveTemplate(_ template: WorkoutTemplate, expectedUnit: WeightUnit? = nil) -> Bool {
         do {
             guard expectedUnit == nil || expectedUnit == unit else {
@@ -70,6 +155,7 @@ final class WorkoutStore {
             try Self.validate(template)
             var next = snapshot
             var trimmed = template
+            SupersetGrouping.normalize(&trimmed.exercises)
             trimmed.name = template.name.trimmingCharacters(in: .whitespacesAndNewlines)
             for index in trimmed.exercises.indices {
                 trimmed.exercises[index].exercise = Self.register(trimmed.exercises[index].exercise, in: &next)
@@ -122,7 +208,11 @@ final class WorkoutStore {
             } else if versionID != nil {
                 throw StoreError.invalid("Choose a saved template before selecting a version.")
             }
-            if let source { try Self.validate(source) }
+            if var plan = source {
+                SupersetGrouping.normalize(&plan.exercises)
+                try Self.validate(plan)
+                source = plan
+            }
             var next = snapshot
             var workout = WorkoutSession(
                 templateID: source?.id, templateVersionID: version?.id, templateVersionNumber: version?.number,
@@ -131,7 +221,7 @@ final class WorkoutStore {
                 exercises: source?.exercises.map { item in
                     WorkoutExercise(exercise: item.exercise, sets: item.sets.map {
                         WorkoutSet(weight: $0.weight, reps: $0.targetReps, targetReps: $0.targetReps, targetWeight: $0.weight)
-                    })
+                    }, supersetID: item.supersetID, templateExerciseID: item.id, restSeconds: item.restSeconds)
                 } ?? [],
                 restSeconds: source?.restSeconds ?? 120
             )
@@ -143,13 +233,57 @@ final class WorkoutStore {
         } catch { return fail(error) }
     }
 
+    /// Rest changes affect future completions only; any running countdown keeps its deadline.
     @discardableResult
-    func updateActiveWorkout(_ workout: WorkoutSession, now: Date = Date()) -> Bool {
+    func updateRestSettings(workoutID: UUID, exerciseID: UUID? = nil, restSeconds: Int?) -> Bool {
+        guard var workout = activeWorkout, workout.id == workoutID else {
+            return fail(StoreError.invalid("This workout is no longer active."))
+        }
+        do {
+            if let restSeconds { try Self.validateRest(restSeconds) }
+            if let exerciseID {
+                guard let index = workout.exercises.firstIndex(where: { $0.id == exerciseID }) else {
+                    throw StoreError.invalid("This exercise is no longer in the workout.")
+                }
+                workout.exercises[index].restSeconds = restSeconds
+            } else {
+                guard let restSeconds else { throw StoreError.invalid("Choose a workout rest duration.") }
+                workout.restSeconds = restSeconds
+            }
+            // Give legacy timers a captured duration before changing their fallback setting.
+            if let timer = workout.restTimer, timer.durationSeconds == nil {
+                workout.restTimer = WorkoutRestTimer(id: timer.id, completedSetID: timer.completedSetID,
+                    endsAt: timer.endsAt, durationSeconds: max(1, activeWorkout?.restSeconds ?? 120))
+            }
+            var next = snapshot
+            next.activeWorkout = workout
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    /// The captured entry prevents a delayed picker from overwriting newly logged work.
+    @discardableResult
+    func replaceActiveExercise(in sessionID: UUID, expectedEntry: WorkoutExercise, with exerciseID: UUID) -> Bool {
+        guard let activeWorkout, activeWorkout.id == sessionID else {
+            return fail(StoreError.invalid("This workout is no longer active."))
+        }
+        guard let replacement = exercises.first(where: { $0.id == exerciseID }) else {
+            return fail(StoreError.invalid("This exercise is no longer available. Reopen the swap and choose an available exercise."))
+        }
+        do {
+            let updated = try ExerciseReplacement.replacing(activeWorkout, expectedEntry: expectedEntry, with: replacement)
+            return updateActiveWorkout(updated)
+        } catch { return fail(error) }
+    }
+
+    @discardableResult
+    func updateActiveWorkout(_ workout: WorkoutSession, now: Date = Date(), newRestTimerID: UUID? = nil) -> Bool {
         guard let activeWorkout, workout.id == activeWorkout.id else {
             return fail(StoreError.invalid("This workout is no longer active."))
         }
         do {
             var updated = workout
+            SupersetGrouping.normalize(&updated.exercises)
             // Session identity, start time, template reference, and recorded unit are fixed.
             updated.startedAt = activeWorkout.startedAt
             updated.templateID = activeWorkout.templateID
@@ -163,6 +297,24 @@ final class WorkoutStore {
             // Logged values may change; targets remain the prescription originally started.
             for exerciseIndex in updated.exercises.indices {
                 guard let original = activeWorkout.exercises.first(where: { $0.id == updated.exercises[exerciseIndex].id }) else { continue }
+                // Ordinary logging edits must not overwrite a newer rest setting.
+                updated.exercises[exerciseIndex].restSeconds = original.restSeconds
+                // A replacement belongs only to this session, even when its entry ID is reused.
+                updated.exercises[exerciseIndex].templateExerciseID =
+                    updated.exercises[exerciseIndex].exercise.id == original.exercise.id ? original.templateExerciseID : nil
+                // A different movement never inherits the original prescription,
+                // including through callers that retain an entry ID during replacement.
+                if original.exercise.id != updated.exercises[exerciseIndex].exercise.id {
+                    guard !original.sets.contains(where: \.isCompleted),
+                          !updated.exercises[exerciseIndex].sets.contains(where: \.isCompleted) else {
+                        throw StoreError.invalid("An exercise with completed sets cannot be replaced.")
+                    }
+                    for setIndex in updated.exercises[exerciseIndex].sets.indices {
+                        updated.exercises[exerciseIndex].sets[setIndex].targetReps = nil
+                        updated.exercises[exerciseIndex].sets[setIndex].targetWeight = nil
+                    }
+                    continue
+                }
                 for setIndex in updated.exercises[exerciseIndex].sets.indices {
                     guard let set = original.sets.first(where: { $0.id == updated.exercises[exerciseIndex].sets[setIndex].id }) else { continue }
                     updated.exercises[exerciseIndex].sets[setIndex].targetReps = set.targetReps
@@ -173,8 +325,63 @@ final class WorkoutStore {
             for index in updated.exercises.indices {
                 updated.exercises[index].exercise = Self.register(updated.exercises[index].exercise, in: &next)
             }
-            updated.restTimer = WorkoutRestTimer.updated(previous: activeWorkout, current: updated, now: now)
+            updated.restTimer = WorkoutRestTimer.updated(previous: activeWorkout, current: updated, now: now, newRestTimerID: newRestTimerID)
             next.activeWorkout = updated
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    /// Session entries eligible to reorder the current template. Check movement identity too
+    /// so stale links saved by older versions cannot move a different template exercise.
+    func templateLinkedExerciseIDs(in workout: WorkoutSession) -> Set<UUID> {
+        guard let template = templates.first(where: { $0.id == workout.templateID }) else { return [] }
+        let entries = Dictionary(uniqueKeysWithValues: template.exercises.map { ($0.id, $0.exercise.id) })
+        return Set(workout.exercises.filter { item in
+            guard let sourceID = item.templateExerciseID else { return false }
+            return entries[sourceID] == item.exercise.id
+        }.map(\.id))
+    }
+
+    /// Saves only the exercise order, using the latest logged values and template prescription.
+    @discardableResult
+    func reorderActiveWorkout(id: UUID, exerciseIDs: [UUID], expectedExerciseIDs: [UUID]) -> Bool {
+        do {
+            guard var workout = activeWorkout, workout.id == id,
+                  workout.exercises.map(\.id) == expectedExerciseIDs else {
+                throw StoreError.invalid("This workout changed after you opened the exercise order. Reopen Reorder Exercises and try again.")
+            }
+            guard exerciseIDs.count == expectedExerciseIDs.count,
+                  Set(exerciseIDs) == Set(expectedExerciseIDs) else {
+                throw StoreError.invalid("The exercise order must include every workout exercise exactly once.")
+            }
+            guard exerciseIDs != expectedExerciseIDs else { return true }
+            let entries = Dictionary(uniqueKeysWithValues: workout.exercises.map { ($0.id, $0) })
+            workout.exercises = exerciseIDs.compactMap { entries[$0] }
+            var next = snapshot
+            if let templateIndex = next.templates.firstIndex(where: { $0.id == workout.templateID }) {
+                var template = next.templates[templateIndex]
+                let templateEntries = Dictionary(uniqueKeysWithValues: template.exercises.map { ($0.id, $0) })
+                let linkedIDs = templateLinkedExerciseIDs(in: workout)
+                let orderedIDs = workout.exercises.filter { linkedIDs.contains($0.id) }.compactMap(\.templateExerciseID)
+                guard Set(orderedIDs).count == orderedIDs.count else {
+                    throw StoreError.invalid("The workout contains duplicate template exercise references.")
+                }
+                let matchingIDs = Set(orderedIDs)
+                var ordered = orderedIDs.makeIterator()
+                let originalIDs = template.exercises.map(\.id)
+                // Template-only entries keep their positions; session-only additions stay local.
+                for index in template.exercises.indices where matchingIDs.contains(template.exercises[index].id) {
+                    if let entryID = ordered.next(), let entry = templateEntries[entryID] {
+                        template.exercises[index] = entry
+                    }
+                }
+                if template.exercises.map(\.id) != originalIDs {
+                    template.versions.append(WorkoutTemplateVersion(number: template.versions.count + 1,
+                        name: template.name, exercises: template.exercises, unit: unit, restSeconds: template.restSeconds))
+                    next.templates[templateIndex] = template
+                }
+            }
+            next.activeWorkout = workout
             return commit(next)
         } catch { return fail(error) }
     }
@@ -197,6 +404,7 @@ final class WorkoutStore {
             try Self.validate(workout)
             var next = snapshot
             var reviewed = workout
+            SupersetGrouping.normalize(&reviewed.exercises)
             reviewed.startedAt = Date()
             for index in reviewed.exercises.indices {
                 reviewed.exercises[index].exercise = Self.register(reviewed.exercises[index].exercise, in: &next)
@@ -216,6 +424,7 @@ final class WorkoutStore {
             completed.sets = item.sets.filter(\.isCompleted)
             return completed.sets.isEmpty ? nil : completed
         }
+        SupersetGrouping.normalize(&workout.exercises)
         guard !workout.exercises.isEmpty else {
             return fail(StoreError.invalid("Complete at least one set before finishing your workout."))
         }
@@ -227,10 +436,84 @@ final class WorkoutStore {
         return commit(next)
     }
 
+    /// Compare the entire captured record so a stale review cannot overwrite later corrections.
+    @discardableResult
+    func saveHistoryWorkout(_ draft: WorkoutSession, replacing expected: WorkoutSession?) -> Bool {
+        do {
+            var next = snapshot
+            if let expected {
+                guard let index = next.history.firstIndex(where: { $0.id == expected.id }),
+                      next.history[index] == expected else {
+                    throw StoreError.invalid("This workout changed or was deleted. Reopen it before making corrections.")
+                }
+                var corrected = try WorkoutHistoryEditing.validated(draft, replacing: expected)
+                guard corrected != expected else { return true }
+                // A name-only edit preserves coaching through either history editing path.
+                // Notes and performed-work changes can alter its evidence and invalidate it.
+                var renamedOriginal = expected
+                renamedOriginal.name = corrected.name
+                if corrected != renamedOriginal { corrected.summary = nil }
+                let existingIDs = Set(expected.exercises.map(\.id))
+                for index in corrected.exercises.indices where !existingIDs.contains(corrected.exercises[index].id) {
+                    corrected.exercises[index].exercise = Self.register(corrected.exercises[index].exercise, in: &next)
+                }
+                next.historyRecovery.removeAll { $0.id == expected.id }
+                next.historyRecovery.append(expected)
+                next.history[index] = corrected
+            } else {
+                guard !next.history.contains(where: { $0.id == draft.id }), next.activeWorkout?.id != draft.id else {
+                    throw StoreError.invalid("This workout has already been saved.")
+                }
+                var saved = try WorkoutHistoryEditing.validated(draft)
+                for index in saved.exercises.indices {
+                    saved.exercises[index].exercise = Self.register(saved.exercises[index].exercise, in: &next)
+                }
+                next.history.append(saved)
+            }
+            next.history.sort { $0.startedAt == $1.startedAt ? $0.id.uuidString < $1.id.uuidString : $0.startedAt > $1.startedAt }
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    @discardableResult
+    func undoHistoryCorrection(replacing expected: WorkoutSession) -> Bool {
+        var next = snapshot
+        guard let index = next.history.firstIndex(where: { $0.id == expected.id }),
+              next.history[index] == expected,
+              let previous = next.historyRecovery.first(where: { $0.id == expected.id }) else {
+            return fail(StoreError.invalid("This correction changed or is no longer available. Reopen the workout."))
+        }
+        next.history[index] = previous
+        next.historyRecovery.removeAll { $0.id == expected.id }
+        next.history.sort { $0.startedAt == $1.startedAt ? $0.id.uuidString < $1.id.uuidString : $0.startedAt > $1.startedAt }
+        return commit(next)
+    }
+
+    @discardableResult
+    func renameWorkout(id: UUID, name: String) -> Bool {
+        do {
+            try Self.validateName(name)
+            var next = snapshot
+            guard let index = next.history.firstIndex(where: { $0.id == id }) else {
+                throw StoreError.invalid("This workout is no longer in your history.")
+            }
+            let original = next.history[index]
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedName != original.name else { return true }
+            // Name-only corrections preserve existing facts, including sessions left open
+            // longer than the full history editor permits for newly entered date ranges.
+            next.history[index].name = trimmedName
+            next.historyRecovery.removeAll { $0.id == id }
+            next.historyRecovery.append(original)
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
     @discardableResult
     func deleteWorkout(id: UUID) -> Bool {
         var next = snapshot
         next.history.removeAll { $0.id == id }
+        next.historyRecovery.removeAll { $0.id == id }
         return commit(next)
     }
 
@@ -243,8 +526,24 @@ final class WorkoutStore {
 
     @discardableResult
     func skipRest() -> Bool {
-        guard var workout = activeWorkout else { return false }
+        guard var workout = activeWorkout, workout.restTimer != nil else { return false }
         workout.restTimer = nil
+        var next = snapshot
+        next.activeWorkout = workout
+        return commit(next)
+    }
+
+    /// Extends an active deadline with the same identity; expired rest starts a new alert.
+    /// Cap the deadline at one hour from now, matching remainingSeconds' 3600-second cap.
+    @discardableResult
+    func extendRest(by seconds: Int, now: Date = Date(), resultingRestTimerID: UUID? = nil) -> Bool {
+        guard seconds > 0, var workout = activeWorkout, let timer = workout.restTimer else { return false }
+        let expired = timer.endsAt <= now
+        let deadline = min((expired ? now : timer.endsAt).addingTimeInterval(TimeInterval(seconds)), now.addingTimeInterval(3600))
+        guard deadline > timer.endsAt else { return false }
+        let duration = expired ? min(seconds, 3600) : min(3600, workout.restDuration(for: timer) + Int(ceil(deadline.timeIntervalSince(timer.endsAt))))
+        workout.restTimer = WorkoutRestTimer(id: resultingRestTimerID ?? (expired ? UUID() : timer.id),
+                                            completedSetID: timer.completedSetID, endsAt: deadline, durationSeconds: duration)
         var next = snapshot
         next.activeWorkout = workout
         return commit(next)
@@ -275,6 +574,46 @@ final class WorkoutStore {
         return true
     }
 
+    /// Saves only a completed, workout-only response against the exact request snapshot.
+    /// Callers must keep any response generated with Health evidence transient.
+    @discardableResult
+    func saveWorkoutSummary(_ text: String, for expected: WorkoutSession) -> Bool {
+        guard let index = history.firstIndex(where: { $0.id == expected.id }),
+              history[index] == expected, expected.finishedAt != nil else {
+            return fail(StoreError.invalid("This workout changed or was deleted. Reopen it before saving insights."))
+        }
+        var next = snapshot
+        next.history[index].summary = text
+        return commit(next)
+    }
+
+    /// Sets the user-level summary instructions. Blank input restores the immutable default.
+    @discardableResult
+    func setWorkoutSummaryPrompt(_ prompt: String) -> Bool {
+        let normalized: String?
+        if prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            normalized = nil
+        } else {
+            normalized = prompt
+        }
+        if let normalized, normalized.count > WorkoutSummaryPrompt.maximumLength { return false }
+        if let normalized {
+            workoutSummaryPrompt = normalized
+            UserDefaults.standard.set(normalized, forKey: workoutSummaryPromptKey)
+        } else {
+            workoutSummaryPrompt = WorkoutSummaryPrompt.defaultPrompt
+            UserDefaults.standard.removeObject(forKey: workoutSummaryPromptKey)
+        }
+        return true
+    }
+
+    @discardableResult
+    func setAutomaticWorkoutSummaries(_ enabled: Bool) -> Bool {
+        automaticWorkoutSummaries = enabled
+        UserDefaults.standard.set(enabled, forKey: automaticWorkoutSummariesKey)
+        return true
+    }
+
     /// Imports finished sessions as a single disk commit. Source identity survives reloads.
     func importWorkouts(_ sessions: [WorkoutSession]) -> WorkoutImportResult? {
         var next = snapshot
@@ -295,6 +634,7 @@ final class WorkoutStore {
             }
             if !keys.insert(key).inserted { duplicates += 1; continue }
             var saved = session
+            SupersetGrouping.normalize(&saved.exercises)
             for index in saved.exercises.indices {
                 saved.exercises[index].exercise = Self.register(saved.exercises[index].exercise, in: &next)
             }
@@ -307,15 +647,18 @@ final class WorkoutStore {
     }
 
     private var snapshot: Snapshot {
-        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit, personalExercises: personalExercises)
+        Snapshot(templates: templates, history: history, activeWorkout: activeWorkout, unit: unit, personalExercises: personalExercises, favoriteExerciseIDs: favoriteExerciseIDs, exerciseInstructionOverrides: exerciseInstructionOverrides, historyRecovery: historyRecovery)
     }
 
     private func apply(_ snapshot: Snapshot) {
         templates = snapshot.templates
         history = snapshot.history
+        historyRecovery = snapshot.historyRecovery
         activeWorkout = snapshot.activeWorkout
         unit = snapshot.unit
         personalExercises = snapshot.personalExercises
+        favoriteExerciseIDs = snapshot.favoriteExerciseIDs
+        exerciseInstructionOverrides = snapshot.exerciseInstructionOverrides
     }
 
     /// Registers only in the proposed snapshot; failed writes and abandoned drafts publish nothing.
@@ -351,7 +694,33 @@ final class WorkoutStore {
         return next
     }
 
-    /// Legacy sessions retain unknown provenance and targets. Only template plans gain a baseline.
+    /// Legacy sessions have no source entry IDs. Only unambiguous matches are safe to infer.
+    nonisolated static func backfillingExerciseReferences(_ snapshot: WorkoutSnapshot) -> WorkoutSnapshot {
+        var next = snapshot
+        guard var workout = next.activeWorkout,
+              let template = next.templates.first(where: { $0.id == workout.templateID }) else { return next }
+        let source: [TemplateExercise]
+        if let versionID = workout.templateVersionID {
+            guard let version = template.versions.first(where: { $0.id == versionID }) else { return next }
+            source = version.exercises
+        } else {
+            // Pre-version sessions can safely match unique movement identities in the
+            // surviving template, without inventing version attribution or set targets.
+            source = template.exercises
+        }
+        let sessionGroups = Dictionary(grouping: workout.exercises, by: { $0.exercise.id })
+        let sourceGroups = Dictionary(grouping: source, by: { $0.exercise.id })
+        for index in workout.exercises.indices where workout.exercises[index].templateExerciseID == nil {
+            let catalogID = workout.exercises[index].exercise.id
+            if sessionGroups[catalogID]?.count == 1, let matches = sourceGroups[catalogID], matches.count == 1 {
+                workout.exercises[index].templateExerciseID = matches[0].id
+            }
+        }
+        next.activeWorkout = workout
+        return next
+    }
+
+    /// Legacy sessions retain unknown version provenance and targets. Only template plans gain a baseline.
     private static func backfillingVersions(_ snapshot: Snapshot) -> Snapshot {
         var next = snapshot
         for index in next.templates.indices where next.templates[index].versions.isEmpty {
@@ -452,6 +821,7 @@ final class WorkoutStore {
         }
         try validateIDs(template.exercises.map(\.id))
         for item in template.exercises {
+            if let rest = item.restSeconds { try validateRest(rest) }
             try validateName(item.exercise.name)
             guard !item.sets.isEmpty else {
                 throw StoreError.invalid("Each template exercise needs at least one set.")
@@ -463,9 +833,18 @@ final class WorkoutStore {
 
     nonisolated private static func validate(_ workout: WorkoutSession) throws {
         try validateName(workout.name)
+        try validateNotes(workout.notes)
+        if let summary = workout.summary {
+            guard workout.finishedAt != nil,
+                  !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  summary.utf8.count <= 131_072 else {
+                throw StoreError.invalid("Workout insights must be nonempty, belong to a completed workout, and fit within 128 KB.")
+            }
+        }
         try validateRest(workout.restSeconds)
         if let timer = workout.restTimer {
-            guard workout.finishedAt == nil, timer.endsAt.timeIntervalSinceReferenceDate.isFinite else {
+            guard workout.finishedAt == nil, timer.endsAt.timeIntervalSinceReferenceDate.isFinite,
+                  timer.durationSeconds.map({ (1...3600).contains($0) }) ?? true else {
                 throw StoreError.invalid("A workout contains an invalid rest timer.")
             }
         }
@@ -479,6 +858,8 @@ final class WorkoutStore {
             throw StoreError.invalid("A workout has an invalid template version reference.")
         }
         for item in workout.exercises {
+            if let rest = item.restSeconds { try validateRest(rest) }
+            try validateNotes(item.notes)
             try validateName(item.exercise.name)
             try validateIDs(item.sets.map(\.id))
             for set in item.sets {
@@ -493,6 +874,12 @@ final class WorkoutStore {
         }
     }
 
+    nonisolated private static func validateNotes(_ notes: String?) throws {
+        guard (notes?.count ?? 0) <= 10_000 else {
+            throw StoreError.invalid("Keep each note to 10,000 characters or fewer.")
+        }
+    }
+
     nonisolated private static func validateIDs(_ ids: [UUID]) throws {
         guard Set(ids).count == ids.count else {
             throw StoreError.invalid("Workout items must have unique identifiers.")
@@ -500,6 +887,9 @@ final class WorkoutStore {
     }
 
     nonisolated static func validate(_ snapshot: WorkoutSnapshot) throws {
+        try validateIDs(snapshot.favoriteExerciseIDs)
+        try validateIDs(snapshot.exerciseInstructionOverrides.map(\.exerciseID))
+        for override in snapshot.exerciseInstructionOverrides { try validateInstructionSteps(override.steps) }
         try validateIDs(snapshot.personalExercises.map(\.id))
         for exercise in snapshot.personalExercises { try validateName(exercise.name) }
         try validateIDs(snapshot.templates.map(\.id))
@@ -520,7 +910,17 @@ final class WorkoutStore {
                 }
             }
         }
-        for workout in snapshot.history {
+        try validateIDs(snapshot.historyRecovery.map(\.id))
+        for previous in snapshot.historyRecovery {
+            guard let current = snapshot.history.first(where: { $0.id == previous.id }),
+                  current.unit == previous.unit, current.importSourceKey == previous.importSourceKey,
+                  current.templateID == previous.templateID,
+                  current.templateVersionID == previous.templateVersionID,
+                  current.templateVersionNumber == previous.templateVersionNumber else {
+                throw StoreError.invalid("A history recovery record has no matching workout or source.")
+            }
+        }
+        for workout in snapshot.history + snapshot.historyRecovery {
             try validate(workout)
             guard workout.finishedAt != nil, !workout.exercises.isEmpty,
                   workout.exercises.allSatisfy({ !$0.sets.isEmpty && $0.sets.allSatisfy(\.isCompleted) }) else {
@@ -535,10 +935,20 @@ final class WorkoutStore {
         }
     }
 
+    /// Shared validation for persisted instructions and editor drafts.
+    nonisolated static func validateInstructionSteps(_ steps: [String]) throws {
+        guard !steps.isEmpty, steps.count <= 100 else {
+            throw StoreError.invalid("Add between 1 and 100 instruction steps.")
+        }
+        guard steps.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.count <= 10_000 }) else {
+            throw StoreError.invalid("Each instruction step must contain text and be no longer than 10,000 characters.")
+        }
+    }
+
     nonisolated static func samePrescription(_ left: [TemplateExercise], _ right: [TemplateExercise]) -> Bool {
-        guard left.count == right.count else { return false }
+        guard left.count == right.count, SupersetGrouping.sameMembership(left, right) else { return false }
         return zip(left, right).allSatisfy { lhs, rhs in
-            lhs.exercise == rhs.exercise && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
+            lhs.exercise == rhs.exercise && lhs.restSeconds == rhs.restSeconds && lhs.sets.count == rhs.sets.count && zip(lhs.sets, rhs.sets).allSatisfy { a, b in
                 abs(a.weight - b.weight) <= max(1, abs(a.weight), abs(b.weight)) * 1e-12 && a.targetReps == b.targetReps
             }
         }

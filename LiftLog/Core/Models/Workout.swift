@@ -13,8 +13,11 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
     var restSeconds: Int
     var restTimer: WorkoutRestTimer?
     var importSourceKey: String?
+    var notes: String?
+    /// Completed workout-only coaching; Health-assisted responses are never archived.
+    var summary: String?
 
-    init(id: UUID = UUID(), templateID: UUID? = nil, templateVersionID: UUID? = nil, templateVersionNumber: Int? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = [], restSeconds: Int = 120, restTimer: WorkoutRestTimer? = nil) {
+    init(id: UUID = UUID(), templateID: UUID? = nil, templateVersionID: UUID? = nil, templateVersionNumber: Int? = nil, name: String = "Workout", startedAt: Date = Date(), finishedAt: Date? = nil, unit: WeightUnit = .lb, importSourceKey: String? = nil, exercises: [WorkoutExercise] = [], restSeconds: Int = 120, restTimer: WorkoutRestTimer? = nil, notes: String? = nil, summary: String? = nil) {
         self.id = id
         self.templateID = templateID
         self.templateVersionID = templateVersionID
@@ -27,10 +30,19 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         self.importSourceKey = importSourceKey
         self.restSeconds = restSeconds
         self.restTimer = restTimer
+        self.notes = notes
+        self.summary = summary
+    }
+
+    /// Generated coaching is presentation data, never evidence for a later inference.
+    var inferenceSnapshot: WorkoutSession {
+        var snapshot = self
+        snapshot.summary = nil
+        return snapshot
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, templateID, templateVersionID, templateVersionNumber, name, startedAt, finishedAt, unit, exercises, importSourceKey, restSeconds, restTimer
+        case id, templateID, templateVersionID, templateVersionNumber, name, startedAt, finishedAt, unit, exercises, importSourceKey, restSeconds, restTimer, notes, summary
     }
 
     init(from decoder: Decoder) throws {
@@ -46,20 +58,32 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         exercises = try values.decode([WorkoutExercise].self, forKey: .exercises)
         importSourceKey = try values.decodeIfPresent(String.self, forKey: .importSourceKey)
         restSeconds = try values.decodeIfPresent(Int.self, forKey: .restSeconds) ?? 120
+        notes = try values.decodeIfPresent(String.self, forKey: .notes)
+        summary = try values.decodeIfPresent(String.self, forKey: .summary)
         restTimer = try values.decodeIfPresent(WorkoutRestTimer.self, forKey: .restTimer)
     }
 
 }
 
-struct WorkoutExercise: Codable, Equatable, Identifiable {
+struct WorkoutExercise: Codable, Equatable, SupersetExercise {
     var id: UUID
     var exercise: Exercise
     var sets: [WorkoutSet]
+    var supersetID: UUID?
+    /// Nil inherits the workout default; zero explicitly disables rest.
+    var restSeconds: Int?
+    /// Stable source entry identity, including repeated occurrences of a catalog exercise.
+    var templateExerciseID: UUID?
+    var notes: String?
 
-    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()]) {
+    init(id: UUID = UUID(), exercise: Exercise, sets: [WorkoutSet] = [WorkoutSet()], supersetID: UUID? = nil, templateExerciseID: UUID? = nil, notes: String? = nil, restSeconds: Int? = nil) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
+        self.supersetID = supersetID
+        self.restSeconds = restSeconds
+        self.templateExerciseID = templateExerciseID
+        self.notes = notes
     }
 
     /// Numeric edits apply only to remaining sets, preserving completed results.

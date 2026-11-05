@@ -44,6 +44,17 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F43ACEA3EB8666CB3A5BCA4D"
+               BuildableName = "LiftLogAppTests.xctest"
+               BlueprintName = "LiftLogAppTests"
+               ReferencedContainer = "container:LiftLog.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "D219CD0DBE184E2BCCD7B1BC"
                BuildableName = "LiftLogUITests.xctest"
                BlueprintName = "LiftLogUITests"

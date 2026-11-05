@@ -23,9 +23,18 @@ enum AssistantChatTitleGenerator {
     }
 
     @MainActor
-    static func generate(client: ChatGPTInferenceClient, models: [ChatGPTModel],
-                         messages: [WorkoutAssistantMessage]) async throws -> String {
-        guard let model = latestLunaModel(in: models) else {
+    static func generate(client: any AssistantInferenceClient, models: [ChatGPTModel],
+                         messages: [WorkoutAssistantMessage], provider: AssistantProvider = .chatGPT) async throws -> String {
+        if provider == .appleFoundationModels, let local = client as? any AppleFoundationModelsProviding,
+           !local.availability.isAvailable {
+            throw AppleFoundationModelsError("Apple Intelligence cannot generate a chat title: \(local.availability.explanation) You can rename this chat.")
+        }
+        guard let model = provider == .appleFoundationModels
+                ? models.first(where: { $0.slug == AppleFoundationModelsModel.slug })?.slug
+                : latestLunaModel(in: models) else {
+            if provider == .appleFoundationModels {
+                throw AppleFoundationModelsError("The Apple on-device model is unavailable for chat titles. Check Apple Intelligence availability or rename this chat.")
+            }
             throw ChatGPTInferenceError("A Luna model is not available for chat titles on this ChatGPT account.")
         }
         let messages = messages.filter { !$0.containsEphemeralHealthData }
@@ -48,7 +57,7 @@ enum AssistantChatTitleGenerator {
             (item["content"] as? [[String: Any]] ?? []).contains { $0["type"] as? String == "refusal" }
         }
         guard response.calls.isEmpty, !refused, let title = sanitize(response.text) else {
-            throw ChatGPTInferenceError("ChatGPT did not return a usable chat title.")
+            throw ChatGPTInferenceError("The assistant did not return a usable chat title.")
         }
         return title
     }

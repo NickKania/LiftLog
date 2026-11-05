@@ -1,10 +1,29 @@
 import Foundation
 
-/// Reading health data is an explicit, per-attachment operation. Implementations must
-/// not fetch or request authorization when initialized or when a workout starts.
+/// Reading health data requires an explicit dashboard load, assistant attachment,
+/// or Health-inclusive workout summary request.
+/// Implementations must not fetch or request authorization when initialized or when a workout starts.
 @MainActor
 protocol WorkoutHealthDataProviding {
+    /// Interval series for a session, used where samples over time are needed.
     func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot
+    /// One aggregate sample per dashboard metric for a session: the session
+    /// average heart rate and total active energy. Steps are not read.
+    func fetchHealthSummary(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot
+}
+
+extension WorkoutHealthDataProviding {
+    /// Providers that only implement the series fetch derive the same dashboard
+    /// aggregates from it; the HealthKit provider overrides this with single
+    /// aggregate queries instead of reading hundreds of interval buckets.
+    func fetchHealthSummary(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
+        // Scope first: the summary sample is dated at the snapshot end, so
+        // aggregating a wider-than-requested window would put it past the
+        // cutoff and a later scoped(to:through:) would drop valid readings.
+        try await fetchHealthData(for: workout, through: through)
+            .scoped(to: workout, through: through)
+            .summarized()
+    }
 }
 
 enum WorkoutHealthMetric: String, Codable, CaseIterable, Sendable {
@@ -55,6 +74,27 @@ struct WorkoutHealthSnapshot: Codable, Equatable, Sendable {
     let metrics: [WorkoutHealthMetricSeries]
 
     var hasSamples: Bool { metrics.contains { !$0.samples.isEmpty } }
+
+    /// The dashboard aggregates each session needs, as one sample per metric at
+    /// the session end: average heart rate and total active energy. Other
+    /// metrics are dropped, and missing metrics stay missing, never zero.
+    func summarized() -> WorkoutHealthSnapshot {
+        let summaryMetricTypes: [WorkoutHealthMetric] = [.heartRate, .activeEnergy]
+        let summaryMetrics = summaryMetricTypes.compactMap { (metric: WorkoutHealthMetric) -> WorkoutHealthMetricSeries? in
+            let values = metrics.filter { $0.metric == metric }.flatMap(\.samples)
+                .filter { $0.date >= startedAt && $0.date <= endedAt && metric.accepts($0.value) }
+                .map(\.value)
+            guard !values.isEmpty else { return nil }
+            let value = metric == .heartRate
+                ? values.reduce(0) { $0 + $1 / Double(values.count) }
+                : values.reduce(0, +)
+            guard metric.accepts(value) else { return nil }
+            return WorkoutHealthMetricSeries(metric: metric,
+                                             samples: [WorkoutHealthSample(date: endedAt, value: value)])
+        }
+        return WorkoutHealthSnapshot(workoutID: workoutID, workoutName: workoutName, startedAt: startedAt,
+                                     endedAt: endedAt, fetchedAt: fetchedAt, metrics: summaryMetrics)
+    }
 
     static func interval(for workout: WorkoutSession, through: Date) throws -> DateInterval {
         let end = min(workout.finishedAt ?? through, through)
@@ -109,6 +149,33 @@ struct WorkoutHealthSnapshot: Codable, Equatable, Sendable {
             guard metric.accepts(value), let last = group.last else { return nil }
             return WorkoutHealthSample(date: last.date, value: value)
         }
+    }
+}
+
+extension WorkoutHealthSnapshot {
+    /// Reduces an already scoped series without dropping any contributing interval.
+    /// Energy and step buckets retain sums; heart rate buckets contain the arithmetic
+    /// mean of their source interval means, not a time-weighted or instantaneous rate.
+    /// Always aggregate the original scoped snapshot when trying another budget;
+    /// averaging a previously reduced series could give unequal groups equal weight.
+    func aggregated(maximumSamplesPerMetric: Int) -> WorkoutHealthSnapshot {
+        let limit = max(1, maximumSamplesPerMetric)
+        let reduced = metrics.map { series in
+            guard series.samples.count > limit else { return series }
+            let samples = (0..<limit).compactMap { index -> WorkoutHealthSample? in
+                let start = index * series.samples.count / limit
+                let end = (index + 1) * series.samples.count / limit
+                let group = series.samples[start..<end]
+                guard let last = group.last else { return nil }
+                let value = series.metric == .heartRate
+                    ? group.reduce(0) { $0 + $1.value / Double(group.count) }
+                    : group.reduce(0) { $0 + $1.value }
+                return WorkoutHealthSample(date: last.date, value: value)
+            }
+            return WorkoutHealthMetricSeries(metric: series.metric, samples: samples)
+        }
+        return WorkoutHealthSnapshot(workoutID: workoutID, workoutName: workoutName,
+                                    startedAt: startedAt, endedAt: endedAt, fetchedAt: fetchedAt, metrics: reduced)
     }
 }
 

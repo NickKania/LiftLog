@@ -6,9 +6,11 @@ struct LiftLogApp: App {
     @State private var store: WorkoutStore
     @State private var restAlerts = RestTimerAlerts()
     @State private var liveActivity = WorkoutLiveActivity()
+    @State private var watchWorkout: WatchWorkoutService
     @State private var backgroundBackup = BackupBackgroundActivity()
     @State private var chatGPT: ChatGPTAccountStore
     @State private var assistant: WorkoutAssistant
+    @State private var workoutSummary: WorkoutSummaryStore
 
     init() {
         let workoutStore: WorkoutStore
@@ -18,12 +20,27 @@ struct LiftLogApp: App {
             if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
                 try? FileManager.default.removeItem(at: url)
             }
+            if ProcessInfo.processInfo.arguments.contains("--history-long-workout-ui-fixture") {
+                do { try HealthDashboardUITestFixture.seedLongWorkoutIfNeeded(at: url) }
+                catch { preconditionFailure("Could not seed the synthetic long workout: \(error.localizedDescription)") }
+            }
             workoutStore = WorkoutStore(fileURL: url)
         } else {
             workoutStore = WorkoutStore()
         }
         #else
         workoutStore = WorkoutStore()
+        #endif
+        #if DEBUG
+        if HealthDashboardUITestFixture.isEnabled {
+            HealthDashboardUITestFixture.seedWorkouts(in: workoutStore)
+        }
+        #endif
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+           ProcessInfo.processInfo.arguments.contains("--exercise-order-ui-fixture") {
+            ExerciseOrderUITestFixture.seed(in: workoutStore)
+        }
         #endif
         let accountStore: ChatGPTAccountStore
         #if DEBUG
@@ -32,6 +49,7 @@ struct LiftLogApp: App {
         accountStore = ChatGPTAccountStore()
         #endif
         _store = State(initialValue: workoutStore)
+        _watchWorkout = State(initialValue: WatchWorkoutService(store: workoutStore))
         _chatGPT = State(initialValue: accountStore)
         let workoutAssistant: WorkoutAssistant
         #if DEBUG
@@ -43,8 +61,32 @@ struct LiftLogApp: App {
         #else
         workoutAssistant = Self.makeAssistant(store: workoutStore, accounts: accountStore)
         #endif
-        accountStore.onConnectionChange = { [weak workoutAssistant] in workoutAssistant?.accountWillChange() }
+        let summaryStore: WorkoutSummaryStore
+        #if DEBUG
+        if WorkoutSummaryUITestFixture.isEnabled {
+            summaryStore = WorkoutSummaryUITestFixture.makeStore(store: workoutStore, accounts: accountStore, assistant: workoutAssistant)
+        } else {
+            summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore, assistant: workoutAssistant)
+        }
+        #else
+        summaryStore = Self.makeWorkoutSummary(store: workoutStore, accounts: accountStore, assistant: workoutAssistant)
+        #endif
+        accountStore.onConnectionChange = { [weak workoutAssistant, weak summaryStore] in
+            workoutAssistant?.accountWillChange()
+            summaryStore?.accountWillChange()
+        }
+        workoutAssistant.onProviderChange = { [weak summaryStore] in summaryStore?.providerWillChange() }
         _assistant = State(initialValue: workoutAssistant)
+        _workoutSummary = State(initialValue: summaryStore)
+    }
+
+    private static func makeWorkoutSummary(store: WorkoutStore, accounts: ChatGPTAccountStore, assistant: WorkoutAssistant) -> WorkoutSummaryStore {
+        WorkoutSummaryStore(store: store, accessToken: {
+            try await accounts.accessToken()
+        }, accountIdentity: {
+            "\(accounts.currentAccount?.id ?? "none"):\(accounts.revision):\(accounts.canUsePlan)"
+        }, healthDataProvider: AppleHealthDataProvider(),
+        selectedProvider: { assistant.selectedProvider }, localInferenceClient: AppleFoundationModelsProvider())
     }
 
     private static func makeAssistant(store: WorkoutStore, accounts: ChatGPTAccountStore) -> WorkoutAssistant {
@@ -54,7 +96,8 @@ struct LiftLogApp: App {
             "\(accounts.currentAccount?.id ?? "none"):\(accounts.revision):\(accounts.canUsePlan)"
         }, storageURL: assistantStorageURL,
         archiveAccountIdentity: { accounts.currentAccount?.id },
-        healthDataProvider: AppleHealthDataProvider())
+        healthDataProvider: AppleHealthDataProvider(), appleFoundationModels: AppleFoundationModelsProvider(),
+        beginRequestActivity: { AssistantRequestActivity.begin(onExpiration: $0) })
     }
 
     private static var assistantStorageURL: URL {
@@ -76,22 +119,31 @@ struct LiftLogApp: App {
                 .environment(store)
                 .environment(chatGPT)
                 .environment(assistant)
+                .environment(workoutSummary)
                 .environment(restAlerts)
                 .tint(.blue)
                 .task {
                     restAlerts.setActive(scenePhase == .active)
                     restAlerts.synchronize(store.activeWorkout?.restTimer)
                     liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: scenePhase == .active)
+                    watchWorkout.synchronize()
                     store.cloudBackup.scheduleBackup()
                 }
                 .onChange(of: store.activeWorkout?.restTimer) { _, rest in restAlerts.synchronize(rest) }
+                .onChange(of: store.activeWorkout) { _, _ in watchWorkout.synchronize() }
+                .onChange(of: store.templates) { _, _ in watchWorkout.synchronize() }
+                .onChange(of: store.unit) { _, _ in watchWorkout.synchronize() }
                 .onChange(of: store.activeWorkout?.activitySnapshot) { _, snapshot in
                     liveActivity.synchronize(snapshot, isActive: scenePhase == .active)
                 }
                 .onChange(of: scenePhase) { _, phase in
                     restAlerts.setActive(phase == .active)
                     liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: phase == .active)
-                    if phase == .active { store.cloudBackup.scheduleBackup() }
+                    if phase == .active {
+                        store.cloudBackup.scheduleBackup()
+                        watchWorkout.synchronize()
+                        assistant.refreshProviderAvailability()
+                    }
                     else if phase == .background {
                         assistant.saveChats()
                         backgroundBackup.run(store.cloudBackup)

@@ -17,17 +17,17 @@ struct AssistantMessageView: View {
                     ForEach(message.references, id: \.key) { reference in
                         AssistantReferenceLabel(reference: reference)
                             .padding(8)
-                            .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                            .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                             .accessibilityIdentifier("assistantMessageReference.\(reference.key)")
                     }
                 }
                     .padding(.horizontal, 16).padding(.vertical, 12)
-                    .background(.blue.opacity(0.09), in: RoundedRectangle(cornerRadius: 18))
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 24))
             }
         } else {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 8) {
-                    Image(systemName: "sparkles").foregroundStyle(.blue).accessibilityHidden(true)
+                    Image(systemName: "sparkles").foregroundStyle(.secondary).accessibilityHidden(true)
                     Text(message.isPartial ? (isWorking ? "Assistant · In progress" : "Assistant · Partial response") : "Assistant")
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -36,7 +36,7 @@ struct AssistantMessageView: View {
                             UIPasteboard.general.string = message.text
                         } label: {
                             Image(systemName: "document.on.document").foregroundStyle(.secondary)
-                                .frame(width: 44, height: 32)
+                                .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }.buttonStyle(.plain).accessibilityLabel("Copy response")
                             .accessibilityIdentifier("assistantCopyResponseButton")
@@ -48,7 +48,8 @@ struct AssistantMessageView: View {
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("assistantHealthResponseDisclosure")
                 }
-            }.assistantCard()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

@@ -49,7 +49,7 @@ struct CloudBackupSettingsView: View {
     }
 
     private var backupList: some View {
-        List {
+        LiftList {
             Section {
                 Button("Refresh Backups", systemImage: "arrow.clockwise") {
                     Task { await backup.refresh() }

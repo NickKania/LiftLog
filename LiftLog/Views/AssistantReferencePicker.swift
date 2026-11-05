@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AssistantReferencePicker: View {
+    let provider: AssistantProvider
     let references: [AssistantWorkoutReference]
     let isDisabled: Bool
     let onSelect: ([AssistantWorkoutReference]) -> Void
@@ -11,12 +12,14 @@ struct AssistantReferencePicker: View {
     private let selectionLimit = 10
 
     init(
+        provider: AssistantProvider,
         references: [AssistantWorkoutReference],
         selectedReferences: [AssistantWorkoutReference],
         isDisabled: Bool,
         onSelect: @escaping ([AssistantWorkoutReference]) -> Void,
         onCancel: @escaping () -> Void
     ) {
+        self.provider = provider
         self.references = references
         self.isDisabled = isDisabled
         self.onSelect = onSelect
@@ -53,10 +56,10 @@ struct AssistantReferencePicker: View {
                     }
                 }
                 .padding(12)
-                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(LiftTheme.surface, in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 16).padding(.vertical, 10)
 
-                List {
+                LiftList {
                     Section {
                         Text("\(selectedReferences.count) of \(selectionLimit) selected")
                             .font(.subheadline).foregroundStyle(.secondary)
@@ -81,7 +84,7 @@ struct AssistantReferencePicker: View {
                 .listStyle(.insetGrouped)
                 .scrollDismissesKeyboard(.interactively)
             }
-            .background(Color(.systemGroupedBackground))
+            .liftCanvas()
             .navigationTitle("Tag workout data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -137,7 +140,9 @@ struct AssistantReferencePicker: View {
                 }
             } footer: {
                 if kind == .health {
-                    Text("Health tags include heart rate, active energy and steps from the selected workout’s start to finish (or now for an active session). When you send, LiftLog requests read-only Apple Health access and shares available data with OpenAI for that message. Health replies and charts aren’t saved; tag Health again for each message.")
+                    Text(provider == .appleFoundationModels
+                         ? "Health tags include heart rate, active energy and steps from the selected workout’s start to finish (or now for an active session). When you send, LiftLog requests read-only Apple Health access and processes available data on this iPhone for that message. Health questions, replies and charts aren’t saved; tag Health again for each message."
+                         : "Health tags include heart rate, active energy and steps from the selected workout’s start to finish (or now for an active session). When you send, LiftLog requests read-only Apple Health access and shares available data with OpenAI for that message. Health replies and charts aren’t saved; tag Health again for each message.")
                         .accessibilityIdentifier("assistantHealthPickerDisclosure")
                 }
             }

@@ -76,11 +76,12 @@ private struct WorkoutActivityCard: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .center, spacing: 2) {
                     Text("WORKOUT TIME").font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.65))
                     elapsedTime(state.startedAt).font(.title3.monospacedDigit().bold())
-                        .frame(width: 90, alignment: .trailing)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 90, alignment: .center)
                         .minimumScaleFactor(0.7)
                         .accessibilityLabel("Total workout time")
                         .accessibilityValue(elapsedTime(state.startedAt))

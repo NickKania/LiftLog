@@ -7,6 +7,8 @@ private final class HealthPrivacyTransport: ChatGPTInferenceTransport {
     var outputs: [[[String: Any]]] = []
     var includesLuna = false
     var status = 200
+    var holdStream = false
+    var heldStream: AsyncThrowingStream<String, Error>.Continuation?
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let names = includesLuna ? ["health-test", "gpt-6-luna"] : ["health-test"]
@@ -18,6 +20,9 @@ private final class HealthPrivacyTransport: ChatGPTInferenceTransport {
 
     func stream(for request: URLRequest) async throws -> ChatGPTHTTPStream {
         requests.append(request)
+        if holdStream {
+            return ChatGPTHTTPStream(response: response(request), lines: AsyncThrowingStream { heldStream = $0 })
+        }
         let output = outputs.isEmpty ? [Self.answer("Safe answer")] : outputs.removeFirst()
         let data = try JSONSerialization.data(withJSONObject: ["type": "response.completed",
             "response": ["status": "completed", "output": output]])
@@ -262,6 +267,64 @@ final class AssistantHealthPrivacyTests: XCTestCase {
         let unavailable = await ready(store, provider: nil, transport: transport)
         XCTAssertFalse(unavailable.send("Health", references: [AssistantWorkoutReference(healthWorkout: workout)]))
         XCTAssertTrue(unavailable.messages.isEmpty)
+    }
+
+    @MainActor
+    func testBackgroundExpirationNeverArchivesOrReusesHealthPartialReply() async throws {
+        let file = url(), archiveURL = url()
+        defer { try? FileManager.default.removeItem(at: file); try? FileManager.default.removeItem(at: archiveURL) }
+        let store = WorkoutStore(fileURL: file)
+        let workout = try session(in: store)
+        let provider = HealthPrivacyProvider(), transport = HealthPrivacyTransport()
+        transport.holdStream = true
+        var expire: (@MainActor () -> Void)?
+        var ended = false
+        let assistant = WorkoutAssistant(store: store, accessToken: { "mock" }, transport: transport,
+            storageURL: archiveURL, healthDataProvider: provider, beginRequestActivity: { expiration in
+                expire = expiration
+                return { ended = true }
+            })
+        await assistant.refreshModels()
+        XCTAssertTrue(assistant.send("Private health question", references: [AssistantWorkoutReference(healthWorkout: workout)]))
+        for _ in 0..<10_000 {
+            if transport.heldStream != nil { break }
+            await Task.yield()
+        }
+        let stream = try XCTUnwrap(transport.heldStream)
+        let event = try JSONSerialization.data(withJSONObject: ["type": "response.output_text.delta", "delta": "Private reading 151.873"])
+        stream.yield("data: " + String(decoding: event, as: UTF8.self))
+        stream.yield("")
+        for _ in 0..<10_000 {
+            if assistant.messages.last?.text == "Private reading 151.873" { break }
+            await Task.yield()
+        }
+        XCTAssertEqual(assistant.messages.last?.text, "Private reading 151.873")
+        try XCTUnwrap(expire)()
+        for _ in 0..<10_000 {
+            if ended { break }
+            await Task.yield()
+        }
+        XCTAssertTrue(ended)
+        XCTAssertFalse(assistant.isWorking)
+        XCTAssertEqual(assistant.messages.last?.text, "Private reading 151.873", "Health text may remain visible in memory")
+        XCTAssertTrue(assistant.errorMessage?.contains("background time expired") == true)
+        let saved = try AssistantChatArchive.load(from: archiveURL)
+        let record = try XCTUnwrap(saved.accounts["__local__"]?.chats.first)
+        XCTAssertTrue(record.messages.isEmpty)
+        XCTAssertFalse(record.wasWorking)
+        let archiveText = try String(contentsOf: archiveURL, encoding: .utf8)
+        XCTAssertFalse(archiveText.contains("151.873"))
+        XCTAssertFalse(archiveText.contains("Private health question"))
+        let reopened = WorkoutAssistant(store: store, accessToken: { "mock" }, storageURL: archiveURL)
+        XCTAssertTrue(reopened.messages.isEmpty)
+
+        transport.holdStream = false
+        XCTAssertTrue(assistant.send("Ordinary follow-up"))
+        await finish(assistant)
+        let followUp = try inputText(XCTUnwrap(transport.requests.last))
+        XCTAssertFalse(followUp.contains("151.873"))
+        XCTAssertFalse(followUp.contains("Private health question"))
+        XCTAssertEqual(provider.reads.count, 1)
     }
 
     @MainActor

@@ -5,6 +5,9 @@ struct TemplateEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: WorkoutTemplate
     @State private var pickingExercise = false
+    @State private var supersetEditor: SupersetEditorContext?
+    @State private var restExercise: TemplateExercise?
+    @State private var swappingExercise: TemplateExercise?
     @State private var invalidSets: Set<UUID> = []
     @State private var draftUnit: WeightUnit?
     private let isNew: Bool
@@ -21,23 +24,20 @@ struct TemplateEditorView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 Section("Template name") {
                     TextField("e.g. Upper Body", text: $draft.name)
                         .accessibilityIdentifier("templateNameField")
                 }
                 Section {
-                    Stepper(value: $draft.restSeconds, in: 0...3600, step: 15) {
-                        LabeledContent("Rest between sets", value: restDescription(draft.restSeconds))
-                    }
-                    .accessibilityIdentifier("templateRestStepper")
+                    RestDurationStepper(seconds: $draft.restSeconds, identifier: "templateRestStepper")
                 } footer: {
-                    Text("Complete a set with more sets remaining to start a countdown. A tone signals your next set. Set to Off to disable it.")
+                    Text("The workout default applies unless an exercise has its own rest time. Complete a set with more sets remaining to start a countdown.")
                 }
                 if let original {
                     Section {
                         LabeledContent("Based on", value: "Version \(original.currentVersion?.number ?? 1)")
-                        Text("Exercise, set, and rest changes save a new version. Renaming keeps the current version.")
+                        Text("Exercise, set, superset, and rest changes save a new version. Renaming keeps the current version.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     if let lastWorkout {
@@ -63,37 +63,65 @@ struct TemplateEditorView: View {
                         }
                     }
                 }
-                ForEach(Array(draft.exercises.enumerated()), id: \.element.id) { exerciseIndex, exercise in
+                ForEach(draft.exercises) { exercise in
+                    let group = SupersetStyle.group(for: exercise, in: draft.exercises)
                     Section {
+                        Button {
+                            hideKeyboard()
+                            restExercise = exercise
+                        } label: {
+                            LabeledContent("Rest", value: RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: draft.restSeconds))
+                        }
+                        .accessibilityIdentifier("templateExerciseRest-\(exercise.id)")
                         SetColumnHeader(unit: unit, repsTitle: "TARGET REPS")
                         ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { setIndex, set in
                             SetInputRow(number: setIndex + 1, unit: unit, weight: set.weight, reps: set.targetReps, repsTitle: "Target reps", onChange: { weight, reps in
-                                draft.exercises[exerciseIndex].updateSetValues(weight: weight, targetReps: reps)
+                                updateExercise(exercise.id) { $0.updateSetValues(weight: weight, targetReps: reps) }
                             }, onValidity: { valid in
                                 if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
                             })
                             .swipeActions {
                                 Button("Delete", role: .destructive) {
                                     invalidSets.remove(set.id)
-                                    draft.exercises[exerciseIndex].sets.removeAll { $0.id == set.id }
+                                    updateExercise(exercise.id) { $0.sets.removeAll { $0.id == set.id } }
                                 }
                             }
                         }
                         Button("Add Set", systemImage: "plus") {
-                            let last = draft.exercises[exerciseIndex].sets.last
-                            draft.exercises[exerciseIndex].sets.append(TemplateSet(weight: last?.weight ?? 0, targetReps: last?.targetReps ?? 10))
+                            updateExercise(exercise.id) { entry in
+                                let last = entry.sets.last
+                                entry.sets.append(TemplateSet(weight: last?.weight ?? 0, targetReps: last?.targetReps ?? 10))
+                            }
                         }
                     } header: {
                         HStack {
-                            Text(exercise.exercise.name)
+                            SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                             Spacer()
+                            Menu {
+                                Button("Replace Exercise", systemImage: "arrow.triangle.2.circlepath") {
+                                    hideKeyboard()
+                                    swappingExercise = exercise
+                                }
+                                .accessibilityIdentifier("replaceExerciseButton")
+                                Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
+                                    hideKeyboard()
+                                    supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: draft.exercises, scope: "template", name: { $0.exercise.name })
+                                }
+                                .accessibilityIdentifier(exercise.supersetID == nil ? "addSupersetButton" : "editSupersetButton")
+                            } label: {
+                                Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44)
+                            }
+                            .accessibilityLabel("Exercise options for \(exercise.exercise.name)")
+                            .accessibilityIdentifier("templateExerciseMenu-\(exercise.id)")
                             Button {
                                 exercise.sets.forEach { invalidSets.remove($0.id) }
                                 draft.exercises.removeAll { $0.id == exercise.id }
-                            } label: { Image(systemName: "minus.circle") }
+                                SupersetGrouping.normalize(&draft.exercises)
+                            } label: { Image(systemName: "minus.circle").frame(minWidth: 44, minHeight: 44) }
                             .accessibilityLabel("Remove \(exercise.exercise.name)")
                         }
                     }
+                    .listRowBackground(SupersetRowBackground(group: group))
                 }
                 Section {
                     Button("Add Exercise", systemImage: "plus.circle.fill") { pickingExercise = true }
@@ -104,7 +132,7 @@ struct TemplateEditorView: View {
                 if original != nil {
                     Section {
                         if changes.isEmpty {
-                            Text("Adjust a weight, rep target, exercise, or rest period to create your next version.")
+                            Text("Adjust a weight, rep target, exercise, superset, or rest period to create your next version.")
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(Array(changes.enumerated()), id: \.offset) { _, change in
@@ -119,7 +147,8 @@ struct TemplateEditorView: View {
                     .accessibilityIdentifier("templateVersionChangeSummary")
                 }
             }
-            .workoutErrorAlert(enabled: !pickingExercise)
+            .accessibilityIdentifier("templateEditor")
+            .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && swappingExercise == nil && restExercise == nil)
             .navigationTitle(isNew ? "New Template" : (planningNextWorkout ? "Plan Next Workout" : "Edit Template"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -140,11 +169,41 @@ struct TemplateEditorView: View {
                     draft.exercises.append(TemplateExercise(exercise: exercise, sets: [TemplateSet(weight: 0, targetReps: 10)]))
                 }
             }
+            .sheet(item: $restExercise) { exercise in
+                RestSettingsEditorView(title: exercise.exercise.name, restSeconds: exercise.restSeconds,
+                    workoutRestSeconds: draft.restSeconds,
+                    footer: "Choose a rest time for this exercise, such as a shorter rest for burnout sets.") { seconds in
+                    updateExercise(exercise.id) { $0.restSeconds = seconds }
+                    return true
+                }
+            }
+            .sheet(item: $supersetEditor) { context in
+                SupersetEditorView(context: context) { selectedIDs in
+                    SupersetGrouping.update(&draft.exercises, anchorID: context.id, selectedIDs: selectedIDs)
+                }
+            }
+            .sheet(item: $swappingExercise) { expectedEntry in
+                ExerciseSwapView(originalExercise: expectedEntry.exercise, scope: .template) { replacement in
+                    do {
+                        draft = try ExerciseReplacement.replacing(draft, expectedEntry: expectedEntry, with: replacement)
+                        expectedEntry.sets.forEach { invalidSets.remove($0.id) }
+                        return true
+                    } catch {
+                        store.errorMessage = error.localizedDescription
+                        return false
+                    }
+                }
+            }
         }
         .onAppear { if draftUnit == nil { draftUnit = store.unit } }
     }
 
     private var unit: WeightUnit { draftUnit ?? store.unit }
+
+    private func updateExercise(_ id: UUID, change: (inout TemplateExercise) -> Void) {
+        guard let index = draft.exercises.firstIndex(where: { $0.id == id }) else { return }
+        change(&draft.exercises[index])
+    }
 
     private var lastWorkout: WorkoutSession? {
         store.history.filter { $0.templateID == original?.id }.max { $0.startedAt < $1.startedAt }
@@ -168,6 +227,9 @@ struct TemplateEditorView: View {
         }
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if name != original.name { result.append("Name: \(original.name) → \(name)") }
+        if SupersetGrouping.memberIDs(draft.exercises) != SupersetGrouping.memberIDs(original.exercises) {
+            result.append("Update superset groups")
+        }
         for item in original.exercises where !draft.exercises.contains(where: { $0.id == item.id }) {
             result.append("Remove \(item.exercise.name)")
         }
@@ -175,6 +237,9 @@ struct TemplateEditorView: View {
             guard let previous = original.exercises.first(where: { $0.id == item.id }) else {
                 result.append("Add \(item.exercise.name): \(item.sets.count) sets")
                 continue
+            }
+            if item.restSeconds != previous.restSeconds {
+                result.append("\(item.exercise.name) rest: \(RestTime.exerciseDescription(previous.restSeconds, workoutDefault: original.restSeconds)) → \(RestTime.exerciseDescription(item.restSeconds, workoutDefault: draft.restSeconds))")
             }
             for (index, set) in item.sets.enumerated() {
                 guard let oldSet = previous.sets.first(where: { $0.id == set.id }) else {
@@ -209,7 +274,7 @@ struct TemplateVersionHistoryView: View {
     private var template: WorkoutTemplate? { store.templates.first { $0.id == templateID } }
 
     var body: some View {
-        List {
+        LiftList {
             if let template {
                 Section {
                     ForEach(template.versions.reversed()) { version in
@@ -252,7 +317,7 @@ private struct TemplateVersionDetailView: View {
     @Binding var showWorkout: Bool
 
     var body: some View {
-        List {
+        LiftList {
             Section {
                 LabeledContent("Template", value: version.name)
                 LabeledContent("Version", value: String(version.number))
@@ -268,12 +333,17 @@ private struct TemplateVersionDetailView: View {
                 Text("Starting this version keeps the newest version as your default.")
             }
             ForEach(version.exercises) { exercise in
-                Section(exercise.exercise.name) {
+                let group = SupersetStyle.group(for: exercise, in: version.exercises)
+                Section {
+                    LabeledContent("Rest", value: RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: version.restSeconds))
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                         LabeledContent("Set \(index + 1)", value: "\(set.weight.formatted(.number.precision(.fractionLength(0...2)))) \(version.unit.rawValue) × \(set.targetReps)")
                             .monospacedDigit()
                     }
+                } header: {
+                    SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
                 }
+                .listRowBackground(SupersetRowBackground(group: group))
             }
         }
         .workoutErrorAlert(enabled: !showWorkout)

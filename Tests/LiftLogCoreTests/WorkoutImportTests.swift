@@ -165,30 +165,30 @@ final class WorkoutImportTests: XCTestCase {
         XCTAssertNil(try JSONDecoder().decode(WorkoutSession.self, from: data).importSourceKey)
     }
 
-    func testProvidedStrongExportFixture() throws {
+    func testSyntheticStrongExportFixture() throws {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "strong_workouts", withExtension: "csv", subdirectory: "Fixtures"))
         let csv = try String(contentsOf: url, encoding: .utf8)
         let value = try StrongWorkoutImporter.preview(csv: csv, unit: .lb, timeZone: utc, catalog: ExerciseCatalog.all)
         XCTAssertEqual(value.workouts.count, 1)
         let session = value.workouts[0].session
-        XCTAssertEqual(session.name, "Morning Workout")
-        let expectedStart = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-03T10:20:37Z"))
+        XCTAssertEqual(session.name, "Synthetic Import Workout")
+        let expectedStart = try XCTUnwrap(ISO8601DateFormatter().date(from: "2000-01-01T12:00:00Z"))
         XCTAssertEqual(session.startedAt, expectedStart)
-        XCTAssertEqual(session.finishedAt, expectedStart.addingTimeInterval(55 * 60))
+        XCTAssertEqual(session.finishedAt, expectedStart.addingTimeInterval(30 * 60))
         XCTAssertEqual(session.exercises.map(\.exercise.name), [
             "Bench Press (Dumbbell)", "Incline Bench Press (Dumbbell)", "Chest Fly",
             "Triceps Pushdown (Cable - Straight Bar)", "Triceps Extension"
         ])
-        let weights: [Double] = [50, 40, 27.5, 37.5, 37.5]
-        let reps = [[10, 9, 7, 5], [10, 7, 6, 6], [10, 9, 8, 7], [10, 10, 10, 10], [10, 10, 9, 6]]
+        let weights: [Double] = [20, 15, 10, 12.5, 12.5]
+        let reps = [[8, 8, 8, 8], [6, 6, 6, 6], [12, 12, 12, 12], [10, 10, 10, 10], [8, 8, 8, 8]]
         for index in session.exercises.indices {
             XCTAssertEqual(session.exercises[index].sets.map(\.weight), Array(repeating: weights[index], count: 4))
             XCTAssertEqual(session.exercises[index].sets.map(\.reps), reps[index])
         }
         XCTAssertEqual(value.workouts[0].session.exercises.count, 5)
         XCTAssertEqual(value.workouts[0].session.exercises.flatMap(\.sets).count, 20)
-        XCTAssertEqual(value.workouts[0].session.exercises.flatMap(\.sets).reduce(0) { $0 + $1.reps }, 169)
-        XCTAssertEqual(value.workouts[0].session.finishedAt!.timeIntervalSince(value.workouts[0].session.startedAt), 55 * 60)
+        XCTAssertEqual(value.workouts[0].session.exercises.flatMap(\.sets).reduce(0) { $0 + $1.reps }, 176)
+        XCTAssertEqual(value.workouts[0].session.finishedAt!.timeIntervalSince(value.workouts[0].session.startedAt), 30 * 60)
         XCTAssertEqual(value.skippedRestRows, 20)
         XCTAssertTrue(value.warnings.isEmpty)
     }

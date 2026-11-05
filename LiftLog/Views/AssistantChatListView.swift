@@ -12,7 +12,7 @@ struct AssistantChatListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LiftList {
                 if assistant.chats.isEmpty {
                     ContentUnavailableView("No saved chats", systemImage: "bubble.left.and.bubble.right",
                                            description: Text("Your conversations appear here for later reference."))
@@ -88,7 +88,7 @@ struct AssistantChatListView: View {
                     Button("Done") { dismiss() }
                         .accessibilityIdentifier("assistantChatListDoneButton")
                 }
-                if accounts.canUsePlan {
+                if assistant.selectedProvider == .chatGPT ? accounts.canUsePlan : assistant.appleFoundationModelsAvailability.isAvailable {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("New chat", systemImage: "square.and.pencil", action: onCreate)
                             .accessibilityIdentifier("assistantChatListNewButton")
