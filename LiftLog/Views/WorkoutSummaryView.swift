@@ -13,6 +13,7 @@ struct WorkoutSummaryView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
 
+    @State private var showingShare = false
     @State private var includeHealth = false
     @State private var selectedModel = ""
     @State private var didAutoGenerate = false
@@ -67,6 +68,9 @@ struct WorkoutSummaryView: View {
             VStack(alignment: .leading, spacing: 20) {
                 if let workout {
                     workoutFacts(workout)
+                    Button("Share Workout", systemImage: "square.and.arrow.up") { showingShare = true }
+                        .liftGlassButton()
+                        .accessibilityIdentifier("shareWorkoutSummaryButton")
                 } else {
                     ContentUnavailableView("Workout unavailable", systemImage: "questionmark.folder",
                                           description: Text("This workout is no longer in your saved history."))
@@ -98,6 +102,11 @@ struct WorkoutSummaryView: View {
                     dismiss()
                 }
                 .accessibilityIdentifier("closeWorkoutSummaryButton")
+            }
+        }
+        .sheet(isPresented: $showingShare) {
+            if let workout {
+                NavigationStack { WorkoutShareView(workout: workout) }
             }
         }
         .task {

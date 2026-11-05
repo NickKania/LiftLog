@@ -64,6 +64,17 @@ enum HealthDashboardUITestFixture {
                 }, supersetID: entry.supersetID, templateExerciseID: entry.id, restSeconds: entry.restSeconds)
             }
         }
+
+        if ProcessInfo.processInfo.arguments.contains("--workout-share-overflow-ui-fixture") {
+            // Many performed exercises exercise the Story card's bounded, tail-truncated list.
+            sessions[0].exercises = store.exercises.prefix(20).enumerated().map { index, exercise in
+                WorkoutExercise(id: identifier(60_000 + index), exercise: exercise,
+                    sets: [WorkoutSet(id: identifier(61_000 + index), weight: 45, reps: 8, isCompleted: true)])
+            }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--workout-share-long-name-ui-fixture") {
+            sessions[0].name = "Full Body Strength Training with Heavy Compound Lifts and Accessory Exercises for Upper Body Lower Body and Core Conditioning"
+        }
         if ProcessInfo.processInfo.arguments.contains("--health-dashboard-overlap-ui-fixture") {
             // Simulate importing a workout already recorded locally, with distinct
             // record identities but an identical Health time window.

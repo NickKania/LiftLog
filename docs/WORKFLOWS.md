@@ -62,3 +62,7 @@ The Watch outbox tests also cover saved-but-unqueued request recovery, exits bef
 Recovered Watch requests without transfer checkpoints wait for a matching fresh, read-only phone recovery response before replay. The restarted-phone regression applies zero, one or two rest extensions before relaunch and verifies that only the unapplied suffix is sent, rest grows by exactly 60 seconds, and the final receipt clears the pending ledger.
 
 Enriched Markdown rendering is shared by assistant replies and workout summaries. `AssistantMarkdownRenderingTests` covers generated-content image/link privacy and partial Markdown; the native formatting/copy and summary wide-table tests cover the rendered screens. See [Testing](TESTING.md#enriched-markdown-assistant-and-summaries) for fixture and visual checks.
+
+### Share completed workout statistics
+
+From the completion summary, choose **Share Workout**; from a History detail, use the share toolbar button. Preview **Story · 9:16** or **Square · 1:1**, then **Share image** to open the system sheet. The exported image includes only its displayed workout facts, with no notes, Health data, or coaching. Story cards also list performed exercises in workout order; lists longer than five lines end with an ellipsis. Creation works offline without an account. Save the image for story destinations that do not appear in the system sheet. Native coverage: `WorkoutShareUITests`.

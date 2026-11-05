@@ -300,6 +300,7 @@ struct WorkoutDetailView: View {
     let workout: WorkoutSession
     @State private var editing = false
     @State private var showingSummary = false
+    @State private var showingShare = false
     @State private var undoing: WorkoutSession?
     @State private var creatingTemplate = false
 
@@ -316,6 +317,11 @@ struct WorkoutDetailView: View {
                                 .accessibilityIdentifier("historySaveAsTemplateButton")
                         }
                         ToolbarItem(placement: .topBarTrailing) {
+                            Button("Share Workout", systemImage: "square.and.arrow.up") { showingShare = true }
+                                .labelStyle(.iconOnly)
+                                .accessibilityIdentifier("shareWorkoutButton")
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Edit") { editing = true }
                                 .accessibilityIdentifier("editHistoryWorkoutButton")
                         }
@@ -329,6 +335,9 @@ struct WorkoutDetailView: View {
                     }
                     .sheet(isPresented: $creatingTemplate) {
                         HistoryTemplateView(workout: current)
+                    }
+                    .sheet(isPresented: $showingShare) {
+                        NavigationStack { WorkoutShareView(workout: current) }
                     }
                     .sheet(isPresented: $editing) { WorkoutHistoryEditorView(workout: current, unit: current.unit) }
                     .sheet(isPresented: $showingSummary) {
