@@ -4,6 +4,64 @@ final class WorkoutHistoryEditingUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testHistoryOrderOnlyRevisionAndIdenticalPlan() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--health-dashboard-ui-fixture",
+                               "--history-template-order-ui-fixture"]
+        app.launch()
+        defer { app.terminate() }
+        app.tabBars.buttons["History"].tap()
+        openFirstWorkout(in: app)
+        app.buttons["historySaveAsTemplateButton"].tap()
+        let target = app.buttons["historyTemplateTarget-4845414C-5448-4000-8000-000000000100"]
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        target.tap()
+        let save = app.buttons["saveTemplateButton"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(save.isEnabled, "An exercise-order change alone must be saveable")
+        let order = app.staticTexts["Reorder exercises"]
+        scrollTo(order, in: app)
+        XCTAssertTrue(order.exists)
+        attach("History order-only version", app: app)
+        save.tap()
+        XCTAssertTrue(app.buttons["historySaveAsTemplateButton"].waitForExistence(timeout: 5))
+        app.buttons["historySaveAsTemplateButton"].tap()
+        target.tap()
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertFalse(save.isEnabled, "The newly saved prescription is now identical")
+        app.buttons["Cancel"].firstMatch.tap()
+    }
+
+    @MainActor
+    func testCreateTemplateAndVersionFromHistory() {
+        let app = launch(populated: true)
+        defer { app.terminate() }
+        openFirstWorkout(in: app)
+        app.buttons["historySaveAsTemplateButton"].tap()
+        XCTAssertTrue(app.buttons["historyCreateNewTemplateButton"].waitForExistence(timeout: 5))
+        attach("Save history as template choices", app: app)
+        app.buttons["historyCreateNewTemplateButton"].tap()
+        XCTAssertTrue(app.textFields["templateNameField"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["templateNameField"].value as? String, "Fixture Upper Body")
+        attach("Template from completed work", app: app)
+        app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["historySaveAsTemplateButton"].waitForExistence(timeout: 5))
+        app.buttons["historySaveAsTemplateButton"].tap()
+        app.buttons["historyCreateNewTemplateButton"].tap()
+        app.buttons["saveTemplateButton"].tap()
+        XCTAssertTrue(app.buttons["historySaveAsTemplateButton"].waitForExistence(timeout: 5))
+        app.buttons["historySaveAsTemplateButton"].tap()
+        let target = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "historyTemplateTarget-")).firstMatch
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        target.tap()
+        XCTAssertTrue(app.textFields["templateNameField"].waitForExistence(timeout: 5))
+        attach("Review history as template version", app: app)
+        app.buttons["saveTemplateButton"].tap()
+        XCTAssertTrue(app.buttons["historySaveAsTemplateButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Fixture Upper Body"].exists)
+    }
+
+    @MainActor
     func testCorrectionDraftReviewPersistenceAndUndo() {
         let app = launch(populated: true)
         defer { app.terminate() }

@@ -55,6 +55,15 @@ enum HealthDashboardUITestFixture {
                 finishedAt: start.addingTimeInterval(Double(32 + index % 5 * 4) * 60), unit: unit,
                 importSourceKey: "health-dashboard-ui-fixture-\(index)", exercises: entries)
         }
+        if ProcessInfo.processInfo.arguments.contains("--history-template-order-ui-fixture") {
+            let template = store.templates.first { $0.id == templates[0].id }!
+            sessions[0].unit = store.unit
+            sessions[0].exercises = template.exercises.reversed().map { entry in
+                WorkoutExercise(exercise: entry.exercise, sets: entry.sets.map {
+                    WorkoutSet(weight: $0.weight, reps: $0.targetReps, isCompleted: true)
+                }, supersetID: entry.supersetID, templateExerciseID: entry.id, restSeconds: entry.restSeconds)
+            }
+        }
         if ProcessInfo.processInfo.arguments.contains("--health-dashboard-overlap-ui-fixture") {
             // Simulate importing a workout already recorded locally, with distinct
             // record identities but an identical Health time window.

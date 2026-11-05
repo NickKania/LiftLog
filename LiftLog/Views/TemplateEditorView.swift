@@ -10,21 +10,32 @@ struct TemplateEditorView: View {
     @State private var swappingExercise: TemplateExercise?
     @State private var invalidSets: Set<UUID> = []
     @State private var draftUnit: WeightUnit?
+    private let sourceWorkout: WorkoutSession?
     private let isNew: Bool
     private let planningNextWorkout: Bool
     private let original: WorkoutTemplate?
 
-    init(template: WorkoutTemplate?, planningNextWorkout: Bool = false, unit: WeightUnit? = nil) {
+    init(template: WorkoutTemplate?, planningNextWorkout: Bool = false, unit: WeightUnit? = nil, initialDraft: WorkoutTemplate? = nil, sourceWorkout: WorkoutSession? = nil) {
+        self.sourceWorkout = sourceWorkout
         isNew = template == nil
         self.planningNextWorkout = planningNextWorkout
         original = template
         _draftUnit = State(initialValue: unit)
-        _draft = State(initialValue: template ?? WorkoutTemplate(name: "", exercises: []))
+        _draft = State(initialValue: initialDraft ?? template ?? WorkoutTemplate(name: "", exercises: []))
     }
 
     var body: some View {
         NavigationStack {
             LiftList {
+                if let sourceWorkout {
+                    Section("From completed workout") {
+                        Text(sourceWorkout.name).font(.headline)
+                        Text(sourceWorkout.startedAt.formatted(date: .abbreviated, time: .shortened))
+                            .foregroundStyle(.secondary)
+                        Text("Completed weights and reps become planned targets. Review before saving.")
+                            .font(.subheadline)
+                    }
+                }
                 Section("Template name") {
                     TextField("e.g. Upper Body", text: $draft.name)
                         .accessibilityIdentifier("templateNameField")
@@ -149,7 +160,7 @@ struct TemplateEditorView: View {
             }
             .accessibilityIdentifier("templateEditor")
             .workoutErrorAlert(enabled: !pickingExercise && supersetEditor == nil && swappingExercise == nil && restExercise == nil)
-            .navigationTitle(isNew ? "New Template" : (planningNextWorkout ? "Plan Next Workout" : "Edit Template"))
+            .navigationTitle(isNew ? "New Template" : (sourceWorkout != nil ? "Version" : (planningNextWorkout ? "Plan Next Workout" : "Edit Template")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -159,7 +170,7 @@ struct TemplateEditorView: View {
                         if store.saveTemplate(draft, expectedUnit: unit) { dismiss() }
                     }
                     .bold()
-                    .disabled(draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft.exercises.isEmpty || draft.exercises.contains { $0.sets.isEmpty } || !invalidSets.isEmpty || (!isNew && changes.isEmpty))
+                    .disabled(draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft.exercises.isEmpty || draft.exercises.contains { $0.sets.isEmpty } || !invalidSets.isEmpty || (!isNew && changes.isEmpty && !createsVersion))
                     .accessibilityIdentifier("saveTemplateButton")
                 }
                 ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { hideKeyboard() } }
@@ -230,6 +241,11 @@ struct TemplateEditorView: View {
         if SupersetGrouping.memberIDs(draft.exercises) != SupersetGrouping.memberIDs(original.exercises) {
             result.append("Update superset groups")
         }
+        let retainedIDs = Set(original.exercises.map(\.id)).intersection(draft.exercises.map(\.id))
+        if original.exercises.map(\.id).filter({ retainedIDs.contains($0) }) !=
+            draft.exercises.map(\.id).filter({ retainedIDs.contains($0) }) {
+            result.append("Reorder exercises")
+        }
         for item in original.exercises where !draft.exercises.contains(where: { $0.id == item.id }) {
             result.append("Remove \(item.exercise.name)")
         }
@@ -237,6 +253,9 @@ struct TemplateEditorView: View {
             guard let previous = original.exercises.first(where: { $0.id == item.id }) else {
                 result.append("Add \(item.exercise.name): \(item.sets.count) sets")
                 continue
+            }
+            if item.exercise != previous.exercise {
+                result.append("Update exercise details: \(previous.exercise.name) → \(item.exercise.name)")
             }
             if item.restSeconds != previous.restSeconds {
                 result.append("\(item.exercise.name) rest: \(RestTime.exerciseDescription(previous.restSeconds, workoutDefault: original.restSeconds)) → \(RestTime.exerciseDescription(item.restSeconds, workoutDefault: draft.restSeconds))")
