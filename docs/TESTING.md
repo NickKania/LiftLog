@@ -499,3 +499,7 @@ Check saving/reusing an image and actual receiving social apps on a physical iPh
 Initial five-line verification (2026-11-04): the generic iOS Simulator build and the two original sharing UI tests passed. The twenty-exercise list was inspected on iPhone 13 mini / iOS 26.5 in light/dark appearance and accessibility XXXL. Review PNGs remain ignored under `artifacts/screenshots/workout-share-five-lines/`. Earlier three-line captures are superseded.
 
 Review follow-up (2026-11-04): the generic iOS Simulator build and all four sharing UI tests pass. The fractional-kg VoiceOver test failed before aligning its precision with the card (2,503.829882 spoken versus 2,503.8 shown) and passes afterward. A 125-character multi-word name combined with twenty exercises did not reproduce the hypothesized card overflow: the name scales/truncates within three lines and both formats retain the header, stats, and footer. Final running-app captures on iPhone 13 mini / iOS 26.5 cover light/dark formats and accessibility XXXL under `artifacts/screenshots/workout-share-review/`. Pixel-level truncation and actual transferred encoding/dimensions remain manual/device verification gaps.
+
+## Siri actions
+
+Run `SiriWorkoutActionsTests` with the core suite and `LiftLogAppTests/WorkoutIntentEntityTests` on an isolated iOS simulator. See [Siri and Shortcuts](SIRI_SHORTCUTS.md) for the physical-device voice, confirmation, indexing, and cold-launch acceptance checklist.

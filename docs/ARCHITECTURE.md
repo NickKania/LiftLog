@@ -141,3 +141,7 @@ DEBUG-only `--watch-preview-fixture`, `--watch-preview-rest`, and `--watch-previ
 ## Workout image sharing
 
 Completed-workout summaries and History details open `WorkoutShareView`. It renders a local image with SwiftUI `ImageRenderer` at 1080 × 1920 (Story) or 1080 × 1080 (Square), then hands that image to the native `ShareLink`. The image contains only the recorded workout name/date, completed sets, reps, recorded-unit volume, and duration. Story cards also list exercise entries with completed sets in recorded order, joined by middle dots and limited to five lines with a trailing ellipsis. Totals reuse `WorkoutSummaryAnalytics`; notes, Health readings, and assistant responses are excluded. No account, network, Photos permission, database write, or third-party SDK is needed to create or share the image. Installed apps determine share-sheet destinations; users can save the image for use in a story. Export typography has a fixed size, while preview controls and disclosure text follow Dynamic Type.
+
+## Siri and Shortcuts
+
+The app-target App Intents expose workout start/end, exercise add/remove, and set completion. `AppWorkoutStore` shares a single main-actor store between scene initialization and intent queries/execution; Foundation-based `SiriWorkoutActions` validates live identities and uses transactional store mutations. See [Siri and Shortcuts](SIRI_SHORTCUTS.md) for parameters, confirmations, limits, and validation.
