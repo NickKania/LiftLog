@@ -13,35 +13,7 @@ struct LiftLogApp: App {
     @State private var workoutSummary: WorkoutSummaryStore
 
     init() {
-        let workoutStore: WorkoutStore
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("LiftLogUITests.sqlite")
-            if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
-                try? FileManager.default.removeItem(at: url)
-            }
-            if ProcessInfo.processInfo.arguments.contains("--history-long-workout-ui-fixture") {
-                do { try HealthDashboardUITestFixture.seedLongWorkoutIfNeeded(at: url) }
-                catch { preconditionFailure("Could not seed the synthetic long workout: \(error.localizedDescription)") }
-            }
-            workoutStore = WorkoutStore(fileURL: url)
-        } else {
-            workoutStore = WorkoutStore()
-        }
-        #else
-        workoutStore = WorkoutStore()
-        #endif
-        #if DEBUG
-        if HealthDashboardUITestFixture.isEnabled {
-            HealthDashboardUITestFixture.seedWorkouts(in: workoutStore)
-        }
-        #endif
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
-           ProcessInfo.processInfo.arguments.contains("--exercise-order-ui-fixture") {
-            ExerciseOrderUITestFixture.seed(in: workoutStore)
-        }
-        #endif
+        let workoutStore = AppWorkoutStore.shared
         let accountStore: ChatGPTAccountStore
         #if DEBUG
         accountStore = AssistantUITestFixture.isEnabled ? AssistantUITestFixture.makeAccounts() : ChatGPTAccountStore()
@@ -123,6 +95,7 @@ struct LiftLogApp: App {
                 .environment(restAlerts)
                 .tint(.blue)
                 .task {
+                    LiftLogShortcuts.updateAppShortcutParameters()
                     restAlerts.setActive(scenePhase == .active)
                     restAlerts.synchronize(store.activeWorkout?.restTimer)
                     liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: scenePhase == .active)
@@ -131,7 +104,10 @@ struct LiftLogApp: App {
                 }
                 .onChange(of: store.activeWorkout?.restTimer) { _, rest in restAlerts.synchronize(rest) }
                 .onChange(of: store.activeWorkout) { _, _ in watchWorkout.synchronize() }
-                .onChange(of: store.templates) { _, _ in watchWorkout.synchronize() }
+                .onChange(of: store.templates) { _, _ in
+                    watchWorkout.synchronize()
+                    LiftLogShortcuts.updateAppShortcutParameters()
+                }
                 .onChange(of: store.unit) { _, _ in watchWorkout.synchronize() }
                 .onChange(of: store.activeWorkout?.activitySnapshot) { _, snapshot in
                     liveActivity.synchronize(snapshot, isActive: scenePhase == .active)
