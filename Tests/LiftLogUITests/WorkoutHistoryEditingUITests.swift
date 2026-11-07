@@ -4,6 +4,32 @@ final class WorkoutHistoryEditingUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testHistoryActionsLayoutAndPresentation() {
+        let app = launch(populated: true)
+        defer { app.terminate() }
+        openFirstWorkout(in: app)
+        let summary = app.buttons["workoutSummaryHistoryButton"]
+        let template = app.buttons["historySaveAsTemplateButton"]
+        let edit = app.buttons["editHistoryWorkoutButton"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        XCTAssertTrue(template.waitForExistence(timeout: 5))
+        XCTAssertTrue(template.isHittable)
+        XCTAssertGreaterThan(template.frame.minY, summary.frame.minY)
+        XCTAssertFalse(app.navigationBars.buttons["historySaveAsTemplateButton"].exists)
+        XCTAssertTrue(edit.isHittable)
+        attach("History action rows and toolbar", app: app)
+        template.tap()
+        XCTAssertTrue(app.buttons["historyCreateNewTemplateButton"].waitForExistence(timeout: 5))
+        app.buttons["Cancel"].firstMatch.tap()
+        summary.tap()
+        XCTAssertTrue(app.buttons["closeWorkoutSummaryButton"].waitForExistence(timeout: 5))
+        app.buttons["closeWorkoutSummaryButton"].tap()
+        edit.tap()
+        XCTAssertTrue(app.textFields["historyEditorNameField"].waitForExistence(timeout: 5))
+        app.buttons["cancelHistoryEditorButton"].tap()
+    }
+
+    @MainActor
     func testHistoryOrderOnlyRevisionAndIdenticalPlan() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--health-dashboard-ui-fixture",

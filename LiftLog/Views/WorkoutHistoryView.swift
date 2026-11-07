@@ -216,6 +216,7 @@ struct WorkoutRecordView: View {
     let workout: WorkoutSession
     var title: String? = nil
     var onSummary: (() -> Void)? = nil
+    var onSaveAsTemplate: (() -> Void)? = nil
 
     var body: some View {
         LiftList {
@@ -232,10 +233,16 @@ struct WorkoutRecordView: View {
                         .accessibilityIdentifier("historyTemplateVersion")
                 }
             }
-            if let onSummary {
+            if onSummary != nil || onSaveAsTemplate != nil {
                 Section {
-                    Button("Workout Summary", systemImage: "sparkles", action: onSummary)
-                        .accessibilityIdentifier("workoutSummaryHistoryButton")
+                    if let onSummary {
+                        Button("Workout Summary", systemImage: "sparkles", action: onSummary)
+                            .accessibilityIdentifier("workoutSummaryHistoryButton")
+                    }
+                    if let onSaveAsTemplate {
+                        Button("Save as Template", systemImage: "square.stack", action: onSaveAsTemplate)
+                            .accessibilityIdentifier("historySaveAsTemplateButton")
+                    }
                 }
             }
             if let notes = workout.notes {
@@ -309,20 +316,18 @@ struct WorkoutDetailView: View {
     var body: some View {
         Group {
             if let current {
-                WorkoutRecordView(workout: current, onSummary: { showingSummary = true })
+                WorkoutRecordView(workout: current, onSummary: { showingSummary = true },
+                                  onSaveAsTemplate: { creatingTemplate = true })
                     .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Save as Template", systemImage: "square.stack.badge.plus") { creatingTemplate = true }
-                                .labelStyle(.iconOnly)
-                                .accessibilityIdentifier("historySaveAsTemplateButton")
-                        }
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Share Workout", systemImage: "square.and.arrow.up") { showingShare = true }
                                 .labelStyle(.iconOnly)
                                 .accessibilityIdentifier("shareWorkoutButton")
                         }
                         ToolbarItem(placement: .topBarTrailing) {
-                            Button("Edit") { editing = true }
+                            Button { editing = true } label: {
+                                Text("Edit").padding(.trailing, 6)
+                            }
                                 .accessibilityIdentifier("editHistoryWorkoutButton")
                         }
                         if store.historyRecovery.contains(where: { $0.id == current.id }) {
