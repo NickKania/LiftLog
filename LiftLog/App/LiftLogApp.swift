@@ -95,6 +95,7 @@ struct LiftLogApp: App {
                 .environment(restAlerts)
                 .tint(.blue)
                 .task {
+                    LiftLogShortcuts.updateAppShortcutParameters()
                     restAlerts.setActive(scenePhase == .active)
                     restAlerts.synchronize(store.activeWorkout?.restTimer)
                     liveActivity.synchronize(store.activeWorkout?.activitySnapshot, isActive: scenePhase == .active)
@@ -103,7 +104,10 @@ struct LiftLogApp: App {
                 }
                 .onChange(of: store.activeWorkout?.restTimer) { _, rest in restAlerts.synchronize(rest) }
                 .onChange(of: store.activeWorkout) { _, _ in watchWorkout.synchronize() }
-                .onChange(of: store.templates) { _, _ in watchWorkout.synchronize() }
+                .onChange(of: store.templates) { _, _ in
+                    watchWorkout.synchronize()
+                    LiftLogShortcuts.updateAppShortcutParameters()
+                }
                 .onChange(of: store.unit) { _, _ in watchWorkout.synchronize() }
                 .onChange(of: store.activeWorkout?.activitySnapshot) { _, snapshot in
                     liveActivity.synchronize(snapshot, isActive: scenePhase == .active)
