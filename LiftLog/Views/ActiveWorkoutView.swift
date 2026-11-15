@@ -147,79 +147,41 @@ struct ActiveWorkoutView: View {
                     .accessibilityIdentifier("reorderExercisesButton")
                 }
             }
-            ForEach(workout.exercises) { exercise in
-                let group = SupersetStyle.group(for: exercise, in: workout.exercises)
+            ForEach(WorkoutSetList.sections(for: workout.exercises)) { section in
+                let group = SupersetStyle.group(for: section.exercises[0], in: workout.exercises)
                 Section {
-                    Button {
-                        hideKeyboard()
-                        restSettings = WorkoutRestSettingsContext(workout: workout, exercise: exercise)
-                    } label: {
-                        LabeledContent("Rest", value: RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: workout.restSeconds))
+                    if section.exercises.count == 1, let exercise = section.exercises.first {
+                        Button {
+                            hideKeyboard()
+                            restSettings = WorkoutRestSettingsContext(workout: workout, exercise: exercise)
+                        } label: {
+                            LabeledContent("Rest", value: RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: workout.restSeconds))
+                        }
+                        .accessibilityIdentifier("workoutExerciseRest-\(exercise.id)")
                     }
-                    .accessibilityIdentifier("workoutExerciseRest-\(exercise.id)")
                     SetColumnHeader(unit: workout.unit, completion: true)
-                    ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
-                        SetInputRow(number: index + 1, unit: workout.unit, weight: set.weight, reps: set.reps, targetReps: set.targetReps, targetWeight: set.targetWeight, completed: set.isCompleted, onChange: { weight, reps in
+                    ForEach(section.rows) { row in
+                        if let exercise = workout.exercises.first(where: { $0.id == row.exerciseID }),
+                           let set = exercise.sets.first(where: { $0.id == row.setID }) {
+                            workoutSetRow(exercise: exercise, set: set, number: row.setIndex + 1,
+                                          workout: workout, group: group, grouped: section.exercises.count > 1)
+                        }
+                    }
+                    ForEach(section.exercises) { exercise in
+                        Button(section.exercises.count > 1 ? "Add Set · \(exercise.exercise.name)" : "Add Set", systemImage: "plus") {
                             mutate { session in
                                 guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
-                                session.exercises[index].updateSetValues(weight: weight, reps: reps)
-                            }
-                        }, onCompletion: {
-                            updateSet(exerciseID: exercise.id, setID: set.id) { $0.isCompleted.toggle() }
-                        }, onValidity: { valid in
-                            if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
-                        })
-                        .listRowBackground(SupersetRowBackground(group: group, completed: set.isCompleted))
-                        .swipeActions {
-                            Button("Delete", role: .destructive) {
-                                invalidSets.remove(set.id)
-                                mutate { session in
-                                    guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
-                                    session.exercises[index].sets.removeAll { $0.id == set.id }
-                                }
+                                let last = session.exercises[index].sets.last
+                                session.exercises[index].sets.append(WorkoutSet(weight: last?.weight ?? 0, reps: last?.reps ?? 10, targetReps: last?.targetReps, targetWeight: last?.targetWeight))
                             }
                         }
-                        if let timer = workout.restTimer, timer.completedSetID == set.id {
-                            inlineRestTimer(timer, duration: workout.restDuration(for: timer))
-                                .listRowSeparator(.hidden)
-                        }
+                        .accessibilityIdentifier("addSet-\(exercise.exercise.name)")
                     }
-                    Button("Add Set", systemImage: "plus") {
-                        mutate { session in
-                            guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
-                            let last = session.exercises[index].sets.last
-                            session.exercises[index].sets.append(WorkoutSet(weight: last?.weight ?? 0, reps: last?.reps ?? 10, targetReps: last?.targetReps, targetWeight: last?.targetWeight))
-                        }
-                    }
-                    .accessibilityIdentifier("addSet-\(exercise.exercise.name)")
                 } header: {
-                    HStack {
-                        SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
-                        Spacer()
-                        Menu {
-                            Button("Replace Exercise", systemImage: "arrow.triangle.2.circlepath") {
-                                hideKeyboard()
-                                swapContext = WorkoutExerciseSwapContext(sessionID: workout.id, entry: exercise)
-                            }
-                            .disabled(exercise.sets.contains(where: \.isCompleted))
-                            .accessibilityHint(exercise.sets.contains(where: \.isCompleted) ? "Completed sets must be kept. Only exercises with no completed sets can be replaced." : "Review a replacement for this workout only")
-                            .accessibilityIdentifier("replaceExerciseButton")
-                            Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
-                                hideKeyboard()
-                                supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: workout.exercises, name: { $0.exercise.name })
-                            }
-                            .accessibilityIdentifier(exercise.supersetID == nil ? "addSupersetButton" : "editSupersetButton")
-                            Divider()
-                            Button("Remove Exercise", systemImage: "trash", role: .destructive) {
-                                exercise.sets.forEach { invalidSets.remove($0.id) }
-                                mutate { session in
-                                    session.exercises.removeAll { $0.id == exercise.id }
-                                    SupersetGrouping.normalize(&session.exercises)
-                                }
-                            }
-                        } label: { Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44) }
-                        .accessibilityLabel("Options for \(exercise.exercise.name)")
-                        .accessibilityIdentifier("workoutExerciseMenu-\(exercise.id)")
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(section.exercises) { exercise in
+                            exerciseHeading(exercise, workout: workout, group: group)
+                        }
                     }
                 }
                 .listRowBackground(SupersetRowBackground(group: group))
@@ -236,6 +198,80 @@ struct ActiveWorkoutView: View {
             }
         }
         .accessibilityIdentifier("activeWorkoutEditor")
+    }
+
+    private func workoutSetRow(exercise: WorkoutExercise, set: WorkoutSet, number: Int,
+                               workout: WorkoutSession, group: SupersetStyle?, grouped: Bool) -> some View {
+        Group {
+            VStack(alignment: .leading, spacing: 4) {
+                if grouped {
+                    Text(exercise.exercise.name)
+                        .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("supersetSetExercise-\(set.id)")
+                }
+                SetInputRow(number: number, unit: workout.unit, weight: set.weight, reps: set.reps, targetReps: set.targetReps, targetWeight: set.targetWeight, completed: set.isCompleted, onChange: { weight, reps in
+                    mutate { session in
+                        guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
+                        session.exercises[index].updateSetValues(weight: weight, reps: reps)
+                    }
+                }, onCompletion: {
+                    updateSet(exerciseID: exercise.id, setID: set.id) { $0.isCompleted.toggle() }
+                }, onValidity: { valid in
+                    if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
+                })
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("workoutSetRow-\(set.id)")
+            .listRowBackground(SupersetRowBackground(group: group, completed: set.isCompleted))
+            .swipeActions {
+                Button("Delete", role: .destructive) {
+                    invalidSets.remove(set.id)
+                    mutate { session in
+                        guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
+                        session.exercises[index].sets.removeAll { $0.id == set.id }
+                    }
+                }
+            }
+            if let timer = workout.restTimer, timer.completedSetID == set.id {
+                inlineRestTimer(timer, duration: workout.restDuration(for: timer))
+                    .listRowSeparator(.hidden)
+            }
+        }
+    }
+
+    private func exerciseHeading(_ exercise: WorkoutExercise, workout: WorkoutSession, group: SupersetStyle?) -> some View {
+        HStack {
+            SupersetExerciseHeading(name: exercise.exercise.name, entryID: exercise.id, group: group)
+            Spacer()
+            Menu {
+                Button("Rest Settings", systemImage: "timer") {
+                    hideKeyboard()
+                    restSettings = WorkoutRestSettingsContext(workout: workout, exercise: exercise)
+                }
+                Button("Replace Exercise", systemImage: "arrow.triangle.2.circlepath") {
+                    hideKeyboard()
+                    swapContext = WorkoutExerciseSwapContext(sessionID: workout.id, entry: exercise)
+                }
+                .disabled(exercise.sets.contains(where: \.isCompleted))
+                .accessibilityHint(exercise.sets.contains(where: \.isCompleted) ? "Completed sets must be kept. Only exercises with no completed sets can be replaced." : "Review a replacement for this workout only")
+                .accessibilityIdentifier("replaceExerciseButton")
+                Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
+                    hideKeyboard()
+                    supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: workout.exercises, name: { $0.exercise.name })
+                }
+                .accessibilityIdentifier(exercise.supersetID == nil ? "addSupersetButton" : "editSupersetButton")
+                Divider()
+                Button("Remove Exercise", systemImage: "trash", role: .destructive) {
+                    exercise.sets.forEach { invalidSets.remove($0.id) }
+                    mutate { session in
+                        session.exercises.removeAll { $0.id == exercise.id }
+                        SupersetGrouping.normalize(&session.exercises)
+                    }
+                }
+            } label: { Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44) }
+            .accessibilityLabel("Options for \(exercise.exercise.name)")
+            .accessibilityIdentifier("workoutExerciseMenu-\(exercise.id)")
+        }
     }
 
     private var restNotificationHint: some View {

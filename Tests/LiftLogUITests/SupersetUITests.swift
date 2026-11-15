@@ -6,6 +6,60 @@ final class SupersetUITests: XCTestCase {
     }
 
     @MainActor
+    func testWorkoutSupersetSetsAlternateAndCompletionSurvivesRelaunch() {
+        let app = launchFreshApp()
+        defer { app.terminate() }
+        beginTemplate(named: "Alternating Superset", in: app)
+        addExercise("Bench Press", in: app)
+        addExercise("Squat", in: app)
+        app.buttons["saveTemplateButton"].tap()
+        startNewestTemplate(in: app)
+        for name in ["Bench Press", "Squat"] {
+            let add = app.buttons["addSet-\(name)"]
+            reveal(add, in: app)
+            add.tap()
+        }
+        openSupersetEditor(for: "Bench Press", active: true, in: app)
+        candidate("Squat", index: 2, in: app).tap()
+        app.buttons["saveSupersetButton"].tap()
+
+        func labels() -> [XCUIElement] {
+            app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "supersetSetExercise-")).allElementsBoundByIndex
+        }
+        func orderedRows() -> [(id: String, name: String)] {
+            var rows: [(id: String, name: String)] = []
+            for _ in 0..<6 {
+                for label in labels() where !rows.contains(where: { $0.id == label.identifier }) {
+                    rows.append((label.identifier, label.label))
+                }
+                if rows.count == 4 { break }
+                app.swipeUp()
+            }
+            return rows
+        }
+        let rows = orderedRows()
+        XCTAssertEqual(rows.map(\.name), ["Bench Press", "Squat", "Bench Press", "Squat"])
+        let firstID = String(rows[0].id.dropFirst("supersetSetExercise-".count))
+        let secondID = String(rows[1].id.dropFirst("supersetSetExercise-".count))
+        let firstRow = app.descendants(matching: .any).matching(identifier: "workoutSetRow-\(firstID)").firstMatch
+        let secondRow = app.descendants(matching: .any).matching(identifier: "workoutSetRow-\(secondID)").firstMatch
+        reveal(firstRow, in: app)
+        attachScreenshot(named: "Merged superset alternates sets by round", in: app)
+        firstRow.buttons["completeSet-1"].tap()
+        XCTAssertEqual(firstRow.buttons["completeSet-1"].label, "Mark set 1 incomplete")
+        reveal(secondRow, in: app)
+        XCTAssertEqual(secondRow.buttons["completeSet-1"].label, "Complete set 1")
+        if app.buttons["skipRestButton"].exists { app.buttons["skipRestButton"].tap() }
+        relaunchAndResumeWorkout(app)
+        reveal(firstRow, in: app)
+        XCTAssertEqual(firstRow.buttons["completeSet-1"].label, "Mark set 1 incomplete")
+        XCTAssertEqual(orderedRows().map(\.name), ["Bench Press", "Squat", "Bench Press", "Squat"])
+        openSupersetEditor(for: "Bench Press", editing: true, active: true, in: app)
+        app.buttons["removeSupersetButton"].tap()
+        XCTAssertTrue(labels().isEmpty, "Removing the superset restores individual exercise sections")
+    }
+
+    @MainActor
     func testCreateCancelAndSaveSupersetPersistsIntoWorkoutAndActiveEdits() {
         let app = launchFreshApp()
         defer { app.terminate() }
