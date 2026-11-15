@@ -106,7 +106,8 @@ private func elapsedTime(_ start: Date) -> Text {
 private func restBar(_ state: WorkoutActivitySnapshot) -> some View {
     if let interval = state.restInterval {
         ZStack {
-            Color.white.opacity(0.12)
+            // Use the native track alone so a second background cannot peek
+            // above the scaled countdown and create a separate top strip.
             ProgressView(timerInterval: interval, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
                 .tint(activityBlue)
                 .scaleEffect(x: 1, y: 8)
