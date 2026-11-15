@@ -55,7 +55,9 @@ struct ActiveWorkoutView: View {
         }
         .sheet(isPresented: $pickingExercise) {
             ExercisePickerView { exercise in
-                mutate { $0.exercises.append(WorkoutExercise(exercise: exercise, sets: [WorkoutSet(weight: 0, reps: 10)])) }
+                if let sessionID = store.activeWorkout?.id {
+                    store.addActiveExercise(exercise, to: sessionID)
+                }
             }
         }
         .sheet(item: $supersetEditor) { context in

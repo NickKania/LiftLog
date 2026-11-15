@@ -261,6 +261,17 @@ final class WorkoutStore {
         } catch { return fail(error) }
     }
 
+    /// Appends one editable set using the latest saved performance in this session's unit.
+    @discardableResult
+    func addActiveExercise(_ exercise: Exercise, to sessionID: UUID) -> Bool {
+        guard var workout = activeWorkout, workout.id == sessionID else {
+            return fail(StoreError.invalid("This workout is no longer active."))
+        }
+        let set = ExerciseHistoryDefaults.set(for: exercise.id, history: history, unit: workout.unit)
+        workout.exercises.append(WorkoutExercise(exercise: exercise, sets: [set]))
+        return updateActiveWorkout(workout)
+    }
+
     /// The captured entry prevents a delayed picker from overwriting newly logged work.
     @discardableResult
     func replaceActiveExercise(in sessionID: UUID, expectedEntry: WorkoutExercise, with exerciseID: UUID) -> Bool {
