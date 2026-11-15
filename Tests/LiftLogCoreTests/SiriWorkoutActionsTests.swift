@@ -71,6 +71,31 @@ final class SiriWorkoutActionsTests: XCTestCase {
     }
 
     @MainActor
+    func testAddUsesHistoricalPerformedValuesAndPersists() throws {
+        let url = try file()
+        let (store, initial) = try seeded(url)
+        var performed = initial
+        performed.exercises[0].sets[0].weight = 135
+        performed.exercises[0].sets[0].reps = 7
+        performed.exercises[0].sets[0].isCompleted = true
+        XCTAssertTrue(store.updateActiveWorkout(performed))
+        XCTAssertTrue(store.finishWorkout())
+        let history = store.history
+        XCTAssertTrue(store.startWorkout())
+        let current = try XCTUnwrap(store.activeWorkout)
+        let movement = initial.exercises[0].exercise
+        _ = try SiriWorkoutActions.add(store: store, exerciseID: movement.id, expectedWorkoutID: current.id)
+        let set = try XCTUnwrap(store.activeWorkout?.exercises.last?.sets.first)
+        XCTAssertEqual(set.weight, 135)
+        XCTAssertEqual(set.reps, 7)
+        XCTAssertFalse(set.isCompleted)
+        XCTAssertNil(set.targetWeight)
+        XCTAssertNil(set.targetReps)
+        XCTAssertEqual(store.history, history)
+        XCTAssertEqual(WorkoutStore(fileURL: url).activeWorkout, store.activeWorkout)
+    }
+
+    @MainActor
     func testCompletionPreservesValuesTargetsAndOtherSetsAndRejectsReplay() throws {
         let url = try file()
         let (store, initial) = try seeded(url)

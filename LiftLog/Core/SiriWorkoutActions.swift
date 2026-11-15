@@ -36,13 +36,12 @@ enum SiriWorkoutActions {
     }
 
     static func add(store: WorkoutStore, exerciseID: UUID, expectedWorkoutID: UUID) throws -> String {
-        var workout = try active(store: store, expectedWorkoutID: expectedWorkoutID)
+        _ = try active(store: store, expectedWorkoutID: expectedWorkoutID)
         guard let exercise = store.exercises.first(where: { $0.id == exerciseID }) else {
             throw ActionError(message: "That exercise is no longer available. Choose an exercise again.")
         }
         // Match the native active-workout picker, including allowing repeated movements.
-        workout.exercises.append(WorkoutExercise(exercise: exercise, sets: [WorkoutSet(weight: 0, reps: 10)]))
-        try saved(store.updateActiveWorkout(workout))
+        try saved(store.addActiveExercise(exercise, to: expectedWorkoutID))
         return "Added \(exercise.name)."
     }
 

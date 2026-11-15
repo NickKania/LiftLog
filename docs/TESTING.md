@@ -504,3 +504,9 @@ Review follow-up (2026-11-04): the generic iOS Simulator build and all four shar
 ## Siri actions
 
 Run `SiriWorkoutActionsTests` with the core suite and `LiftLogAppTests/WorkoutIntentEntityTests` on an isolated iOS simulator. See [Siri and Shortcuts](SIRI_SHORTCUTS.md) for the physical-device voice, confirmation, indexing, and cold-launch acceptance checklist.
+
+## Historical defaults when adding exercises
+
+`ExerciseHistoryDefaultsTests` checks latest-session ordering, last completed sets, repeated entries, identity matching, incomplete/unfinished exclusions, zero-load history, unit conversion, independent identities/targets, and store persistence without rewriting history or existing entries. `ExerciseHistoryDefaultsUITests/testAddedExerciseUsesSavedPerformanceAndSurvivesRelaunch` logs a synthetic 135 lb × 7 Bench Press, finishes it, adds it to a fresh workout, and checks editable defaults and relaunch recovery. An exercise without history retains 0 × 10. Run this UI test serially on isolated simulator storage.
+
+Verification (2026-11-15): 572 core tests pass and the generic iOS Simulator build succeeds. The new native UI test passes on LiftLog Catalog Verification (iOS 26.5), including keyboard edits and relaunch. The Siri historical-default regression first reproduced 0 × 10, then passes after routing Siri additions through the same store method. Running-app synthetic-history captures on iPhone 13 mini / iOS 26.5 were inspected in light/dark appearance and accessibility-large text; the newly added Bench Press shows 180 lb × 8 with an incomplete set. Captures remain outside the repository at `/tmp/liftlog-defaults-*.png`. A pre-change running-app baseline was not captured. Physical devices, iOS 17 runtime, hardware keyboards, and manual VoiceOver gestures remain unverified.
