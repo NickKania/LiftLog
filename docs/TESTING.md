@@ -188,6 +188,7 @@ Live Activity verification: all 197 core tests and the existing `RestTimerUITest
 Live Activity acceptance checks on an iPhone with Live Activities enabled:
 
 - Start a workout, complete a set, and lock the phone. Confirm the rest bar counts down to zero, total workout time increases, and the next exercise, weight/reps, and set number match the app.
+- Inspect the rest bar near full, halfway, and near empty: the blue fill and native track must form one uniform rounded bar, without a separate background strip along the top. Repeat in the expanded Dynamic Island.
 - Complete another set, undo a completion, edit remaining weights/reps, skip rest, or remove an exercise. Confirm the Live Activity follows the saved workout.
 - Check compact, expanded, and minimal Dynamic Island presentations. Tap the activity and confirm it opens the active workout.
 - Relaunch during rest and confirm the original deadline and one activity remain. Finish or discard and confirm the activity disappears.
