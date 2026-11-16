@@ -11,13 +11,14 @@ final class ExerciseOrderUITests: XCTestCase {
         let start = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "startTemplate-")).firstMatch
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         start.tap()
-        XCTAssertTrue(app.buttons["reorderExercisesButton"].waitForExistence(timeout: 5))
+        revealWorkoutHeader(app.buttons["reorderExercisesButton"], in: app)
         app.buttons["reorderExercisesButton"].tap()
         XCTAssertFalse(app.buttons["saveExerciseOrderButton"].isEnabled)
         assertOrder(["Bench Press", "Barbell Row", "Overhead Press", "Dumbbell Curl"], in: app)
         moveCurlToTop(in: app)
         XCTAssertTrue(app.buttons["saveExerciseOrderButton"].isEnabled)
         app.buttons["cancelExerciseOrderButton"].tap()
+        revealWorkoutHeader(app.buttons["reorderExercisesButton"], in: app)
         app.buttons["reorderExercisesButton"].tap()
         assertOrder(["Bench Press", "Barbell Row", "Overhead Press", "Dumbbell Curl"], in: app)
         XCTAssertFalse(app.buttons["saveExerciseOrderButton"].isEnabled)
@@ -26,6 +27,7 @@ final class ExerciseOrderUITests: XCTestCase {
         let firstExercise = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "workoutExerciseMenu-")).firstMatch
         XCTAssertTrue(firstExercise.waitForExistence(timeout: 5))
         XCTAssertEqual(firstExercise.label, "Options for Dumbbell Curl")
+        revealWorkoutHeader(app.staticTexts["activeWorkoutTemplateVersion"], in: app)
         XCTAssertTrue(app.staticTexts["activeWorkoutTemplateVersion"].label.contains("1"))
 
         app.terminate()
@@ -33,7 +35,7 @@ final class ExerciseOrderUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 10))
         app.buttons["resumeWorkoutButton"].tap()
-        XCTAssertTrue(app.buttons["reorderExercisesButton"].waitForExistence(timeout: 5))
+        revealWorkoutHeader(app.buttons["reorderExercisesButton"], in: app)
         app.buttons["reorderExercisesButton"].tap()
         assertOrder(["Dumbbell Curl", "Bench Press", "Barbell Row", "Overhead Press"], in: app)
         let capture = XCTAttachment(screenshot: app.screenshot())
@@ -51,8 +53,9 @@ final class ExerciseOrderUITests: XCTestCase {
         let version = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "currentTemplateVersion-")).firstMatch
         XCTAssertEqual(version.label, "Version 2 · Default")
         start.tap()
-        XCTAssertTrue(app.staticTexts["activeWorkoutTemplateVersion"].waitForExistence(timeout: 5))
+        revealWorkoutHeader(app.staticTexts["activeWorkoutTemplateVersion"], in: app)
         XCTAssertEqual(app.staticTexts["activeWorkoutTemplateVersion"].label, "Template version 2")
+        revealWorkoutHeader(app.buttons["reorderExercisesButton"], in: app)
         app.buttons["reorderExercisesButton"].tap()
         assertOrder(["Dumbbell Curl", "Bench Press", "Barbell Row", "Overhead Press"], in: app)
     }
@@ -85,6 +88,7 @@ final class ExerciseOrderUITests: XCTestCase {
         app.launchArguments = ["--ui-testing"]
         app.launch()
         app.buttons["resumeWorkoutButton"].tap()
+        revealWorkoutHeader(app.buttons["reorderExercisesButton"], in: app)
         app.buttons["reorderExercisesButton"].tap()
         let reloadedFirst = entry("Bench Press", number: 1, in: app)
         XCTAssertTrue(reloadedFirst.waitForExistence(timeout: 5))
@@ -103,6 +107,15 @@ final class ExerciseOrderUITests: XCTestCase {
         XCTAssertTrue(message.waitForExistence(timeout: 5))
         XCTAssertTrue(message.label.contains("this workout only"))
         XCTAssertTrue(message.label.contains("its order will stay the same"))
+    }
+
+    @MainActor
+    private func revealWorkoutHeader(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<8 {
+            if element.exists && element.isHittable { return }
+            app.collectionViews["activeWorkoutEditor"].swipeDown()
+        }
+        XCTAssertTrue(element.exists && element.isHittable)
     }
 
     @MainActor
@@ -126,7 +139,7 @@ final class ExerciseOrderUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 10))
         app.buttons["resumeWorkoutButton"].tap()
-        XCTAssertTrue(app.buttons["reorderExercisesButton"].waitForExistence(timeout: 5))
+        revealWorkoutHeader(app.buttons["reorderExercisesButton"], in: app)
         app.buttons["reorderExercisesButton"].tap()
         return app
     }

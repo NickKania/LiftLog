@@ -79,6 +79,17 @@ struct SettingsView: View {
             } footer: {
                 Text("Current template weights convert to this unit. Saved versions, active workouts, and history keep their recorded unit.")
             }
+            Section {
+                Toggle("Return to next set", isOn: Binding(
+                    get: { store.autoScrollActiveWorkout },
+                    set: { _ = store.setAutoScrollActiveWorkout($0) }
+                ))
+                .accessibilityIdentifier("autoScrollActiveWorkoutToggle")
+            } header: {
+                Text("Workout")
+            } footer: {
+                Text("When you return to an active workout, scroll to the next incomplete set.")
+            }
             AssistantProviderSettingsView()
             Section {
                 if assistant.selectedProvider == .chatGPT {
