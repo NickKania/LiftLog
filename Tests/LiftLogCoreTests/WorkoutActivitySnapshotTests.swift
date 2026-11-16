@@ -20,6 +20,8 @@ final class WorkoutActivitySnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.nextSet?.reps, 8)
         XCTAssertEqual(snapshot.nextSet?.unit, "kg")
         XCTAssertEqual(snapshot.nextSet?.number, 2)
+        XCTAssertEqual(workout.nextSetTarget?.exerciseID, workout.exercises[0].id)
+        XCTAssertEqual(workout.nextSetTarget?.setID, workout.exercises[0].sets[1].id)
         XCTAssertEqual(snapshot.nextSet?.total, 3)
         XCTAssertEqual(snapshot.completedSets, 1)
         XCTAssertEqual(snapshot.totalSets, 4)
@@ -32,10 +34,29 @@ final class WorkoutActivitySnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.nextSet?.number, 1)
         workout.exercises[1].sets[0].isCompleted = true
         XCTAssertNil(workout.activitySnapshot.nextSet)
+        XCTAssertNil(workout.nextSetTarget)
         XCTAssertEqual(workout.activitySnapshot.completedSets, 4)
         workout.exercises[0].sets[0].isCompleted = false
         XCTAssertEqual(workout.activitySnapshot.nextSet?.number, 1)
+        XCTAssertEqual(workout.nextSetTarget?.setID, workout.exercises[0].sets[0].id)
         workout.exercises.removeFirst()
+        XCTAssertNil(workout.activitySnapshot.nextSet)
+    }
+
+    func testNextSetUsesEntryIdentityAcrossDuplicatesReorderingAndEmptyExercises() {
+        let movement = ExerciseCatalog.all[0]
+        let first = WorkoutExercise(exercise: movement, sets: [WorkoutSet(weight: 10, reps: 5, isCompleted: true)])
+        let second = WorkoutExercise(exercise: movement, sets: [WorkoutSet(weight: 20, reps: 8)])
+        let third = WorkoutExercise(exercise: movement, sets: [WorkoutSet(weight: 30, reps: 12)])
+        var workout = WorkoutSession(unit: .lb, exercises: [
+            WorkoutExercise(exercise: movement, sets: []), first, second, third
+        ])
+        XCTAssertEqual(workout.nextSetTarget, WorkoutNextSetTarget(exerciseID: second.id, setID: second.sets[0].id))
+        workout.exercises.swapAt(2, 3)
+        XCTAssertEqual(workout.nextSetTarget, WorkoutNextSetTarget(exerciseID: third.id, setID: third.sets[0].id))
+        XCTAssertEqual(workout.activitySnapshot.nextSet?.weight, 30)
+        workout.exercises.removeAll()
+        XCTAssertNil(workout.nextSetTarget)
         XCTAssertNil(workout.activitySnapshot.nextSet)
     }
 

@@ -175,8 +175,9 @@ final class WorkflowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["templateVersion-1"].exists)
         app.buttons["templateVersion-1"].tap()
         app.buttons["startTemplateVersion-1"].tap()
-        XCTAssertTrue(app.staticTexts["activeWorkoutTemplateVersion"].waitForExistence(timeout: 5))
+        revealWorkoutControl(app.staticTexts["activeWorkoutTemplateVersion"], in: app, scrollingUp: false)
         XCTAssertEqual(app.staticTexts["activeWorkoutTemplateVersion"].label, "Template version 1")
+        revealWorkoutControl(app.textFields["setWeight-1"].firstMatch, in: app)
         XCTAssertEqual(app.staticTexts["setTargetWeight-1"].firstMatch.label, "Target: 0 lb")
         XCTAssertEqual(app.staticTexts["setTargetReps-1"].firstMatch.label, "Target: 8")
         replaceText(in: app.textFields["setWeight-1"].firstMatch, with: "135", app: app)
@@ -196,16 +197,20 @@ final class WorkflowUITests: XCTestCase {
     }
 
     @MainActor
-    private func revealWorkoutControl(_ control: XCUIElement, in app: XCUIApplication) {
+    private func revealWorkoutControl(_ control: XCUIElement, in app: XCUIApplication, scrollingUp: Bool = true) {
         let editor = app.collectionViews["activeWorkoutEditor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         for _ in 0..<6 {
             if control.exists && control.isHittable { return }
+            if !scrollingUp {
+                editor.swipeDown()
+                continue
+            }
             let start = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.72))
             let end = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.42))
             start.press(forDuration: 0.01, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
         }
-        XCTAssertTrue(control.exists && control.isHittable, "The added exercise must remain reachable by scrolling")
+        XCTAssertTrue(control.exists && control.isHittable, "The workout control must remain reachable by scrolling")
     }
 
     @MainActor

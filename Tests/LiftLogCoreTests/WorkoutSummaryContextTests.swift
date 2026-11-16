@@ -170,23 +170,29 @@ final class WorkoutSummaryContextTests: XCTestCase {
         let store = WorkoutStore(fileURL: file)
         XCTAssertEqual(store.workoutSummaryPrompt, WorkoutSummaryPrompt.defaultPrompt)
         XCTAssertFalse(store.automaticWorkoutSummaries)
+        XCTAssertTrue(store.autoScrollActiveWorkout)
 
         let custom = "Focus on consistency and the next top set."
         XCTAssertTrue(store.setWorkoutSummaryPrompt(custom))
         XCTAssertTrue(store.setAutomaticWorkoutSummaries(true))
+        XCTAssertTrue(store.setAutoScrollActiveWorkout(false))
         let reloaded = WorkoutStore(fileURL: file)
         XCTAssertEqual(reloaded.workoutSummaryPrompt, custom)
         XCTAssertTrue(reloaded.automaticWorkoutSummaries)
+        XCTAssertFalse(reloaded.autoScrollActiveWorkout)
 
         XCTAssertFalse(store.setWorkoutSummaryPrompt(String(repeating: "x", count: WorkoutSummaryPrompt.maximumLength + 1)))
         XCTAssertEqual(store.workoutSummaryPrompt, custom)
         XCTAssertTrue(store.setWorkoutSummaryPrompt(" \n\t "))
         XCTAssertEqual(store.workoutSummaryPrompt, WorkoutSummaryPrompt.defaultPrompt)
         XCTAssertTrue(store.setAutomaticWorkoutSummaries(false))
+        XCTAssertTrue(store.setAutoScrollActiveWorkout(true))
         XCTAssertEqual(WorkoutStore(fileURL: file).workoutSummaryPrompt, WorkoutSummaryPrompt.defaultPrompt)
         XCTAssertFalse(WorkoutStore(fileURL: file).automaticWorkoutSummaries)
+        XCTAssertTrue(WorkoutStore(fileURL: file).autoScrollActiveWorkout)
 
         let otherFile = try temporaryFile()
         XCTAssertEqual(WorkoutStore(fileURL: otherFile).workoutSummaryPrompt, WorkoutSummaryPrompt.defaultPrompt)
+        XCTAssertTrue(WorkoutStore(fileURL: otherFile).autoScrollActiveWorkout)
     }
 }

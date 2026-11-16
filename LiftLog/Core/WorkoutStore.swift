@@ -15,6 +15,7 @@ final class WorkoutStore {
     private(set) var defaultAssistantModel: String?
     private(set) var workoutSummaryPrompt: String
     private(set) var automaticWorkoutSummaries: Bool
+    private(set) var autoScrollActiveWorkout: Bool
     var exercises: [Exercise] { ExerciseCatalog.all + personalExercises }
     var errorMessage: String?
 
@@ -22,6 +23,7 @@ final class WorkoutStore {
     @ObservationIgnored private var defaultAssistantModelKey = ""
     @ObservationIgnored private var workoutSummaryPromptKey = ""
     @ObservationIgnored private var automaticWorkoutSummariesKey = ""
+    @ObservationIgnored private var autoScrollActiveWorkoutKey = ""
     @ObservationIgnored private var loadFailure: String?
     /// Advances only after a successful atomic save; review drafts bind to this revision.
     @ObservationIgnored private(set) var revision: UInt64 = 0
@@ -38,9 +40,11 @@ final class WorkoutStore {
         let summaryPreferenceScope = fileURL == nil ? "default" : self.fileURL.standardizedFileURL.path
         self.workoutSummaryPromptKey = "workoutSummaryPrompt.\(summaryPreferenceScope)"
         self.automaticWorkoutSummariesKey = "automaticWorkoutSummaries.\(summaryPreferenceScope)"
+        self.autoScrollActiveWorkoutKey = "autoScrollActiveWorkout.\(summaryPreferenceScope)"
         self.workoutSummaryPrompt = UserDefaults.standard.string(forKey: workoutSummaryPromptKey)
             ?? WorkoutSummaryPrompt.defaultPrompt
         self.automaticWorkoutSummaries = UserDefaults.standard.bool(forKey: automaticWorkoutSummariesKey)
+        self.autoScrollActiveWorkout = UserDefaults.standard.object(forKey: autoScrollActiveWorkoutKey) as? Bool ?? true
         self.defaultAssistantModel = UserDefaults.standard.string(forKey: defaultAssistantModelKey)
         #if DEBUG
         let uiTestingFileURL = FileManager.default.temporaryDirectory
@@ -51,9 +55,11 @@ final class WorkoutStore {
             UserDefaults.standard.removeObject(forKey: defaultAssistantModelKey)
             UserDefaults.standard.removeObject(forKey: workoutSummaryPromptKey)
             UserDefaults.standard.removeObject(forKey: automaticWorkoutSummariesKey)
+            UserDefaults.standard.removeObject(forKey: autoScrollActiveWorkoutKey)
             self.defaultAssistantModel = nil
             self.workoutSummaryPrompt = WorkoutSummaryPrompt.defaultPrompt
             self.automaticWorkoutSummaries = false
+            self.autoScrollActiveWorkout = true
         }
         #endif
         self.cloudBackup = cloudBackup ?? CloudBackupManager(databaseURL: self.fileURL, available: fileURL == nil)
@@ -611,6 +617,13 @@ final class WorkoutStore {
     func setAutomaticWorkoutSummaries(_ enabled: Bool) -> Bool {
         automaticWorkoutSummaries = enabled
         UserDefaults.standard.set(enabled, forKey: automaticWorkoutSummariesKey)
+        return true
+    }
+
+    @discardableResult
+    func setAutoScrollActiveWorkout(_ enabled: Bool) -> Bool {
+        autoScrollActiveWorkout = enabled
+        UserDefaults.standard.set(enabled, forKey: autoScrollActiveWorkoutKey)
         return true
     }
 

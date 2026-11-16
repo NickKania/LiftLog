@@ -41,6 +41,17 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         return snapshot
     }
 
+    /// The first incomplete set in exercise/set order. The stable identities let
+    /// the editor return to the exact row after the app is backgrounded.
+    var nextSetTarget: WorkoutNextSetTarget? {
+        for exercise in exercises {
+            if let set = exercise.sets.first(where: { !$0.isCompleted }) {
+                return WorkoutNextSetTarget(exerciseID: exercise.id, setID: set.id)
+            }
+        }
+        return nil
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id, templateID, templateVersionID, templateVersionNumber, name, startedAt, finishedAt, unit, exercises, importSourceKey, restSeconds, restTimer, notes, summary
     }
@@ -63,6 +74,11 @@ struct WorkoutSession: Codable, Equatable, Identifiable {
         restTimer = try values.decodeIfPresent(WorkoutRestTimer.self, forKey: .restTimer)
     }
 
+}
+
+struct WorkoutNextSetTarget: Hashable {
+    let exerciseID: UUID
+    let setID: UUID
 }
 
 struct WorkoutExercise: Codable, Equatable, SupersetExercise {

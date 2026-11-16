@@ -2,12 +2,13 @@ import Foundation
 
 extension WorkoutSession {
     var activitySnapshot: WorkoutActivitySnapshot {
-        let nextSet = exercises.lazy.compactMap { exercise -> WorkoutActivitySnapshot.NextSet? in
-            guard let index = exercise.sets.firstIndex(where: { !$0.isCompleted }) else { return nil }
+        let nextSet = nextSetTarget.flatMap { target -> WorkoutActivitySnapshot.NextSet? in
+            guard let exercise = exercises.first(where: { $0.id == target.exerciseID }),
+                  let index = exercise.sets.firstIndex(where: { $0.id == target.setID }) else { return nil }
             let set = exercise.sets[index]
             return .init(exerciseName: Self.activityLabel(exercise.exercise.name), weight: set.weight, unit: unit.rawValue,
                          reps: set.reps, number: index + 1, total: exercise.sets.count)
-        }.first
+        }
         let interval = restTimer.map { timer in
             timer.endsAt.addingTimeInterval(-Double(max(1, restDuration(for: timer))))...timer.endsAt
         }
