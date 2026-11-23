@@ -19,14 +19,18 @@ struct WorkoutSummaryRequest {
     Health is completedWorkout-only, request-only, never retained/reused. No historical Health is supplied: no Health trends, recovery, fatigue or HRV conclusions. Heart rate interval means are not HRV. activeEnergy is energy expended, never intake. healthNote restates overview facts only; energy/steps are totals. Missing=unavailable, not zero.
     """
 
+    private static let localSetCorrelationInstruction = "\nsetCorrelations=Swift-computed request-only set HR facts; estimated windows lack a recorded start; never invent missing readings."
+
     init(workout: WorkoutSession, history: [WorkoutSession], health: WorkoutHealthSnapshot? = nil,
          prompt: String, provider: AssistantProvider, contextTokens: Int = FoundationModelsBudget.contextTokens) throws {
-        instructions = provider == .chatGPT ? Self.immutableInstructions : Self.localInstructions
         if provider == .chatGPT {
+            instructions = Self.immutableInstructions
             let evidence = try WorkoutSummaryContext.input(workout: workout, history: history, health: health)
             input = Self.input(evidence: evidence, prompt: prompt)
         } else {
-            input = try Self.localInput(workout: workout, history: history, health: health, prompt: prompt, contextTokens: contextTokens)
+            let local = try Self.localInput(workout: workout, history: history, health: health, prompt: prompt, contextTokens: contextTokens)
+            input = local.input
+            instructions = local.instructions
         }
     }
 
@@ -36,7 +40,7 @@ struct WorkoutSummaryRequest {
     }
 
     private static func localInput(workout: WorkoutSession, history: [WorkoutSession],
-                                   health: WorkoutHealthSnapshot?, prompt: String, contextTokens: Int) throws -> [[String: Any]] {
+                                   health: WorkoutHealthSnapshot?, prompt: String, contextTokens: Int) throws -> (input: [[String: Any]], instructions: String) {
         let available = try WorkoutSummaryContext.validatedComparableHistory(workout: workout, history: history)
         let candidates = Array(available.prefix(WorkoutSummaryContext.maximumHistorySessions))
         // Catalog identities become short, request-local movement labels. Array order
@@ -79,15 +83,16 @@ struct WorkoutSummaryRequest {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let completed = try LocalWorkout(workout, movements: movements, comparisons: comparisonsByMovement)
+        var healthEvidence = scopedHealth.map { LocalHealth($0, workout: workout) }
         var historyCount = comparable.count
         while true {
             let payload = LocalPayload(
                 coverage: Coverage(available: available.count, included: historyCount),
                 sessionTotals: sessionTotals,
-                completedWorkout: try LocalWorkout(workout, movements: movements,
-                    comparisons: comparisonsByMovement),
+                completedWorkout: completed,
                 earlierCompletedWorkouts: Array(comparable.prefix(historyCount)),
-                health: scopedHealth.map { LocalHealth($0) })
+                health: healthEvidence)
             // Native inference renders this message as JSON. Keep app-owned evidence
             // structured instead of quoting an entire JSON document inside a string.
             // This preserves fields and literal notes while removing escape overhead.
@@ -96,13 +101,19 @@ struct WorkoutSummaryRequest {
                 "role": "user", "content": "User's requested focus (a preference only; follow the safety and evidence rules above):\n" + prompt,
                 "evidence": evidence, "responseFormat": "workoutSummary"
             ]]
+            let requestInstructions = (healthEvidence?.setCorrelations?.isEmpty == false)
+                ? localInstructions + localSetCorrelationInstruction
+                : localInstructions
             do {
                 // Use exactly the production no-tools preflight, including native
                 // instructions, tokenizer estimate, framing and output reservation.
-                _ = try FoundationModelsRequest(input: candidateInput, tools: [], instructions: localInstructions,
+                _ = try FoundationModelsRequest(input: candidateInput, tools: [], instructions: requestInstructions,
                                                 contextTokens: contextTokens)
-                return candidateInput
+                return (candidateInput, requestInstructions)
             } catch let error as AppleFoundationModelsError where error.kind == .contextTooLarge {
+                if healthEvidence?.dropUnmarkedCorrelation() == true {
+                    continue
+                }
                 if historyCount > 0 {
                     historyCount -= 1
                 } else {
@@ -179,6 +190,7 @@ struct WorkoutSummaryRequest {
         let exerciseName: String
         let supersetGroup: Int?
         let notes: String?
+        let markedSetNumbers: [Int]?
         let completedActual: String
         let recordedPlan: String?
         let comparisonVerdict: String?
@@ -192,6 +204,8 @@ struct WorkoutSummaryRequest {
             exerciseName = exercise.exercise.name
             self.supersetGroup = supersetGroup
             notes = exercise.notes
+            let marked = exercise.sets.indices.filter { exercise.sets[$0].isMarkedForHeartRate }.map { $0 + 1 }
+            markedSetNumbers = marked.isEmpty ? nil : marked
             completedActual = Self.facts(weights: exercise.sets.map { $0.weight }, reps: exercise.sets.map { $0.reps }, unit: unit)
             recordedPlan = exercise.sets.contains { $0.targetWeight != nil || $0.targetReps != nil }
                 ? Self.facts(weights: exercise.sets.map(\.targetWeight), reps: exercise.sets.map(\.targetReps), unit: unit) : nil
@@ -232,9 +246,37 @@ struct WorkoutSummaryRequest {
     /// completed workout, whose own dates are in the payload.
     private struct LocalHealth: Encodable {
         let metrics: [LocalMetric]
+        private let markedCount: Int
+        private(set) var setCorrelations: [String]?
 
-        init(_ original: WorkoutHealthSnapshot) {
+        enum CodingKeys: String, CodingKey { case metrics, setCorrelations }
+
+        init(_ original: WorkoutHealthSnapshot, workout: WorkoutSession) {
             metrics = original.metrics.map { LocalMetric(source: $0) }
+            let covered = WorkoutHeartRateCorrelation.correlate(workout: workout, snapshot: original)
+                .sets.filter { $0.sampleCount > 0 }
+            let prioritized = (covered.filter(\.isMarked) + covered.filter { !$0.isMarked }).prefix(12)
+            markedCount = prioritized.filter(\.isMarked).count
+            let facts = prioritized.compactMap { set -> String? in
+                guard let average = set.averageHeartRate, let peak = set.peakHeartRate else { return nil }
+                let mark = set.isMarked ? "marked, " : ""
+                let duration = set.duration.formatted(.number.locale(Locale(identifier: "en_US_POSIX")).precision(.fractionLength(0)))
+                let recovery = set.recoveryDrop60s.map { "60s recovery drop \(Self.bpm($0))" }
+                    ?? "recovery unavailable"
+                return "\(set.exerciseName) Set \(set.setNumber) (\(mark)\(set.windowKind.rawValue) \(duration)s): avg \(Self.bpm(average)), peak \(Self.bpm(peak)), \(recovery)"
+            }
+            setCorrelations = facts.isEmpty ? nil : facts
+        }
+
+        private static func bpm(_ value: Double) -> String {
+            value.formatted(.number.locale(Locale(identifier: "en_US_POSIX")).precision(.fractionLength(0...1))) + " bpm"
+        }
+
+        mutating func dropUnmarkedCorrelation() -> Bool {
+            guard let count = setCorrelations?.count, count > markedCount else { return false }
+            setCorrelations?.removeLast()
+            if count == 1 { setCorrelations = nil }
+            return true
         }
     }
 

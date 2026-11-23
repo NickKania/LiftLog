@@ -304,6 +304,35 @@ final class WorkoutStore {
             updated.restTimer = activeWorkout.restTimer
             updated.unit = activeWorkout.unit
             updated.finishedAt = nil
+            guard now.timeIntervalSinceReferenceDate.isFinite else {
+                throw StoreError.invalid("The workout update time is invalid.")
+            }
+            for exerciseIndex in updated.exercises.indices {
+                let original = activeWorkout.exercises.first { $0.id == updated.exercises[exerciseIndex].id }
+                for setIndex in updated.exercises[exerciseIndex].sets.indices {
+                    var set = updated.exercises[exerciseIndex].sets[setIndex]
+                    let previous = original?.sets.first { $0.id == set.id }
+                    if let previous {
+                        if previous.isCompleted {
+                            set.startedAt = set.isCompleted ? previous.startedAt : nil
+                            set.completedAt = set.isCompleted ? previous.completedAt : nil
+                            if !set.isCompleted { set.isMarkedForHeartRate = previous.isMarkedForHeartRate }
+                        } else if set.isCompleted {
+                            let completion = max(now, updated.startedAt, previous.startedAt ?? updated.startedAt)
+                            set.startedAt = previous.startedAt.map { min($0, completion) }
+                            set.completedAt = completion
+                        } else {
+                            // Ordinary logging edits preserve active timer ownership; use startSetTimer/cancelSetTimer to change it.
+                            set.startedAt = previous.startedAt
+                            set.completedAt = nil
+                        }
+                    } else {
+                        set.startedAt = nil
+                        set.completedAt = set.isCompleted ? max(now, updated.startedAt) : nil
+                    }
+                    updated.exercises[exerciseIndex].sets[setIndex] = set
+                }
+            }
             try Self.validate(updated)
             // Logged values may change; targets remain the prescription originally started.
             for exerciseIndex in updated.exercises.indices {
@@ -338,6 +367,54 @@ final class WorkoutStore {
             }
             updated.restTimer = WorkoutRestTimer.updated(previous: activeWorkout, current: updated, now: now, newRestTimerID: newRestTimerID)
             next.activeWorkout = updated
+            return commit(next)
+        } catch { return fail(error) }
+    }
+
+    @discardableResult
+    func toggleSetHeartRateMark(workoutID: UUID, exerciseID: UUID, setID: UUID) -> Bool {
+        editActiveSetTiming(workoutID: workoutID, exerciseID: exerciseID, setID: setID) { workout, exercise, set in
+            workout.exercises[exercise].sets[set].isMarkedForHeartRate.toggle()
+        }
+    }
+
+    @discardableResult
+    func startSetTimer(workoutID: UUID, exerciseID: UUID, setID: UUID, now: Date = Date()) -> Bool {
+        editActiveSetTiming(workoutID: workoutID, exerciseID: exerciseID, setID: setID) { workout, exercise, set in
+            guard now.timeIntervalSinceReferenceDate.isFinite, !workout.exercises[exercise].sets[set].isCompleted else {
+                throw StoreError.invalid("Starting a set timer requires an incomplete set and a valid start time.")
+            }
+            for entry in workout.exercises.indices {
+                for index in workout.exercises[entry].sets.indices where !workout.exercises[entry].sets[index].isCompleted {
+                    workout.exercises[entry].sets[index].startedAt = nil
+                }
+            }
+            workout.exercises[exercise].sets[set].isMarkedForHeartRate = true
+            workout.exercises[exercise].sets[set].startedAt = max(now, workout.startedAt)
+        }
+    }
+
+    @discardableResult
+    func cancelSetTimer(workoutID: UUID, exerciseID: UUID, setID: UUID) -> Bool {
+        editActiveSetTiming(workoutID: workoutID, exerciseID: exerciseID, setID: setID) { workout, exercise, set in
+            guard !workout.exercises[exercise].sets[set].isCompleted else {
+                throw StoreError.invalid("Only an incomplete set can have its timer canceled.")
+            }
+            workout.exercises[exercise].sets[set].startedAt = nil
+        }
+    }
+
+    private func editActiveSetTiming(workoutID: UUID, exerciseID: UUID, setID: UUID,
+                                     edit: (inout WorkoutSession, Int, Int) throws -> Void) -> Bool {
+        do {
+            guard var workout = activeWorkout, workout.id == workoutID,
+                  let exercise = workout.exercises.firstIndex(where: { $0.id == exerciseID }),
+                  let set = workout.exercises[exercise].sets.firstIndex(where: { $0.id == setID }) else {
+                throw StoreError.invalid("This set is no longer in the active workout.")
+            }
+            try edit(&workout, exercise, set)
+            var next = snapshot
+            next.activeWorkout = workout
             return commit(next)
         } catch { return fail(error) }
     }
@@ -408,7 +485,11 @@ final class WorkoutStore {
               workout.templateVersionID == nil, workout.templateVersionNumber == nil,
               !history.contains(where: { $0.id == workout.id }),
               workout.restTimer == nil,
-              workout.exercises.allSatisfy({ !$0.sets.isEmpty && $0.sets.allSatisfy { !$0.isCompleted } }) else {
+              workout.exercises.allSatisfy({ entry in
+                  !entry.sets.isEmpty && entry.sets.allSatisfy {
+                      !$0.isCompleted && $0.startedAt == nil && $0.completedAt == nil
+                  }
+              }) else {
             return fail(StoreError.invalid("The proposed workout must contain only planned, uncompleted sets in your current unit."))
         }
         do {
@@ -426,7 +507,7 @@ final class WorkoutStore {
     }
 
     @discardableResult
-    func finishWorkout() -> Bool {
+    func finishWorkout(now: Date = Date()) -> Bool {
         guard var workout = activeWorkout else {
             return fail(StoreError.invalid("There is no active workout to finish."))
         }
@@ -440,7 +521,12 @@ final class WorkoutStore {
             return fail(StoreError.invalid("Complete at least one set before finishing your workout."))
         }
         workout.restTimer = nil
-        workout.finishedAt = Date()
+        guard now.timeIntervalSinceReferenceDate.isFinite else {
+            return fail(StoreError.invalid("The workout finish time is invalid."))
+        }
+        let latestSetTimestamp = workout.exercises.flatMap(\.sets)
+            .flatMap { [$0.startedAt, $0.completedAt].compactMap { $0 } }.max()
+        workout.finishedAt = max(now, workout.startedAt, latestSetTimestamp ?? workout.startedAt)
         var next = snapshot
         next.history.insert(workout, at: 0)
         next.activeWorkout = nil
@@ -864,6 +950,10 @@ final class WorkoutStore {
             throw StoreError.invalid("A workout contains invalid dates.")
         }
         try validateIDs(workout.exercises.map(\.id))
+        let activeTimers = workout.exercises.flatMap(\.sets).filter { !$0.isCompleted && $0.startedAt != nil }
+        guard activeTimers.count <= 1 else {
+            throw StoreError.invalid("Only one incomplete set can be timed at a time.")
+        }
         guard (workout.templateVersionID == nil) == (workout.templateVersionNumber == nil),
               workout.templateVersionNumber.map({ $0 > 0 && workout.templateID != nil }) ?? true else {
             throw StoreError.invalid("A workout has an invalid template version reference.")
@@ -875,6 +965,18 @@ final class WorkoutStore {
             try validateIDs(item.sets.map(\.id))
             for set in item.sets {
                 try validateSet(weight: set.weight, reps: set.reps)
+                for timestamp in [set.startedAt, set.completedAt].compactMap({ $0 }) {
+                    guard timestamp.timeIntervalSinceReferenceDate.isFinite,
+                          timestamp >= workout.startedAt,
+                          workout.finishedAt.map({ timestamp <= $0 }) ?? true else {
+                        throw StoreError.invalid("A set timestamp falls outside the workout.")
+                    }
+                }
+                if let completion = set.completedAt {
+                    guard set.isCompleted, set.startedAt.map({ $0 <= completion }) ?? true else {
+                        throw StoreError.invalid("A set completion must belong to a completed set and follow its start.")
+                    }
+                }
                 if let targetReps = set.targetReps, targetReps <= 0 {
                     throw StoreError.invalid("Target reps must be greater than zero.")
                 }

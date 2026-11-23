@@ -213,10 +213,12 @@ private struct HistoryStatLabelStyle: LabelStyle {
 }
 
 struct WorkoutRecordView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let workout: WorkoutSession
     var title: String? = nil
     var onSummary: (() -> Void)? = nil
     var onSaveAsTemplate: (() -> Void)? = nil
+    var showHeartRateSection = false
 
     var body: some View {
         LiftList {
@@ -245,6 +247,11 @@ struct WorkoutRecordView: View {
                     }
                 }
             }
+            if showHeartRateSection {
+                Section("Heart Rate & Sets") {
+                    WorkoutHeartRateView(workout: workout)
+                }
+            }
             if let notes = workout.notes {
                 Section("Workout notes") { Text(notes).accessibilityIdentifier("historyWorkoutNotes") }
             }
@@ -252,12 +259,28 @@ struct WorkoutRecordView: View {
                 let group = SupersetStyle.group(for: exercise, in: workout.exercises)
                 Section {
                     ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
-                        HStack {
-                            Text("Set \(index + 1)").foregroundStyle(.secondary)
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 4) {
+                        let accessible = dynamicTypeSize.isAccessibilitySize
+                        let layout = accessible ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                            : AnyLayout(HStackLayout())
+                        let span = set.startedAt.flatMap { start in set.completedAt.map { $0.timeIntervalSince(start) } }
+                        layout {
+                            HStack {
+                                Text("Set \(index + 1)").foregroundStyle(.secondary)
+                                if set.isMarkedForHeartRate || span != nil {
+                                    Image(systemName: "heart.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.pink)
+                                        .accessibilityLabel(set.isMarkedForHeartRate ? "Marked for heart rate" : "Timed set")
+                                }
+                            }
+                            if !accessible { Spacer() }
+                            VStack(alignment: accessible ? .leading : .trailing, spacing: 4) {
                                 Text("\(set.weight.formatted(.number.precision(.fractionLength(0...2)))) \(workout.unit.rawValue) × \(set.reps)")
                                     .monospacedDigit()
+                                if let span {
+                                    Text("Timed \(workoutSetDuration(span))")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
                                 if set.targetWeight != nil || set.targetReps != nil {
                                     Text(plannedPrescription(set))
                                         .font(.caption).foregroundStyle(.secondary)
@@ -317,7 +340,7 @@ struct WorkoutDetailView: View {
         Group {
             if let current {
                 WorkoutRecordView(workout: current, onSummary: { showingSummary = true },
-                                  onSaveAsTemplate: { creatingTemplate = true })
+                                  onSaveAsTemplate: { creatingTemplate = true }, showHeartRateSection: true)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Share Workout", systemImage: "square.and.arrow.up") { showingShare = true }

@@ -7,12 +7,21 @@ import Foundation
 protocol WorkoutHealthDataProviding {
     /// Interval series for a session, used where samples over time are needed.
     func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot
+    func fetchHeartRateSamples(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot
     /// One aggregate sample per dashboard metric for a session: the session
     /// average heart rate and total active energy. Steps are not read.
     func fetchHealthSummary(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot
 }
 
 extension WorkoutHealthDataProviding {
+    func fetchHeartRateSamples(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
+        let scoped = try await fetchHealthData(for: workout, through: through)
+            .scoped(to: workout, through: through, maximumSamplesPerMetric: WorkoutHealthSnapshot.maximumHeartRateSamples)
+        return WorkoutHealthSnapshot(workoutID: scoped.workoutID, workoutName: scoped.workoutName,
+                                     startedAt: scoped.startedAt, endedAt: scoped.endedAt, fetchedAt: scoped.fetchedAt,
+                                     metrics: scoped.metrics.filter { $0.metric == .heartRate })
+    }
+
     /// Providers that only implement the series fetch derive the same dashboard
     /// aggregates from it; the HealthKit provider overrides this with single
     /// aggregate queries instead of reading hundreds of interval buckets.
@@ -64,6 +73,7 @@ struct WorkoutHealthMetricSeries: Codable, Equatable, Sendable {
 
 struct WorkoutHealthSnapshot: Codable, Equatable, Sendable {
     static let maximumSamplesPerMetric = 600
+    static let maximumHeartRateSamples = 3_600
     static let maximumSessionDuration: TimeInterval = 48 * 60 * 60
 
     let workoutID: UUID
@@ -111,7 +121,8 @@ struct WorkoutHealthSnapshot: Codable, Equatable, Sendable {
 
     /// Revalidate a provider's output before displaying or attaching it. This also
     /// protects assistant input when a provider is injected for tests or previews.
-    func scoped(to workout: WorkoutSession, through: Date) throws -> WorkoutHealthSnapshot {
+    func scoped(to workout: WorkoutSession, through: Date,
+                maximumSamplesPerMetric: Int = Self.maximumSamplesPerMetric) throws -> WorkoutHealthSnapshot {
         let interval = try Self.interval(for: workout, through: through)
         guard workoutID == workout.id,
               startedAt == interval.start,
@@ -126,19 +137,19 @@ struct WorkoutHealthSnapshot: Codable, Equatable, Sendable {
                 $0.date.timeIntervalSinceReferenceDate.isFinite && $0.date >= startedAt && $0.date <= end && metric.accepts($0.value)
             }.sorted { $0.date < $1.date }
             guard !validSamples.isEmpty else { return nil }
-            return WorkoutHealthMetricSeries(metric: metric, samples: Self.bounded(validSamples, metric: metric))
+            return WorkoutHealthMetricSeries(metric: metric, samples: Self.bounded(validSamples, metric: metric, limit: max(1, maximumSamplesPerMetric)))
         }
         return WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name, startedAt: interval.start,
                                      endedAt: end, fetchedAt: fetchedAt, metrics: safeMetrics)
     }
 
-    private static func bounded(_ samples: [WorkoutHealthSample], metric: WorkoutHealthMetric) -> [WorkoutHealthSample] {
-        guard samples.count > maximumSamplesPerMetric else { return samples }
+    private static func bounded(_ samples: [WorkoutHealthSample], metric: WorkoutHealthMetric, limit: Int) -> [WorkoutHealthSample] {
+        guard samples.count > limit else { return samples }
         // Preserve cumulative totals when reducing payload size; average heart rate
         // within each consecutive group instead of discarding older measurements.
-        return (0..<maximumSamplesPerMetric).compactMap { index in
-            let start = index * samples.count / maximumSamplesPerMetric
-            let end = (index + 1) * samples.count / maximumSamplesPerMetric
+        return (0..<limit).compactMap { index in
+            let start = index * samples.count / limit
+            let end = (index + 1) * samples.count / limit
             let group = samples[start..<end]
             let value: Double
             if metric == .heartRate {

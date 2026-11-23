@@ -241,7 +241,9 @@ final class WorkoutStoreFlowTests: XCTestCase {
         XCTAssertTrue(store.startWorkout(template: planned))
         var active = try XCTUnwrap(store.activeWorkout)
         active.exercises[0].sets[0].isCompleted = true
-        XCTAssertTrue(store.updateActiveWorkout(active))
+        let completion = active.startedAt.addingTimeInterval(1)
+        XCTAssertTrue(store.updateActiveWorkout(active, now: completion))
+        active.exercises[0].sets[0].completedAt = completion
         XCTAssertTrue(store.deleteTemplate(id: planned.id))
         XCTAssertEqual(store.activeWorkout, active)
 

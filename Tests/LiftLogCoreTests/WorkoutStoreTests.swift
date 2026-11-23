@@ -315,11 +315,13 @@ final class WorkoutStoreTests: XCTestCase {
         XCTAssertTrue(store.startWorkout(template: reloadedTemplate))
         var active = try XCTUnwrap(store.activeWorkout)
         active.exercises[0].sets[0].isCompleted = true
-        let completedSet = active.exercises[0].sets[0]
+        let completion = active.startedAt.addingTimeInterval(1)
+        var completedSet = active.exercises[0].sets[0]
+        completedSet.completedAt = completion
         let setIDs = active.exercises[0].sets.map(\.id)
         let otherExercise = active.exercises[1]
         active.exercises[0].updateSetValues(weight: 150, reps: 6)
-        XCTAssertTrue(store.updateActiveWorkout(active))
+        XCTAssertTrue(store.updateActiveWorkout(active, now: completion))
         let reloaded = try XCTUnwrap(WorkoutStore(fileURL: file).activeWorkout)
         XCTAssertEqual(reloaded.exercises[0].sets.map(\.weight), [142.5, 150])
         XCTAssertEqual(reloaded.exercises[0].sets.map(\.reps), [7, 6])

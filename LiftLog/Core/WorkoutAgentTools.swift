@@ -362,8 +362,22 @@ final class WorkoutAgentTools {
         let points = samples.sorted { $0.date < $1.date }.map {
             WorkoutAgentChart.Point(id: UUID(), date: $0.date, value: $0.value, workoutName: snapshot.workoutName)
         }
+        var markers: [WorkoutAgentChart.Marker] = []
+        if metric == .heartRate,
+           let workout = (store.activeWorkout?.id == workoutID ? store.activeWorkout : nil)
+               ?? store.history.first(where: { $0.id == workoutID }) {
+            let correlation = WorkoutHeartRateCorrelation.correlate(workout: workout, snapshot: snapshot)
+            let onlyMarked = correlation.hasMarkedSets
+            markers = correlation.sets.filter { set in
+                onlyMarked ? set.isMarked : set.sampleCount > 0
+            }.prefix(30).map { set in
+                WorkoutAgentChart.Marker(id: set.id, label: "\(set.exerciseName), set \(set.setNumber)",
+                    startDate: set.windowStart, endDate: set.windowEnd, isMarked: set.isMarked)
+            }
+        }
         let chart = WorkoutAgentChart(id: UUID(), title: "\(metric.displayName) · \(snapshot.workoutName)",
-                                      metric: chartMetric, unit: nil, points: points)
+                                      metric: chartMetric, unit: nil, points: points,
+                                      markers: markers.isEmpty ? nil : markers)
         return try result(chart, chart: chart)
     }
 

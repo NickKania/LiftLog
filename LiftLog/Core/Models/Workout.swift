@@ -103,12 +103,34 @@ struct WorkoutSet: Codable, Equatable, Identifiable {
     var targetWeight: Double?
     var isCompleted: Bool
 
-    init(id: UUID = UUID(), weight: Double = 0, reps: Int = 8, targetReps: Int? = nil, targetWeight: Double? = nil, isCompleted: Bool = false) {
+    var startedAt: Date?
+    var completedAt: Date?
+    var isMarkedForHeartRate: Bool
+
+    init(id: UUID = UUID(), weight: Double = 0, reps: Int = 8, targetReps: Int? = nil,
+         targetWeight: Double? = nil, isCompleted: Bool = false, startedAt: Date? = nil,
+         completedAt: Date? = nil, isMarkedForHeartRate: Bool = false) {
         self.id = id
         self.weight = weight
         self.reps = reps
         self.targetReps = targetReps
         self.targetWeight = targetWeight
         self.isCompleted = isCompleted
+        self.startedAt = startedAt
+        self.completedAt = completedAt
+        self.isMarkedForHeartRate = isMarkedForHeartRate
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        weight = try values.decode(Double.self, forKey: .weight)
+        reps = try values.decode(Int.self, forKey: .reps)
+        targetReps = try values.decodeIfPresent(Int.self, forKey: .targetReps)
+        targetWeight = try values.decodeIfPresent(Double.self, forKey: .targetWeight)
+        isCompleted = try values.decode(Bool.self, forKey: .isCompleted)
+        startedAt = try values.decodeIfPresent(Date.self, forKey: .startedAt)
+        completedAt = try values.decodeIfPresent(Date.self, forKey: .completedAt)
+        isMarkedForHeartRate = try values.decodeIfPresent(Bool.self, forKey: .isMarkedForHeartRate) ?? false
     }
 }

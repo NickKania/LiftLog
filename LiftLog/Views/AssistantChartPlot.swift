@@ -9,6 +9,10 @@ struct AssistantChartPlot: View {
     let selectedID: UUID?
 
     private var isHealthChart: Bool { presentation.chart.metric.isHealthMetric }
+    private var markers: [WorkoutAgentChart.Marker] {
+        isHealthChart ? presentation.chart.markers ?? [] : []
+    }
+
     private var xLabel: String { isHealthChart ? "Health interval time" : "Workout" }
 
     private func xPosition(_ index: Int, point: WorkoutAgentChart.Point) -> Double {
@@ -19,8 +23,8 @@ struct AssistantChartPlot: View {
         guard isHealthChart, let first = presentation.points.first, let last = presentation.points.last else {
             return -0.5...(Double(max(presentation.points.count - 1, 0)) + 0.5)
         }
-        let start = first.date.timeIntervalSinceReferenceDate
-        let end = last.date.timeIntervalSinceReferenceDate
+        let start = min(first.date, markers.map(\.startDate).min() ?? first.date).timeIntervalSinceReferenceDate
+        let end = max(last.date, markers.map(\.endDate).max() ?? last.date).timeIntervalSinceReferenceDate
         let padding = max((end - start) * 0.04, 1)
         return (start - padding)...(end + padding)
     }
@@ -35,6 +39,19 @@ struct AssistantChartPlot: View {
     var body: some View {
         let points = presentation.points
         Chart {
+            ForEach(markers) { marker in
+                if marker.endDate > marker.startDate {
+                    RectangleMark(xStart: .value(xLabel, marker.startDate.timeIntervalSinceReferenceDate),
+                                  xEnd: .value(xLabel, marker.endDate.timeIntervalSinceReferenceDate))
+                        .foregroundStyle(.pink.opacity(0.12))
+                        .accessibilityHidden(true)
+                }
+                RuleMark(x: .value(xLabel, marker.endDate.timeIntervalSinceReferenceDate))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .foregroundStyle(.pink.opacity(0.6))
+                    .accessibilityLabel(marker.label + (marker.isMarked ? ", marked set" : ""))
+                    .accessibilityValue(marker.endDate.formatted(date: .omitted, time: .standard))
+            }
             ForEach(Array(points.enumerated()), id: \.element.id) { index, point in
                 if style == .line {
                     AreaMark(x: .value(xLabel, xPosition(index, point: point)), yStart: .value("Baseline", 0), yEnd: .value(presentation.valueLabel, point.value))

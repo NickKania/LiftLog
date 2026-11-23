@@ -132,6 +132,12 @@ struct WorkoutHistoryEditorView: View {
                         }
                     }, onValidity: { valid in
                         if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
+                    }, isMarkedForHeartRate: set.isMarkedForHeartRate, startedAt: set.startedAt, completedAt: set.completedAt,
+                    onToggleHeartRateMark: {
+                        updateExercise(exercise.id) { entry in
+                            guard let row = entry.sets.firstIndex(where: { $0.id == set.id }) else { return }
+                            entry.sets[row].isMarkedForHeartRate.toggle()
+                        }
                     })
                     .swipeActions {
                         Button("Delete Set", role: .destructive) {

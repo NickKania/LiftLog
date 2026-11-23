@@ -110,6 +110,7 @@ final class SiriWorkoutActionsTests: XCTestCase {
         let after = try XCTUnwrap(store.activeWorkout)
         var expected = entry
         expected.sets[0].isCompleted = true
+        expected.sets[0].completedAt = try XCTUnwrap(after.exercises[0].sets[0].completedAt)
         XCTAssertEqual(after.exercises[0], expected)
         XCTAssertEqual(Array(after.exercises.dropFirst()), Array(before.exercises.dropFirst()))
         XCTAssertEqual(after.restTimer?.durationSeconds, 45)

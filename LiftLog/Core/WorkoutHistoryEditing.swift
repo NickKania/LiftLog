@@ -43,6 +43,14 @@ enum WorkoutHistoryEditing {
             }
             for set in entry.sets {
                 let previousSet = previous?.sets.first { $0.id == set.id }
+                guard set.startedAt == previousSet?.startedAt, set.completedAt == previousSet?.completedAt else {
+                    throw ValidationError("Recorded set times must stay unchanged, and added sets cannot have recorded times.")
+                }
+                for timestamp in [set.startedAt, set.completedAt].compactMap({ $0 }) {
+                    guard timestamp >= draft.startedAt, timestamp <= finish else {
+                        throw ValidationError("The workout start and finish must include all recorded set times.")
+                    }
+                }
                 guard set.isCompleted, set.targetReps == previousSet?.targetReps,
                       set.targetWeight == previousSet?.targetWeight else {
                     throw ValidationError("Record completed work only. Original targets must stay unchanged, and added sets have no targets.")

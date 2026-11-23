@@ -14,6 +14,12 @@ struct SetInputRow: View {
     let onChange: (Double, Int) -> Void
     var onCompletion: (() -> Void)? = nil
     var onValidity: ((Bool) -> Void)? = nil
+    var isMarkedForHeartRate = false
+    var startedAt: Date? = nil
+    var completedAt: Date? = nil
+    var onToggleHeartRateMark: (() -> Void)? = nil
+    var onStartSetTimer: (() -> Void)? = nil
+    var onCancelSetTimer: (() -> Void)? = nil
     @State private var weightText = ""
     @State private var repsText = ""
     @State private var initialized = false
@@ -31,10 +37,37 @@ struct SetInputRow: View {
             let inputLayout = dynamicTypeSize.isAccessibilitySize
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
                 : AnyLayout(HStackLayout(spacing: 12))
+            if dynamicTypeSize.isAccessibilitySize {
+                HStack {
+                    setNumber("Set \(number)")
+                    if hasHeartRateMenu {
+                        heartRateMenu {
+                            Image(systemName: isMarkedForHeartRate || isTiming ? "heart.fill" : "heart")
+                                .foregroundStyle(isMarkedForHeartRate || isTiming ? Color.pink : .secondary)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                    }
+                }
+            }
             inputLayout {
-                Text(dynamicTypeSize.isAccessibilitySize ? "Set \(number)" : "\(number)")
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                    .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 26, alignment: .leading)
+                if !dynamicTypeSize.isAccessibilitySize {
+                    if hasHeartRateMenu {
+                        heartRateMenu {
+                            setNumber("\(number)")
+                                .overlay(alignment: .topTrailing) {
+                                    if isMarkedForHeartRate || isTiming {
+                                        Image(systemName: "heart.fill")
+                                            .font(.system(size: 8))
+                                            .foregroundStyle(Color.pink)
+                                            .offset(x: 8, y: -3)
+                                    }
+                                }
+                                .frame(minWidth: 32, minHeight: 44)
+                        }
+                    } else {
+                        setNumber("\(number)").frame(width: 26, alignment: .leading)
+                    }
+                }
                 VStack(alignment: .leading, spacing: 3) {
                     if dynamicTypeSize.isAccessibilitySize {
                         Text("Weight (\(unit.rawValue))").font(.caption).foregroundStyle(.secondary)
@@ -91,6 +124,7 @@ struct SetInputRow: View {
             .textFieldStyle(.plain)
             .monospacedDigit()
             .padding(.vertical, 3)
+            heartRateStatus
             if initialized && !valid {
                 Text("Enter a weight of 0 or more and at least 1 rep.")
                     .font(.caption).foregroundStyle(.red)
@@ -114,6 +148,86 @@ struct SetInputRow: View {
         }
     }
 
+    private var hasHeartRateMenu: Bool { onToggleHeartRateMark != nil || onStartSetTimer != nil }
+    private var isTiming: Bool { completed == false && startedAt != nil }
+
+    private func setNumber(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isTiming ? Color.pink : .secondary)
+    }
+
+    private func heartRateMenu<Badge: View>(@ViewBuilder badge: () -> Badge) -> some View {
+        Menu {
+            if completed == false, let onStartSetTimer {
+                Button("Start Timed Set", systemImage: "heart.circle.fill", action: onStartSetTimer)
+                    .disabled(isTiming)
+            }
+            if let onToggleHeartRateMark {
+                Button(isMarkedForHeartRate ? "Remove Heart Rate Mark" : "Mark for Heart Rate",
+                       systemImage: isMarkedForHeartRate ? "heart.slash" : "heart", action: onToggleHeartRateMark)
+            }
+            if isTiming, let onCancelSetTimer {
+                Button("Cancel Set Timer", systemImage: "xmark.circle", action: onCancelSetTimer)
+            }
+        } label: {
+            badge().contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Heart rate options for set \(number)")
+        .accessibilityValue(isTiming ? "Timing set" : (isMarkedForHeartRate ? "Marked for heart rate" : "Unmarked"))
+        .accessibilityIdentifier("setHeartRateMenu-\(number)")
+    }
+
+    @ViewBuilder private var heartRateStatus: some View {
+        if isTiming, let startedAt {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                : AnyLayout(HStackLayout(spacing: 8))
+            layout {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    HStack(spacing: 5) {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 7))
+                            .accessibilityHidden(true)
+                        Text("Timing set · \(workoutSetDuration(context.date.timeIntervalSince(startedAt)))")
+                    }
+                    .monospacedDigit()
+                    .foregroundStyle(Color.pink)
+                }
+                if let onCancelSetTimer {
+                    Button("Cancel", action: onCancelSetTimer)
+                        .buttonStyle(.borderless)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("cancelSetTimer-\(number)")
+                }
+            }
+            .font(.caption)
+        } else {
+            let duration = startedAt.flatMap { start in completedAt.map { $0.timeIntervalSince(start) } }
+            if isMarkedForHeartRate || duration != nil {
+                let layout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                    : AnyLayout(HStackLayout(spacing: 8))
+                layout {
+                    if isMarkedForHeartRate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "heart.fill")
+                                .font(.caption2)
+                                .accessibilityHidden(true)
+                            Text("Marked for HR")
+                        }
+                        .foregroundStyle(Color.pink)
+                    }
+                    if let duration {
+                        Text("Timed \(workoutSetDuration(duration))").foregroundStyle(.secondary)
+                    }
+                }
+                .font(.caption)
+            }
+        }
+    }
+
     private var formattedWeight: String {
         weight == weight.rounded() && weight < 1e15 ? String(format: "%.0f", weight) : String(weight)
     }
@@ -125,6 +239,12 @@ struct SetInputRow: View {
             onChange(parsedWeight, parsedReps)
         }
     }
+}
+
+func workoutSetDuration(_ interval: TimeInterval) -> String {
+    guard interval.isFinite, interval < Double(Int.max) else { return "Unavailable" }
+    let seconds = Int(max(0, interval))
+    return seconds < 60 ? "\(seconds)s" : "\(seconds / 60)m \(seconds % 60)s"
 }
 
 struct SetColumnHeader: View {
