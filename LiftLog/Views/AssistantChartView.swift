@@ -17,6 +17,14 @@ struct AssistantChartView: View {
             ? "Source: Apple Health in tagged workout sessions · \(presentation.points.count) time intervals. " + (chart.metric == .heartRate ? "Average heart rate per interval." : "Totals per interval, not per session.")
             : "Source: completed sets in \(presentation.points.count) recorded workouts."
     }
+    private var overlayCaption: String? {
+        guard isHealthChart, let markers = chart.markers, !markers.isEmpty else { return nil }
+        let marked = markers.filter(\.isMarked).count
+        if marked == markers.count {
+            return marked == 1 ? "Pink overlay shows 1 marked set." : "Pink overlays show \(marked) marked sets."
+        }
+        return markers.count == 1 ? "Pink overlay shows 1 set window." : "Pink overlays show \(markers.count) set windows."
+    }
     private var selectedPoint: WorkoutAgentChart.Point? {
         presentation.points.first { $0.id == selectedID } ?? presentation.points.last
     }
@@ -178,6 +186,11 @@ struct AssistantChartView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(sourceCaption)
                 .font(.caption).foregroundStyle(.secondary)
+            if let overlayCaption {
+                Label(overlayCaption, systemImage: "rectangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             if !isHealthChart, range != .all {
                 Text("\(range.label), ending at this chart’s latest workout.")
                     .font(.caption2).foregroundStyle(.secondary)
@@ -235,6 +248,7 @@ struct AssistantChartView: View {
             Text(presentation.valueLabel).font(.subheadline).foregroundStyle(.secondary)
             AssistantChartPlot(presentation: presentation, style: style, selectedID: nil)
             Text(sourceCaption).font(.caption).foregroundStyle(.secondary)
+            if let overlayCaption { Text(overlayCaption).font(.caption).foregroundStyle(.secondary) }
             if !isHealthChart, range != .all { Text("\(range.label), ending at this chart’s latest workout.").font(.caption).foregroundStyle(.secondary) }
         }.padding(28).frame(width: 600).background(.white)
             .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .medium)

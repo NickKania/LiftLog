@@ -448,13 +448,33 @@ final class WorkoutAssistant {
 
     private struct HealthRequestError: LocalizedError { let errorDescription: String? }
 
+    private struct WorkoutSetHeartRateContext: Encodable {
+        let workoutID: UUID
+        let workoutName: String
+        let sets: [SetCorrelationRecord]
+    }
+
     private struct HealthContext: Encodable {
         let selectedHealthSnapshots: [WorkoutHealthSnapshot]
         let seriesSemantics = "Heart rate values are interval averages in bpm. Active energy values are interval totals in kcal. Steps are interval totals in count. Missing intervals are omitted, never zero; an empty series does not reveal whether permission was denied."
         let aggregationNotice: String?
+        let setHeartRateCorrelations: [WorkoutSetHeartRateContext]?
+        let setHeartRateSemantics: String?
     }
 
-    private func healthContext(text: String, snapshots: [WorkoutHealthSnapshot], maximumIntervalsPerMetric: Int? = nil) throws -> String {
+    private func setHeartRateContexts(for snapshots: [WorkoutHealthSnapshot]) -> [WorkoutSetHeartRateContext] {
+        snapshots.compactMap { snapshot in
+            guard let workout = try? selectedWorkout(snapshot.workoutID) else { return nil }
+            let sets = WorkoutHeartRateCorrelation.correlate(workout: workout, snapshot: snapshot).sets
+            guard !sets.isEmpty else { return nil }
+            let prioritized = sets.filter(\.isMarked) + sets.filter { !$0.isMarked }
+            return WorkoutSetHeartRateContext(workoutID: workout.id, workoutName: workout.name,
+                sets: prioritized.prefix(12).map(SetCorrelationRecord.init))
+        }
+    }
+
+    private func healthContext(text: String, snapshots: [WorkoutHealthSnapshot],
+                               setHeartRateContexts: [WorkoutSetHeartRateContext], maximumIntervalsPerMetric: Int? = nil) throws -> String {
         guard !snapshots.isEmpty else { return text }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -462,7 +482,18 @@ final class WorkoutAssistant {
         let notice = maximumIntervalsPerMetric.map {
             "For on-device analysis, the complete scoped readings are grouped into at most \($0) consecutive intervals per metric. Heart rate is the mean of each group's interval means; energy and step totals are preserved. Dates mark group ends. Native charts still use the original scoped readings."
         }
-        let data = try encoder.encode(HealthContext(selectedHealthSnapshots: snapshots, aggregationNotice: notice))
+        let correlations = setHeartRateContexts.map { context in
+            let limit = min(maximumIntervalsPerMetric ?? 12, 12)
+            return WorkoutSetHeartRateContext(workoutID: context.workoutID, workoutName: context.workoutName,
+                sets: Array(context.sets.prefix(limit)))
+        }
+        let readings = maximumIntervalsPerMetric.map { limit in
+            snapshots.map { $0.aggregated(maximumSamplesPerMetric: limit) }
+        } ?? snapshots
+        let semantics = correlations.isEmpty ? nil
+            : "Swift computes set HR from the scoped interval readings. Timed windows use a recorded start; estimated windows use completion only. Positive recoveryDrop60s means bpm fell from the set peak after about 60 seconds. Null is unavailable."
+        let data = try encoder.encode(HealthContext(selectedHealthSnapshots: readings, aggregationNotice: notice,
+            setHeartRateCorrelations: correlations.isEmpty ? nil : correlations, setHeartRateSemantics: semantics))
         let content = text + "\n\nSelected Apple Health data for this message only (JSON):\n" + String(decoding: data, as: UTF8.self)
         guard content.utf8.count <= 131_072 else {
             if provider == .appleFoundationModels { throw AppleFoundationModelsError.contextTooLarge }
@@ -473,15 +504,17 @@ final class WorkoutAssistant {
 
     private func inferenceInput(text: String, snapshots: [WorkoutHealthSnapshot], history: [[String: Any]],
                                 tools: [[String: Any]]) throws -> (items: [[String: Any]], healthIntervals: Int?) {
+        let correlations = setHeartRateContexts(for: snapshots)
         guard provider == .appleFoundationModels, !snapshots.isEmpty else {
-            return (history + [["role": "user", "content": try healthContext(text: text, snapshots: snapshots)]], nil)
+            let content = try healthContext(text: text, snapshots: snapshots, setHeartRateContexts: correlations)
+            return (history + [["role": "user", "content": content]], nil)
         }
         // Always aggregate from the full scoped source, not from earlier means.
         // Keep that source intact for authoritative graph tool execution.
         for intervals in [24, 12, 6, 3, 1] {
-            let compact = snapshots.map { $0.aggregated(maximumSamplesPerMetric: intervals) }
             do {
-                let content = try healthContext(text: text, snapshots: compact, maximumIntervalsPerMetric: intervals)
+                let content = try healthContext(text: text, snapshots: snapshots, setHeartRateContexts: correlations,
+                                                maximumIntervalsPerMetric: intervals)
                 let input = history + [["role": "user", "content": content]]
                 _ = try FoundationModelsRequest(input: input, tools: tools, instructions: Self.instructions,
                                                 contextTokens: appleFoundationModels.contextTokens)
@@ -802,12 +835,15 @@ final class WorkoutAssistant {
             // Continuations need space for their tool receipt too. Reduce only
             // explicit Health aggregates, always recomputing from the full source.
             // The question and selected workout/template snapshots stay verbatim.
+            let correlations = setHeartRateContexts(for: healthSnapshots)
             for intervals in [12, 6, 3, 1] where intervals < previousIntervals {
-                let compact = healthSnapshots.map { $0.aggregated(maximumSamplesPerMetric: intervals) }
-                input[start]["content"] = try healthContext(text: originalText, snapshots: compact, maximumIntervalsPerMetric: intervals)
-                healthIntervals = intervals
-                do { try validate(); return }
-                catch let error as AppleFoundationModelsError where error.kind == .contextTooLarge { continue }
+                do {
+                    input[start]["content"] = try healthContext(text: originalText, snapshots: healthSnapshots,
+                        setHeartRateContexts: correlations, maximumIntervalsPerMetric: intervals)
+                    healthIntervals = intervals
+                    try validate()
+                    return
+                } catch let error as AppleFoundationModelsError where error.kind == .contextTooLarge { continue }
             }
         }
         // Explicitly replace complete older results, never individual facts, IDs,

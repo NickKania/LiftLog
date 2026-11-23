@@ -77,11 +77,29 @@ struct WorkoutAgentChart: Codable, Equatable, Identifiable {
         let value: Double
         let workoutName: String
     }
+    struct Marker: Codable, Equatable, Identifiable {
+        let id: UUID
+        let label: String
+        let startDate: Date
+        let endDate: Date
+        let isMarked: Bool
+    }
+
     let id: UUID
     let title: String
     let metric: Metric
     let unit: WeightUnit?
     let points: [Point]
+    let markers: [Marker]?
+
+    init(id: UUID, title: String, metric: Metric, unit: WeightUnit?, points: [Point], markers: [Marker]? = nil) {
+        self.id = id
+        self.title = title
+        self.metric = metric
+        self.unit = unit
+        self.points = points
+        self.markers = markers
+    }
 
     var valueUnitLabel: String { metric.healthUnitLabel ?? unit?.rawValue ?? "sets" }
 }

@@ -67,7 +67,14 @@ struct WorkoutDatabase {
                             WorkoutSet(id: try set.uuid("id"), weight: try set.number("weight"), reps: try set.integer("reps"),
                                        targetReps: try set.optional("target_reps", read: set.integer),
                                        targetWeight: schemaVersion >= 2 ? try set.optional("target_weight", read: set.number) : nil,
-                                       isCompleted: try set.integer("completed") == 1)
+                                       isCompleted: try set.integer("completed") == 1,
+                                       startedAt: schemaVersion >= 11 ? try set.optional("started_at") {
+                                           Date(timeIntervalSinceReferenceDate: try set.number($0))
+                                       } : nil,
+                                       completedAt: schemaVersion >= 11 ? try set.optional("completed_at") {
+                                           Date(timeIntervalSinceReferenceDate: try set.number($0))
+                                       } : nil,
+                                       isMarkedForHeartRate: schemaVersion >= 11 ? try set.integer("hr_marked") == 1 : false)
                         }
                         return WorkoutExercise(id: try entry.uuid("id"), exercise: try exercise(entry), sets: sets,
                                                supersetID: schemaVersion >= 4 ? try entry.optional("superset_id", read: entry.uuid) : nil,
@@ -143,6 +150,7 @@ struct WorkoutDatabase {
                 if schemaVersion <= 7 { try migrateVersionEight(db) }
                 if schemaVersion <= 8 { try migrateVersionNine(db) }
                 if schemaVersion <= 9 { try migrateVersionTen(db) }
+                if schemaVersion <= 10 { try migrateVersionEleven(db) }
                 try db.execute("DELETE FROM history_recovery")
                 try db.execute("DELETE FROM records")
                 try db.execute("DELETE FROM personal_exercises")
@@ -217,7 +225,7 @@ struct WorkoutDatabase {
     private func checkFormat(_ db: SQLiteConnection) throws -> Int {
         let version = try db.rows("PRAGMA user_version").first?.integer("user_version")
         guard try db.rows("PRAGMA application_id").first?.integer("application_id") == Self.applicationID,
-              let version, (1...10).contains(version) else {
+              let version, (1...11).contains(version) else {
             throw DatabaseError(message: "This file is not a supported Lift Log database.")
         }
         return version
@@ -290,6 +298,13 @@ struct WorkoutDatabase {
         try db.execute("PRAGMA user_version = 10")
     }
 
+    private func migrateVersionEleven(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE workout_sets ADD COLUMN started_at REAL")
+        try db.execute("ALTER TABLE workout_sets ADD COLUMN completed_at REAL")
+        try db.execute("ALTER TABLE workout_sets ADD COLUMN hr_marked INTEGER NOT NULL DEFAULT 0 CHECK (hr_marked IN (0, 1))")
+        try db.execute("PRAGMA user_version = 11")
+    }
+
     private func createSchema(_ db: SQLiteConnection) throws {
         let statements = [
             "PRAGMA application_id = \(Self.applicationID)",
@@ -352,7 +367,8 @@ struct WorkoutDatabase {
             try saveEntry(db, key: key, id: entry.id, exercise: entry.exercise, position: position, supersetID: entry.supersetID, templateExerciseID: entry.templateExerciseID, notes: entry.notes, restSeconds: entry.restSeconds)
             for (position, set) in entry.sets.enumerated() {
                 try saveSet(db, key: key, entryID: entry.id, id: set.id, position: position, weight: set.weight,
-                            reps: set.reps, targetReps: set.targetReps, targetWeight: set.targetWeight, completed: set.isCompleted)
+                            reps: set.reps, targetReps: set.targetReps, targetWeight: set.targetWeight, completed: set.isCompleted,
+                            startedAt: set.startedAt, completedAt: set.completedAt, marked: set.isMarkedForHeartRate)
             }
         }
     }
@@ -362,9 +378,11 @@ struct WorkoutDatabase {
                        [.text(key), .text(id.uuidString), .integer(Int64(position)), .text(exercise.id.uuidString), .text(exercise.name), .text(exercise.category), .optional(supersetID?.uuidString), .optional(templateExerciseID?.uuidString), .optional(notes), .optional(restSeconds)])
     }
 
-    private func saveSet(_ db: SQLiteConnection, key: String, entryID: UUID, id: UUID, position: Int, weight: Double, reps: Int?, targetReps: Int?, targetWeight: Double?, completed: Bool) throws {
-        try db.execute("INSERT INTO workout_sets (record_key, entry_id, id, position, weight, reps, target_reps, completed, target_weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    private func saveSet(_ db: SQLiteConnection, key: String, entryID: UUID, id: UUID, position: Int, weight: Double, reps: Int?, targetReps: Int?, targetWeight: Double?, completed: Bool,
+                         startedAt: Date? = nil, completedAt: Date? = nil, marked: Bool = false) throws {
+        try db.execute("INSERT INTO workout_sets (record_key, entry_id, id, position, weight, reps, target_reps, completed, target_weight, started_at, completed_at, hr_marked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                        [.text(key), .text(entryID.uuidString), .text(id.uuidString), .integer(Int64(position)), .real(weight),
-                        .optional(reps), .optional(targetReps), .integer(completed ? 1 : 0), targetWeight.map(SQLiteValue.real) ?? .null])
+                        .optional(reps), .optional(targetReps), .integer(completed ? 1 : 0), targetWeight.map(SQLiteValue.real) ?? .null,
+                        .date(startedAt), .date(completedAt), .integer(marked ? 1 : 0)])
     }
 }

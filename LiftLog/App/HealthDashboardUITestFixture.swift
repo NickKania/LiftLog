@@ -9,6 +9,10 @@ enum HealthDashboardUITestFixture {
         return arguments.contains("--ui-testing") && arguments.contains("--health-dashboard-ui-fixture")
     }
 
+    private static var includesSetHeartRate: Bool {
+        ProcessInfo.processInfo.arguments.contains("--set-heart-rate-ui-fixture")
+    }
+
     static func seedWorkouts(in store: WorkoutStore, now: Date = Date()) {
         precondition(isEnabled, "Dashboard fixtures require an explicit UI test launch.")
         let names = ["Bench Press", "Barbell Row", "Squat", "Deadlift"]
@@ -42,12 +46,20 @@ enum HealthDashboardUITestFixture {
             let load = Double((templateIndex == 0 ? 185 : 225) - index * 5)
             let entries = exercises[(templateIndex * 2)..<(templateIndex * 2 + 2)].enumerated().map { offset, exercise in
                 let weight = (load - Double(offset * 40)) * factor
-                return WorkoutExercise(id: identifier(1_000 + index * 10 + offset), exercise: exercise, sets: [
+                var sets = [
                     WorkoutSet(id: identifier(2_000 + index * 10 + offset * 3), weight: weight, reps: 6,
                         targetReps: 8, targetWeight: weight, isCompleted: true),
                     WorkoutSet(id: identifier(2_001 + index * 10 + offset * 3), weight: weight - 5 * factor, reps: 8,
                         targetReps: 8, targetWeight: weight, isCompleted: true)
-                ])
+                ]
+                if includesSetHeartRate {
+                    let timing = HealthDashboardFixtureSetTiming.all[offset]
+                    sets[0].startedAt = start.addingTimeInterval(timing.start)
+                    sets[0].completedAt = start.addingTimeInterval(timing.finish)
+                    sets[0].isMarkedForHeartRate = true
+                    sets[1].completedAt = start.addingTimeInterval(timing.untimedFinish)
+                }
+                return WorkoutExercise(id: identifier(1_000 + index * 10 + offset), exercise: exercise, sets: sets)
             }
             return WorkoutSession(id: identifier(10_000 + index), templateID: template.id,
                 templateVersionID: template.currentVersion?.id, templateVersionNumber: template.currentVersion?.number,
@@ -110,7 +122,8 @@ enum HealthDashboardUITestFixture {
 
     static func makeHealthDataProvider() -> any WorkoutHealthDataProviding {
         precondition(isEnabled, "Dashboard fixtures require an explicit UI test launch.")
-        return HealthDashboardFixtureProvider()
+        if includesSetHeartRate { return HealthDashboardFixtureProvider() }
+        return HealthDashboardAggregateFixtureProvider()
     }
 
     private static func identifier(_ suffix: Int) -> UUID {
@@ -120,7 +133,7 @@ enum HealthDashboardUITestFixture {
 
 /// Synthetic session-scoped readings; this provider never touches HealthKit.
 @MainActor
-private struct HealthDashboardFixtureProvider: WorkoutHealthDataProviding {
+private struct HealthDashboardAggregateFixtureProvider: WorkoutHealthDataProviding {
     func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
         let interval = try WorkoutHealthSnapshot.interval(for: workout, through: through)
         let index = Int(workout.importSourceKey?.split(separator: "-").last ?? "0") ?? 0
@@ -135,6 +148,63 @@ private struct HealthDashboardFixtureProvider: WorkoutHealthDataProviding {
                     WorkoutHealthSample(date: interval.start.addingTimeInterval(120), value: Double(136 + index))
                 ])
             ])
+    }
+}
+private struct HealthDashboardFixtureSetTiming {
+    let start: TimeInterval
+    let finish: TimeInterval
+    let untimedFinish: TimeInterval
+
+    static let all = [
+        Self(start: 180, finish: 225, untimedFinish: 360),
+        Self(start: 660, finish: 700, untimedFinish: 840)
+    ]
+}
+
+@MainActor
+private struct HealthDashboardFixtureProvider: WorkoutHealthDataProviding {
+    func fetchHealthData(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
+        try await HealthDashboardAggregateFixtureProvider().fetchHealthData(for: workout, through: through)
+    }
+
+    func fetchHeartRateSamples(for workout: WorkoutSession, through: Date) async throws -> WorkoutHealthSnapshot {
+        let interval = try WorkoutHealthSnapshot.interval(for: workout, through: through)
+        let index = Int(workout.importSourceKey?.split(separator: "-").last ?? "0") ?? 0
+        let baseline = Double(106 + index % 4)
+        var anchors: [(time: TimeInterval, bpm: Double)] = [(0, baseline)]
+        for (exercise, timing) in HealthDashboardFixtureSetTiming.all.enumerated() {
+            let peak = Double(148 + index % 9 + exercise * 8)
+            for (finish, setPeak) in [(timing.finish, peak), (timing.untimedFinish, peak + 2)] {
+                let sampledPeakTime = (finish / 15).rounded(.down) * 15
+                let recovery = setPeak - Double(22 + (index + exercise) % 7)
+                anchors.append(contentsOf: [
+                    (sampledPeakTime - 45, baseline),
+                    (sampledPeakTime, setPeak),
+                    (finish + 50, recovery),
+                    (finish + 70, recovery),
+                    (finish + 75, baseline)
+                ])
+            }
+        }
+        var nextAnchor = 1
+        let samples = stride(from: 0.0, through: interval.duration, by: 15).map { elapsed in
+            while nextAnchor < anchors.count && anchors[nextAnchor].time < elapsed {
+                nextAnchor += 1
+            }
+            let prior = anchors[nextAnchor - 1]
+            let bpm: Double
+            if nextAnchor < anchors.count {
+                let next = anchors[nextAnchor]
+                let fraction = (elapsed - prior.time) / (next.time - prior.time)
+                bpm = prior.bpm + (next.bpm - prior.bpm) * fraction
+            } else {
+                bpm = baseline + 2 * sin(elapsed / 45)
+            }
+            return WorkoutHealthSample(date: interval.start.addingTimeInterval(elapsed), value: bpm.rounded())
+        }
+        return WorkoutHealthSnapshot(workoutID: workout.id, workoutName: workout.name,
+            startedAt: interval.start, endedAt: interval.end, fetchedAt: through,
+            metrics: [WorkoutHealthMetricSeries(metric: .heartRate, samples: samples)])
     }
 }
 #endif

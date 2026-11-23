@@ -201,6 +201,15 @@ struct ActiveWorkoutView: View {
                                hasRestAbove: Bool,
                                restAfterSet: WorkoutSetList.RestAfterSet?,
                                workout: WorkoutSession, group: SupersetStyle?, grouped: Bool) -> some View {
+        let toggleMark: () -> Void = {
+            store.toggleSetHeartRateMark(workoutID: workout.id, exerciseID: exercise.id, setID: set.id)
+        }
+        let startTimer: () -> Void = {
+            store.startSetTimer(workoutID: workout.id, exerciseID: exercise.id, setID: set.id)
+        }
+        let cancelTimer: () -> Void = {
+            store.cancelSetTimer(workoutID: workout.id, exerciseID: exercise.id, setID: set.id)
+        }
         let showsTimer = workout.restTimer?.completedSetID == set.id
         let showsBetweenRest = !showsTimer && restAfterSet != nil
         return Group {
@@ -219,7 +228,8 @@ struct ActiveWorkoutView: View {
                     updateSet(exerciseID: exercise.id, setID: set.id) { $0.isCompleted.toggle() }
                 }, onValidity: { valid in
                     if valid { invalidSets.remove(set.id) } else { invalidSets.insert(set.id) }
-                })
+                }, isMarkedForHeartRate: set.isMarkedForHeartRate, startedAt: set.startedAt, completedAt: set.completedAt,
+                   onToggleHeartRateMark: toggleMark, onStartSetTimer: startTimer, onCancelSetTimer: cancelTimer)
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("workoutSetRow-\(set.id)")
@@ -231,6 +241,19 @@ struct ActiveWorkoutView: View {
             ))
             .listRowBackground(SupersetRowBackground(group: group, completed: set.isCompleted))
             .listRowSeparator(showsTimer || showsBetweenRest ? .hidden : .automatic, edges: .bottom)
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                if !set.isCompleted && set.startedAt == nil {
+                    Button("Start", systemImage: "heart.circle.fill", action: startTimer)
+                        .tint(.pink)
+                }
+                Button(set.isMarkedForHeartRate ? "Unmark" : "Mark",
+                       systemImage: set.isMarkedForHeartRate ? "heart.slash" : "heart", action: toggleMark)
+                    .tint(set.isMarkedForHeartRate ? Color.pink.opacity(0.8) : .indigo)
+                if !set.isCompleted && set.startedAt != nil {
+                    Button("Cancel", systemImage: "xmark.circle", action: cancelTimer)
+                        .tint(.gray)
+                }
+            }
             .swipeActions {
                 Button("Delete", role: .destructive) {
                     invalidSets.remove(set.id)

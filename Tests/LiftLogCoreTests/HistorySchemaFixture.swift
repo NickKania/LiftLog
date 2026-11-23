@@ -2,8 +2,15 @@ import Foundation
 @testable import LiftLogCore
 
 extension SQLiteConnection {
+    func removeSetHeartRateSchema() throws {
+        try execute("ALTER TABLE workout_sets DROP COLUMN hr_marked")
+        try execute("ALTER TABLE workout_sets DROP COLUMN completed_at")
+        try execute("ALTER TABLE workout_sets DROP COLUMN started_at")
+    }
+
     /// Remove the latest feature before constructing a genuinely older database layout.
     func removeHistoryEditingSchema() throws {
+        try removeSetHeartRateSchema()
         try execute("ALTER TABLE records DROP COLUMN summary")
         try execute("ALTER TABLE exercise_entries DROP COLUMN rest_seconds")
         try execute("DROP TABLE history_recovery")
