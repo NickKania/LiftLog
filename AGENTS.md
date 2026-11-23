@@ -5,7 +5,7 @@ These defaults consolidate recurring user instructions from this project's T3 Co
 ## Implementation and review
 
 - For substantial implementation, use GPT-6.1 Sol subagents where useful, with clearly separated ownership. Medium is the historical default; use a different effort when the user requests it. Small, straightforward changes can be done directly.
-- After substantive code changes, request an independent **Muse Wonder Full** review before the final handoff. Use the available Muse provider/model through T3 Code delegation; discover the current identifier rather than assuming one.
+- After substantive code changes, request an independent **GPT 6.2-Sol** review before the final handoff. Use the available Muse provider/model through T3 Code delegation; discover the current identifier rather than assuming one.
 - Give the reviewer the intended behavior, final diff, validation results, and known limitations. Ask about correctness, regressions, missed edge cases, persistence, privacy, and UI behavior where relevant.
 - Address actionable findings, rerun affected checks, and request a fresh Muse review of the updated result. Continue until Muse gives the go-ahead. Material changes after approval need another review.
 - When the task authorizes commit/push/PR creation, obtain the review go-ahead before those actions. If Muse is unavailable, report the blocker and do not silently substitute another reviewer or claim approval.

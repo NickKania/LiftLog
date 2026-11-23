@@ -6,6 +6,137 @@ final class SupersetUITests: XCTestCase {
     }
 
     @MainActor
+    func testWorkoutSupersetDisplaysAndEditsDifferentRestTimesBetweenSets() {
+        let app = launchFreshApp()
+        defer { app.terminate() }
+        addUIInterruptionMonitor(withDescription: "Rest notification permission") { alert in
+            if alert.buttons["Allow"].exists { alert.buttons["Allow"].tap(); return true }
+            return false
+        }
+        beginTemplate(named: "Superset Rest Times", in: app)
+        addExercise("Bench Press", in: app)
+        addExercise("Squat", in: app)
+        let firstTemplateRest = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'templateExerciseRest-'")).element(boundBy: 0)
+        reveal(firstTemplateRest, in: app)
+        firstTemplateRest.tap()
+        setUseWorkoutDefault(false, in: app)
+        app.buttons["restPreset-30"].tap()
+        app.buttons["saveRestSettingsButton"].tap()
+        openSupersetEditor(for: "Bench Press", in: app)
+        candidate("Squat", index: 2, in: app).tap()
+        app.buttons["saveSupersetButton"].tap()
+        app.buttons["saveTemplateButton"].tap()
+
+        startNewestTemplate(in: app)
+        for name in ["Bench Press", "Squat"] {
+            let add = app.buttons["addSet-\(name)"]
+            reveal(add, in: app)
+            add.tap()
+        }
+
+        func orderedSetRows() -> [(setID: String, name: String)] {
+            var rows: [(setID: String, name: String)] = []
+            for _ in 0..<6 {
+                let elements = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "supersetSetExercise-")).allElementsBoundByIndex
+                for element in elements {
+                    let setID = String(element.identifier.dropFirst("supersetSetExercise-".count))
+                    if !rows.contains(where: { $0.setID == setID }) {
+                        rows.append((setID, element.label))
+                    }
+                }
+                if rows.count == 4 { break }
+                app.swipeUp()
+            }
+            return rows
+        }
+
+        let rows = orderedSetRows()
+        XCTAssertEqual(rows.map(\.name), ["Bench Press", "Squat", "Bench Press", "Squat"])
+
+        let benchMenu = exerciseMenu("Bench Press", active: true, in: app)
+        let squatMenu = exerciseMenu("Squat", active: true, in: app)
+        reveal(benchMenu, in: app)
+        let benchID = String(benchMenu.identifier.dropFirst("workoutExerciseMenu-".count))
+        let squatID = String(squatMenu.identifier.dropFirst("workoutExerciseMenu-".count))
+        let benchHeaderRest = app.staticTexts["workoutExerciseRest-\(benchID)"]
+        let squatHeaderRest = app.staticTexts["workoutExerciseRest-\(squatID)"]
+        XCTAssertTrue(benchHeaderRest.waitForExistence(timeout: 5))
+        XCTAssertTrue(squatHeaderRest.waitForExistence(timeout: 5))
+        XCTAssertTrue(benchHeaderRest.label.contains("0:30"))
+        XCTAssertTrue(squatHeaderRest.label.contains("2:00"))
+
+        let rest0 = app.staticTexts["workoutSetRest-\(rows[0].setID)"]
+        let rest1 = app.staticTexts["workoutSetRest-\(rows[1].setID)"]
+        let rest2 = app.staticTexts["workoutSetRest-\(rows[2].setID)"]
+        let rest3 = app.staticTexts["workoutSetRest-\(rows[3].setID)"]
+
+        reveal(rest0, in: app)
+        XCTAssertTrue(rest0.label.contains("Bench Press") && rest0.label.contains("0:30"))
+        assertRestBetween(rest0, afterSetID: rows[0].setID, beforeSetID: rows[1].setID, in: app)
+
+        reveal(rest1, in: app)
+        XCTAssertTrue(rest1.label.contains("Squat") && rest1.label.contains("Workout default (2:00)"))
+        assertRestBetween(rest1, afterSetID: rows[1].setID, beforeSetID: rows[2].setID, in: app)
+
+        reveal(rest2, in: app)
+        XCTAssertTrue(rest2.label.contains("Bench Press") && rest2.label.contains("0:30"))
+        assertRestBetween(rest2, afterSetID: rows[2].setID, beforeSetID: rows[3].setID, in: app)
+        XCTAssertFalse(rest3.exists, "The final set in a superset should not display a between-set rest divider")
+
+        reveal(benchMenu, in: app)
+        benchMenu.tap()
+        let restAction = app.buttons["exerciseRestSettingsButton"]
+        XCTAssertTrue(restAction.waitForExistence(timeout: 5))
+        restAction.tap()
+        XCTAssertTrue(app.buttons["restPreset-0"].waitForExistence(timeout: 5))
+        app.buttons["restPreset-0"].tap()
+        app.buttons["saveRestSettingsButton"].tap()
+        reveal(rest0, in: app)
+        XCTAssertTrue(rest0.label.contains("Off"))
+        reveal(rest2, in: app)
+        XCTAssertTrue(rest2.label.contains("Off"))
+        reveal(rest1, in: app)
+        XCTAssertTrue(rest1.label.contains("Workout default (2:00)"))
+
+        let workoutRest = app.buttons["workoutRestSettingsButton"]
+        reveal(workoutRest, in: app)
+        workoutRest.tap()
+        XCTAssertTrue(app.buttons["restPreset-60"].waitForExistence(timeout: 5))
+        app.buttons["restPreset-60"].tap()
+        app.buttons["saveRestSettingsButton"].tap()
+        reveal(rest1, in: app)
+        XCTAssertTrue(rest1.label.contains("Workout default (1:00)"))
+        reveal(rest0, in: app)
+        XCTAssertTrue(rest0.label.contains("Off"))
+
+        let firstRow = app.descendants(matching: .any).matching(identifier: "workoutSetRow-\(rows[0].setID)").firstMatch
+        let secondRow = app.descendants(matching: .any).matching(identifier: "workoutSetRow-\(rows[1].setID)").firstMatch
+        reveal(firstRow, in: app)
+        firstRow.buttons["completeSet-1"].tap()
+        let countdown = app.descendants(matching: .any)["restCountdown"]
+        XCTAssertFalse(countdown.exists, "An Off exercise in a superset must not start a rest countdown")
+        XCTAssertTrue(rest0.exists)
+
+        reveal(secondRow, in: app)
+        secondRow.buttons["completeSet-1"].tap()
+        app.navigationBars.firstMatch.tap()
+        XCTAssertTrue(countdown.waitForExistence(timeout: 5))
+        XCTAssertTrue(countdown.label == "1:00" || countdown.label == "0:59")
+        XCTAssertFalse(rest1.exists, "The active rest countdown replaces the static between-set rest indicator")
+        let skip = app.buttons["skipRestButton"]
+        reveal(skip, in: app)
+        skip.tap()
+        XCTAssertFalse(countdown.exists)
+        XCTAssertTrue(rest1.waitForExistence(timeout: 5))
+
+        relaunchAndResumeWorkout(app)
+        reveal(rest0, in: app)
+        XCTAssertTrue(rest0.label.contains("Off"))
+        reveal(rest1, in: app)
+        XCTAssertTrue(rest1.label.contains("Workout default (1:00)"))
+    }
+
+    @MainActor
     func testWorkoutSupersetSetsAlternateAndCompletionSurvivesRelaunch() {
         let app = launchFreshApp()
         defer { app.terminate() }
@@ -429,16 +560,50 @@ final class SupersetUITests: XCTestCase {
     }
 
     @MainActor
+    private func setUseWorkoutDefault(_ enabled: Bool, in app: XCUIApplication) {
+        let toggle = app.switches["useWorkoutRestDefault"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        if (toggle.value as? String == "1") != enabled {
+            let control = toggle.switches.firstMatch
+            (control.exists ? control : toggle).tap()
+        }
+    }
+
+    @MainActor
+    private func assertRestBetween(_ rest: XCUIElement, afterSetID: String, beforeSetID: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let before = app.descendants(matching: .any).matching(identifier: "workoutSetRow-\(afterSetID)").firstMatch
+        let after = app.descendants(matching: .any).matching(identifier: "workoutSetRow-\(beforeSetID)").firstMatch
+        reveal(after, in: app)
+        XCTAssertTrue(rest.exists && before.exists && after.exists, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(rest.frame.minY, before.frame.maxY - 2, file: file, line: line)
+        XCTAssertLessThanOrEqual(rest.frame.maxY, after.frame.minY + 2, file: file, line: line)
+    }
+
+    @MainActor
+    private func isClearOfChrome(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        guard element.exists && element.isHittable else { return false }
+        let navBar = app.navigationBars.allElementsBoundByIndex.last { $0.exists && !$0.frame.isEmpty }
+        let minY = navBar?.frame.maxY ?? 0
+        guard element.frame.minY >= minY else { return false }
+        let tabBar = app.tabBars.firstMatch
+        if tabBar.exists && tabBar.isHittable && !tabBar.frame.isEmpty {
+            return element.frame.maxY <= tabBar.frame.minY
+        }
+        return true
+    }
+
+    @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        if element.exists && element.isHittable { return }
-        // Exercise section headers and the newly appended template can start offscreen.
+        if isClearOfChrome(element, in: app) { return }
+        // Exercise section headers and the newly appended template can start offscreen
+        // or sit beneath the translucent navigation bar or tab bar.
         for _ in 0..<6 {
             app.swipeDown()
-            if element.exists && element.isHittable { return }
+            if isClearOfChrome(element, in: app) { return }
         }
         for _ in 0..<10 {
             app.swipeUp()
-            if element.exists && element.isHittable { return }
+            if isClearOfChrome(element, in: app) { return }
         }
         XCTAssertTrue(element.exists, "Expected control was not found: \(element)")
         XCTAssertTrue(element.isHittable, "Expected control could not be scrolled into view: \(element)")

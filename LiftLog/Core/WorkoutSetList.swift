@@ -4,6 +4,13 @@ import Foundation
 /// performed. A superset's exercises stay together, with one round containing
 /// the next available set from each member.
 enum WorkoutSetList {
+    struct RestAfterSet: Equatable {
+        let exerciseID: UUID
+        /// Effective rest duration in seconds (`exercise.restSeconds ?? workoutRestSeconds`); 0 means Off.
+        let seconds: Int
+        let usesWorkoutDefault: Bool
+    }
+
     struct Row: Identifiable, Equatable {
         /// The set identity is also the row identity, so SwiftUI updates the
         /// existing input row when another set is completed or edited.
@@ -11,12 +18,15 @@ enum WorkoutSetList {
         let exerciseID: UUID
         let setID: UUID
         let setIndex: Int
+        /// Present between consecutive sets in a section, using the completed set's exercise rest duration.
+        let restAfterSet: RestAfterSet?
 
-        init(exerciseID: UUID, setID: UUID, setIndex: Int) {
+        init(exerciseID: UUID, setID: UUID, setIndex: Int, restAfterSet: RestAfterSet? = nil) {
             self.id = setID
             self.exerciseID = exerciseID
             self.setID = setID
             self.setIndex = setIndex
+            self.restAfterSet = restAfterSet
         }
     }
 
@@ -29,21 +39,34 @@ enum WorkoutSetList {
 
         var isSuperset: Bool { exercises.count > 1 }
 
-        fileprivate init(exercises: [WorkoutExercise]) {
+        fileprivate init(exercises: [WorkoutExercise], workoutRestSeconds: Int) {
             self.id = exercises[0].id
             self.exercises = exercises
 
             let setCount = exercises.map(\.sets.count).max() ?? 0
-            var rows: [Row] = []
-            rows.reserveCapacity(exercises.reduce(0) { $0 + $1.sets.count })
+            var ordered: [(exercise: WorkoutExercise, setID: UUID, setIndex: Int)] = []
+            ordered.reserveCapacity(exercises.reduce(0) { $0 + $1.sets.count })
             for setIndex in 0..<setCount {
                 for exercise in exercises {
                     guard exercise.sets.indices.contains(setIndex) else { continue }
                     let set = exercise.sets[setIndex]
-                    rows.append(Row(exerciseID: exercise.id, setID: set.id, setIndex: setIndex))
+                    ordered.append((exercise, set.id, setIndex))
                 }
             }
-            self.rows = rows
+
+            self.rows = ordered.enumerated().map { index, item in
+                let restAfterSet: RestAfterSet?
+                if index + 1 < ordered.count {
+                    restAfterSet = RestAfterSet(
+                        exerciseID: item.exercise.id,
+                        seconds: item.exercise.restSeconds ?? workoutRestSeconds,
+                        usesWorkoutDefault: item.exercise.restSeconds == nil
+                    )
+                } else {
+                    restAfterSet = nil
+                }
+                return Row(exerciseID: item.exercise.id, setID: item.setID, setIndex: item.setIndex, restAfterSet: restAfterSet)
+            }
         }
     }
 
@@ -51,7 +74,7 @@ enum WorkoutSetList {
     /// Entries with a valid shared `supersetID` are merged into the section at
     /// the first member's position. Singleton and orphan group IDs behave as
     /// ordinary individual exercises.
-    static func sections(for exercises: [WorkoutExercise]) -> [Section] {
+    static func sections(for exercises: [WorkoutExercise], workoutRestSeconds: Int = 120) -> [Section] {
         let groupCounts = Dictionary(
             exercises.compactMap { exercise in exercise.supersetID.map { ($0, 1) } },
             uniquingKeysWith: +
@@ -63,12 +86,16 @@ enum WorkoutSetList {
 
         for exercise in exercises {
             guard let groupID = exercise.supersetID, validGroups.contains(groupID) else {
-                sections.append(Section(exercises: [exercise]))
+                sections.append(Section(exercises: [exercise], workoutRestSeconds: workoutRestSeconds))
                 continue
             }
             guard consumedGroups.insert(groupID).inserted else { continue }
-            sections.append(Section(exercises: exercises.filter { $0.supersetID == groupID }))
+            sections.append(Section(exercises: exercises.filter { $0.supersetID == groupID }, workoutRestSeconds: workoutRestSeconds))
         }
         return sections
+    }
+
+    static func sections(for workout: WorkoutSession) -> [Section] {
+        sections(for: workout.exercises, workoutRestSeconds: workout.restSeconds)
     }
 }
