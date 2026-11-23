@@ -3,11 +3,12 @@ import XCTest
 @testable import LiftLogCore
 
 final class WorkoutSetListTests: XCTestCase {
-    private func exercise(_ name: String, setCount: Int, group: UUID? = nil) -> WorkoutExercise {
+    private func exercise(_ name: String, setCount: Int, group: UUID? = nil, restSeconds: Int? = nil) -> WorkoutExercise {
         WorkoutExercise(
             exercise: Exercise(name: name),
             sets: (0..<setCount).map { index in WorkoutSet(weight: Double(index + 1), reps: 8) },
-            supersetID: group
+            supersetID: group,
+            restSeconds: restSeconds
         )
     }
 
@@ -61,5 +62,62 @@ final class WorkoutSetListTests: XCTestCase {
         let sections = WorkoutSetList.sections(for: [first, second])
         XCTAssertEqual(sections.map { $0.exercises.map(\.id) }, [[first.id], [second.id]])
         XCTAssertFalse(sections[0].isSuperset)
+        XCTAssertNil(sections[0].rows[0].restAfterSet)
+        XCTAssertNil(sections[1].rows[0].restAfterSet)
+    }
+
+    func testSectionsProjectBetweenSetRestForSupersetsAndStandaloneExercisesAndOmitLastRow() throws {
+        let group = UUID()
+        let first = exercise("Press", setCount: 2, group: group, restSeconds: 30)
+        let second = exercise("Row", setCount: 2, group: group, restSeconds: nil)
+        let standalone = exercise("Carry", setCount: 2, restSeconds: 45)
+        let workout = WorkoutSession(exercises: [first, second, standalone], restSeconds: 120)
+
+        let sections = WorkoutSetList.sections(for: workout)
+        let superset = try XCTUnwrap(sections.first)
+        XCTAssertEqual(superset.rows.map(\.restAfterSet), [
+            WorkoutSetList.RestAfterSet(exerciseID: first.id, seconds: 30, usesWorkoutDefault: false),
+            WorkoutSetList.RestAfterSet(exerciseID: second.id, seconds: 120, usesWorkoutDefault: true),
+            WorkoutSetList.RestAfterSet(exerciseID: first.id, seconds: 30, usesWorkoutDefault: false),
+            nil
+        ])
+        XCTAssertEqual(sections[1].rows.map(\.restAfterSet), [
+            WorkoutSetList.RestAfterSet(exerciseID: standalone.id, seconds: 45, usesWorkoutDefault: false),
+            nil
+        ])
+    }
+
+    func testSupersetBetweenSetRestHandlesOffOverridesWorkoutDefaultOffAndDuplicates() throws {
+        let group = UUID()
+        let movement = Exercise(name: "Bench Press")
+        let first = WorkoutExercise(exercise: movement, sets: [WorkoutSet(), WorkoutSet()], supersetID: group, restSeconds: 0)
+        let second = WorkoutExercise(exercise: movement, sets: [WorkoutSet(), WorkoutSet()], supersetID: group, restSeconds: 90)
+        let workout = WorkoutSession(exercises: [first, second], restSeconds: 120)
+
+        let section = try XCTUnwrap(WorkoutSetList.sections(for: workout).first)
+        XCTAssertEqual(section.rows.map(\.restAfterSet), [
+            WorkoutSetList.RestAfterSet(exerciseID: first.id, seconds: 0, usesWorkoutDefault: false),
+            WorkoutSetList.RestAfterSet(exerciseID: second.id, seconds: 90, usesWorkoutDefault: false),
+            WorkoutSetList.RestAfterSet(exerciseID: first.id, seconds: 0, usesWorkoutDefault: false),
+            nil
+        ])
+
+        let defaultOffFirst = exercise("Curl", setCount: 2, group: group, restSeconds: nil)
+        let defaultOffSecond = exercise("Extension", setCount: 1, group: group, restSeconds: 45)
+        let defaultOffWorkout = WorkoutSession(exercises: [defaultOffFirst, defaultOffSecond], restSeconds: 0)
+        let defaultOffSection = try XCTUnwrap(WorkoutSetList.sections(for: defaultOffWorkout).first)
+        XCTAssertEqual(defaultOffSection.rows.map(\.restAfterSet), [
+            WorkoutSetList.RestAfterSet(exerciseID: defaultOffFirst.id, seconds: 0, usesWorkoutDefault: true),
+            WorkoutSetList.RestAfterSet(exerciseID: defaultOffSecond.id, seconds: 45, usesWorkoutDefault: false),
+            nil
+        ])
+    }
+
+    func testSupersetWithSingleRemainingSetHasNoBetweenSetRest() throws {
+        let group = UUID()
+        let first = exercise("Press", setCount: 1, group: group, restSeconds: 30)
+        let empty = exercise("Row", setCount: 0, group: group, restSeconds: 90)
+        let section = try XCTUnwrap(WorkoutSetList.sections(for: [first, empty], workoutRestSeconds: 120).first)
+        XCTAssertEqual(section.rows.map(\.restAfterSet), [nil])
     }
 }
