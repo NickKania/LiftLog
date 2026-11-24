@@ -6,6 +6,38 @@ final class SupersetUITests: XCTestCase {
     }
 
     @MainActor
+    func testSharedMenuOffersActionsForRepeatedExercisesInThreeMemberSuperset() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-ui-testing", "--exercise-order-ui-fixture"]
+        app.launch()
+        defer { app.terminate() }
+
+        let resume = app.buttons["resumeWorkoutButton"]
+        XCTAssertTrue(resume.waitForExistence(timeout: 5))
+        resume.tap()
+        openSupersetEditor(for: "Bench Press", editing: true, active: true, in: app)
+        candidate("Bench Press", index: 3, in: app).tap()
+        app.buttons["saveSupersetButton"].tap()
+
+        let menu = supersetMenu("Superset A", in: app)
+        reveal(menu, in: app)
+        let names = supersetNames(in: app)
+        XCTAssertEqual(names.label, "Bench Press · Barbell Row · Bench Press")
+        XCTAssertEqual(supersetMenus(in: app).count, 1)
+        XCTAssertLessThan(names.frame.maxX, menu.frame.minX)
+        menu.tap()
+        let thirdExercise = app.buttons["Bench Press (3)"]
+        XCTAssertTrue(thirdExercise.waitForExistence(timeout: 5))
+        thirdExercise.tap()
+        let removeMembership = app.buttons["Remove from Superset"]
+        XCTAssertTrue(removeMembership.waitForExistence(timeout: 5))
+        removeMembership.tap()
+        XCTAssertEqual(names.label, "Bench Press · Barbell Row")
+        let addSetButtons = app.buttons.matching(identifier: "addSet-Bench Press")
+        XCTAssertTrue(addSetButtons.firstMatch.exists, "Removing membership keeps the exercise in the workout")
+    }
+
+    @MainActor
     func testWorkoutSupersetDisplaysAndEditsDifferentRestTimesBetweenSets() {
         let app = launchFreshApp()
         defer { app.terminate() }
@@ -53,17 +85,13 @@ final class SupersetUITests: XCTestCase {
         let rows = orderedSetRows()
         XCTAssertEqual(rows.map(\.name), ["Bench Press", "Squat", "Bench Press", "Squat"])
 
-        let benchMenu = exerciseMenu("Bench Press", active: true, in: app)
-        let squatMenu = exerciseMenu("Squat", active: true, in: app)
-        reveal(benchMenu, in: app)
-        let benchID = String(benchMenu.identifier.dropFirst("workoutExerciseMenu-".count))
-        let squatID = String(squatMenu.identifier.dropFirst("workoutExerciseMenu-".count))
-        let benchHeaderRest = app.staticTexts["workoutExerciseRest-\(benchID)"]
-        let squatHeaderRest = app.staticTexts["workoutExerciseRest-\(squatID)"]
-        XCTAssertTrue(benchHeaderRest.waitForExistence(timeout: 5))
-        XCTAssertTrue(squatHeaderRest.waitForExistence(timeout: 5))
-        XCTAssertTrue(benchHeaderRest.label.contains("0:30"))
-        XCTAssertTrue(squatHeaderRest.label.contains("2:00"))
+        let groupMenu = supersetMenu("Superset A", in: app)
+        reveal(groupMenu, in: app)
+        XCTAssertEqual(supersetNames(in: app).label, "Bench Press · Squat")
+        XCTAssertEqual(supersetMenus(in: app).count, 1)
+        XCTAssertFalse(exerciseMenu("Bench Press", active: true, in: app).exists)
+        XCTAssertFalse(exerciseMenu("Squat", active: true, in: app).exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Rest for ")).firstMatch.exists)
 
         let rest0 = app.staticTexts["workoutSetRest-\(rows[0].setID)"]
         let rest1 = app.staticTexts["workoutSetRest-\(rows[1].setID)"]
@@ -83,8 +111,11 @@ final class SupersetUITests: XCTestCase {
         assertRestBetween(rest2, afterSetID: rows[2].setID, beforeSetID: rows[3].setID, in: app)
         XCTAssertFalse(rest3.exists, "The final set in a superset should not display a between-set rest divider")
 
-        reveal(benchMenu, in: app)
-        benchMenu.tap()
+        reveal(groupMenu, in: app)
+        groupMenu.tap()
+        let benchActions = app.buttons["Bench Press"]
+        XCTAssertTrue(benchActions.waitForExistence(timeout: 5))
+        benchActions.tap()
         let restAction = app.buttons["exerciseRestSettingsButton"]
         XCTAssertTrue(restAction.waitForExistence(timeout: 5))
         restAction.tap()
@@ -121,7 +152,9 @@ final class SupersetUITests: XCTestCase {
         secondRow.buttons["completeSet-1"].tap()
         app.navigationBars.firstMatch.tap()
         XCTAssertTrue(countdown.waitForExistence(timeout: 5))
-        XCTAssertTrue(countdown.label == "1:00" || countdown.label == "0:59")
+        let initialCountdown = countdown.label
+        let expectedStartLabels = ["1:00"] + (55...59).map { "0:\($0)" }
+        XCTAssertTrue(expectedStartLabels.contains(initialCountdown), "Expected a one-minute timer, found \(initialCountdown)")
         XCTAssertFalse(rest1.exists, "The active rest countdown replaces the static between-set rest indicator")
         let skip = app.buttons["skipRestButton"]
         reveal(skip, in: app)
@@ -246,7 +279,11 @@ final class SupersetUITests: XCTestCase {
         candidate("Deadlift", index: 3, in: app).tap()
         app.buttons["saveSupersetButton"].tap()
         relaunchAndResumeWorkout(app)
-        assertGroup("Superset A", exercise: "Deadlift", active: true, in: app)
+        let groupMenu = supersetMenu("Superset A", in: app)
+        reveal(groupMenu, in: app)
+        XCTAssertEqual(supersetNames(in: app).label, "Bench Press · Squat · Deadlift")
+        XCTAssertEqual(supersetMenus(in: app).count, 1)
+        XCTAssertFalse(exerciseMenu("Deadlift", active: true, in: app).exists)
         openSupersetEditor(for: "Bench Press", editing: true, active: true, in: app)
         app.buttons["removeSupersetButton"].tap()
         relaunchAndResumeWorkout(app)
@@ -490,8 +527,23 @@ final class SupersetUITests: XCTestCase {
     }
 
     @MainActor
+    private func supersetMenus(in app: XCUIApplication) -> XCUIElementQuery {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'workoutSupersetMenu-'"))
+    }
+
+    @MainActor
+    private func supersetMenu(_ label: String, in app: XCUIApplication) -> XCUIElement {
+        supersetMenus(in: app).matching(NSPredicate(format: "label == %@", "Options for \(label)")).firstMatch
+    }
+
+    @MainActor
+    private func supersetNames(in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'workoutSupersetNames-'")).firstMatch
+    }
+
+    @MainActor
     private func openSupersetEditor(for name: String, editing: Bool = false, active: Bool = false, in app: XCUIApplication) {
-        let menu = exerciseMenu(name, active: active, in: app)
+        let menu = active && editing ? supersetMenu("Superset A", in: app) : exerciseMenu(name, active: active, in: app)
         reveal(menu, in: app)
         menu.tap()
         let action = app.buttons[editing ? "editSupersetButton" : "addSupersetButton"]
@@ -502,10 +554,17 @@ final class SupersetUITests: XCTestCase {
 
     @MainActor
     private func assertGroup(_ label: String?, exercise: String, occurrence: Int = 0, active: Bool = false, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        if active, let label {
+            let menu = supersetMenu(label, in: app)
+            reveal(menu, in: app)
+            XCTAssertTrue(supersetNames(in: app).label.components(separatedBy: " · ").contains(exercise), file: file, line: line)
+            XCTAssertFalse(exerciseMenu(exercise, active: true, in: app).exists, file: file, line: line)
+            return
+        }
         let menu = exerciseMenu(exercise, occurrence: occurrence, active: active, in: app)
         reveal(menu, in: app)
-        let prefix = active ? "workoutExerciseMenu-" : "templateExerciseMenu-"
-        let entryID = String(menu.identifier.dropFirst(prefix.count))
+        if active { return }
+        let entryID = String(menu.identifier.dropFirst("templateExerciseMenu-".count))
         let group = app.descendants(matching: .any).matching(identifier: "supersetLabel-\(entryID)").firstMatch
         if let label {
             XCTAssertTrue(group.waitForExistence(timeout: 5), file: file, line: line)

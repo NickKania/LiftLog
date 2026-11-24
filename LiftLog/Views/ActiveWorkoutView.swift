@@ -174,10 +174,10 @@ struct ActiveWorkoutView: View {
                         .accessibilityIdentifier("addSet-\(exercise.exercise.name)")
                     }
                 } header: {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(section.exercises) { exercise in
-                            exerciseHeading(exercise, workout: workout, group: group)
-                        }
+                    if section.isSuperset, let group {
+                        supersetHeading(section.exercises, workout: workout, group: group)
+                    } else {
+                        exerciseHeading(section.exercises[0], workout: workout)
                     }
                 }
                 .listRowBackground(SupersetRowBackground(group: group))
@@ -309,45 +309,97 @@ struct ActiveWorkoutView: View {
         .accessibilityIdentifier("workoutSetRest-\(setID)")
     }
 
-    private func exerciseHeading(_ exercise: WorkoutExercise, workout: WorkoutSession, group: SupersetStyle?) -> some View {
-        HStack {
-            SupersetExerciseHeading(
-                name: exercise.exercise.name,
-                entryID: exercise.id,
-                group: group,
-                restSummary: "Rest \(RestTime.description(workout.restSeconds(for: exercise)))",
-                restAccessibilityLabel: "Rest for \(exercise.exercise.name), \(RestTime.exerciseDescription(exercise.restSeconds, workoutDefault: workout.restSeconds))"
-            )
-            Spacer()
+    private func supersetHeading(_ exercises: [WorkoutExercise], workout: WorkoutSession, group: SupersetStyle) -> some View {
+        let names = exercises.map { $0.exercise.name }
+        let nameCounts = Dictionary(names.map { ($0, 1) }, uniquingKeysWith: +)
+        let first = exercises[0]
+        return HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label(group.label, systemImage: "link")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(group.color)
+                Text(names.joined(separator: " · "))
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("workoutSupersetNames-\(first.id)")
+            }
+            .textCase(nil)
+            .frame(maxWidth: .infinity, alignment: .leading)
             Menu {
-                Button("Rest Settings", systemImage: "timer") {
-                    hideKeyboard()
-                    restSettings = WorkoutRestSettingsContext(workout: workout, exercise: exercise)
-                }
-                .accessibilityIdentifier("exerciseRestSettingsButton")
-                Button("Replace Exercise", systemImage: "arrow.triangle.2.circlepath") {
-                    hideKeyboard()
-                    swapContext = WorkoutExerciseSwapContext(sessionID: workout.id, entry: exercise)
-                }
-                .disabled(exercise.sets.contains(where: \.isCompleted))
-                .accessibilityHint(exercise.sets.contains(where: \.isCompleted) ? "Completed sets must be kept. Only exercises with no completed sets can be replaced." : "Review a replacement for this workout only")
-                .accessibilityIdentifier("replaceExerciseButton")
-                Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
-                    hideKeyboard()
-                    supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: workout.exercises, name: { $0.exercise.name })
-                }
-                .accessibilityIdentifier(exercise.supersetID == nil ? "addSupersetButton" : "editSupersetButton")
-                Divider()
-                Button("Remove Exercise", systemImage: "trash", role: .destructive) {
-                    exercise.sets.forEach { invalidSets.remove($0.id) }
-                    mutate { session in
-                        session.exercises.removeAll { $0.id == exercise.id }
-                        SupersetGrouping.normalize(&session.exercises)
+                supersetEditorAction(for: first, workout: workout)
+                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
+                    let name = names[index]
+                    let title = nameCounts[name, default: 0] > 1 ? "\(name) (\(index + 1))" : name
+                    Menu(title) {
+                        exerciseSettingsActions(exercise, workout: workout)
+                        Button("Remove from Superset", systemImage: "link.badge.minus") {
+                            mutate { session in
+                                guard let index = session.exercises.firstIndex(where: { $0.id == exercise.id }),
+                                      session.exercises[index].supersetID == exercise.supersetID else { return }
+                                session.exercises[index].supersetID = nil
+                                SupersetGrouping.normalize(&session.exercises)
+                            }
+                        }
+                        removeExerciseAction(exercise)
                     }
                 }
-            } label: { Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44) }
+            } label: { exerciseMenuIcon }
+            .accessibilityLabel("Options for \(group.label)")
+            .accessibilityIdentifier("workoutSupersetMenu-\(first.id)")
+        }
+    }
+
+    private func exerciseHeading(_ exercise: WorkoutExercise, workout: WorkoutSession) -> some View {
+        HStack {
+            Text(exercise.exercise.name).font(.headline).textCase(nil)
+            Spacer()
+            Menu {
+                exerciseSettingsActions(exercise, workout: workout)
+                supersetEditorAction(for: exercise, workout: workout)
+                removeExerciseAction(exercise)
+            } label: { exerciseMenuIcon }
             .accessibilityLabel("Options for \(exercise.exercise.name)")
             .accessibilityIdentifier("workoutExerciseMenu-\(exercise.id)")
+        }
+    }
+
+    private var exerciseMenuIcon: some View {
+        Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44)
+    }
+
+    @ViewBuilder
+    private func exerciseSettingsActions(_ exercise: WorkoutExercise, workout: WorkoutSession) -> some View {
+        Button("Rest Settings", systemImage: "timer") {
+            hideKeyboard()
+            restSettings = WorkoutRestSettingsContext(workout: workout, exercise: exercise)
+        }
+        .accessibilityIdentifier("exerciseRestSettingsButton")
+        Button("Replace Exercise", systemImage: "arrow.triangle.2.circlepath") {
+            hideKeyboard()
+            swapContext = WorkoutExerciseSwapContext(sessionID: workout.id, entry: exercise)
+        }
+        .disabled(exercise.sets.contains(where: \.isCompleted))
+        .accessibilityHint(exercise.sets.contains(where: \.isCompleted) ? "Completed sets must be kept. Only exercises with no completed sets can be replaced." : "Review a replacement for this workout only")
+        .accessibilityIdentifier("replaceExerciseButton")
+    }
+
+    private func supersetEditorAction(for exercise: WorkoutExercise, workout: WorkoutSession) -> some View {
+        Button(exercise.supersetID == nil ? "Add to Superset" : "Edit Superset", systemImage: "link") {
+            hideKeyboard()
+            supersetEditor = SupersetEditorContext(anchorID: exercise.id, exercises: workout.exercises, name: { $0.exercise.name })
+        }
+        .accessibilityIdentifier(exercise.supersetID == nil ? "addSupersetButton" : "editSupersetButton")
+    }
+
+    @ViewBuilder
+    private func removeExerciseAction(_ exercise: WorkoutExercise) -> some View {
+        Divider()
+        Button("Remove Exercise", systemImage: "trash", role: .destructive) {
+            exercise.sets.forEach { invalidSets.remove($0.id) }
+            mutate { session in
+                session.exercises.removeAll { $0.id == exercise.id }
+                SupersetGrouping.normalize(&session.exercises)
+            }
         }
     }
 
