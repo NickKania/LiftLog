@@ -113,9 +113,7 @@ final class RestTimerUITests: XCTestCase {
         let start = app.buttons[startID]
         if !start.isHittable { app.swipeUp() }
         start.tap()
-        let exerciseRest = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'workoutExerciseRest-'")).firstMatch
-        XCTAssertTrue(exerciseRest.waitForExistence(timeout: 5))
-        XCTAssertTrue(exerciseRest.label.contains("0:30"))
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Rest for ")).firstMatch.exists)
         let betweenRest = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'workoutSetRest-'")).firstMatch
         XCTAssertTrue(betweenRest.waitForExistence(timeout: 5))
         XCTAssertTrue(betweenRest.label.contains("0:30"))
@@ -123,7 +121,6 @@ final class RestTimerUITests: XCTestCase {
         app.buttons["restPreset-60"].tap()
         app.buttons["saveRestSettingsButton"].tap()
         XCTAssertTrue(app.buttons["workoutRestSettingsButton"].label.contains("1:00"))
-        XCTAssertTrue(exerciseRest.label.contains("0:30"))
         XCTAssertTrue(betweenRest.label.contains("0:30"))
         app.buttons["completeSet-1"].tap()
         app.tap()
@@ -135,13 +132,11 @@ final class RestTimerUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["resumeWorkoutButton"].waitForExistence(timeout: 5))
         app.buttons["resumeWorkoutButton"].tap()
-        XCTAssertTrue(exerciseRest.waitForExistence(timeout: 5))
-        XCTAssertTrue(exerciseRest.label.contains("0:30"))
+        reveal(app.buttons["skipRestButton"], in: app, scrollingUp: true)
         XCTAssertTrue(countdown.waitForExistence(timeout: 5))
         openExerciseRestSettings(for: "Bench Press", in: app)
         setUseDefault(true, in: app)
         app.buttons["saveRestSettingsButton"].tap()
-        XCTAssertTrue(exerciseRest.label.contains("Workout default (1:00)"))
         // Editing settings preserves the existing 30-second countdown.
         XCTAssertTrue(countdown.label.hasPrefix("0:") || countdown.label == "Rest complete")
         app.buttons["completeSet-2"].tap()
@@ -153,7 +148,6 @@ final class RestTimerUITests: XCTestCase {
         setUseDefault(false, in: app)
         app.buttons["restPreset-0"].tap()
         app.buttons["saveRestSettingsButton"].tap()
-        XCTAssertTrue(exerciseRest.label.contains("Off"))
         XCTAssertTrue(betweenRest.label.contains("Off"))
         reveal(app.buttons["addSet-Bench Press"], in: app, scrollingUp: true)
         app.buttons["addSet-Bench Press"].tap()

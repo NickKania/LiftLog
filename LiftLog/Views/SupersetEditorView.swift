@@ -45,53 +45,25 @@ struct SupersetStyle {
 }
 
 struct SupersetExerciseHeading: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let name: String
     let entryID: UUID
     let group: SupersetStyle?
-    var restSummary: String? = nil
-    var restAccessibilityLabel: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(name).font(.headline).textCase(nil)
             if let group {
-                let metaLayout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
-                    : AnyLayout(HStackLayout(spacing: 6))
-                metaLayout {
-                    HStack(spacing: 4) {
-                        Image(systemName: "link").accessibilityHidden(true)
-                        Text(group.label)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("supersetLabel-\(entryID)")
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(group.color)
-                    .textCase(nil)
-                    if let restSummary {
-                        if !dynamicTypeSize.isAccessibilitySize {
-                            Text("·")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
-                        }
-                        restLabel(restSummary)
-                    }
+                HStack(spacing: 4) {
+                    Image(systemName: "link").accessibilityHidden(true)
+                    Text(group.label)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("supersetLabel-\(entryID)")
                 }
-            } else if let restSummary {
-                restLabel(restSummary)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(group.color)
+                .textCase(nil)
             }
         }
-    }
-
-    private func restLabel(_ summary: String) -> some View {
-        Text(summary)
-            .font(.caption.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .textCase(nil)
-            .accessibilityLabel(restAccessibilityLabel ?? summary)
-            .accessibilityIdentifier("workoutExerciseRest-\(entryID)")
     }
 }
 
